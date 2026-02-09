@@ -1,17 +1,14 @@
 """Desktop automation tools: mouse, keyboard, screenshots, and screen vision."""
 
-import base64
 import os
 import sys
 import tempfile
 
-import anthropic
 import mss
 import pyautogui
-from PIL import Image
 
-from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
+from jarvis.vision import analyze_image
 
 # Fix Windows high-DPI coordinate issues
 if sys.platform == "win32":
@@ -23,48 +20,6 @@ if sys.platform == "win32":
 
 # Disable PyAutoGUI's fail-safe pause for automation speed
 pyautogui.PAUSE = 0.1
-
-
-def _analyze_image(api_key: str, image_path: str, question: str) -> str:
-    """Send a screenshot to Claude Vision API and return text description."""
-    try:
-        img = Image.open(image_path)
-        # Resize to max 1280px wide to control token cost
-        if img.width > 1280:
-            ratio = 1280 / img.width
-            img = img.resize((1280, int(img.height * ratio)), Image.LANCZOS)
-            resized_path = image_path.replace(".png", "_resized.png")
-            img.save(resized_path)
-            image_path = resized_path
-
-        with open(image_path, "rb") as f:
-            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
-
-        client = anthropic.Anthropic(api_key=api_key)
-        response = retry_api_call(
-            client.messages.create,
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=2048,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/png",
-                                "data": image_data,
-                            },
-                        },
-                        {"type": "text", "text": question},
-                    ],
-                }
-            ],
-        )
-        return response.content[0].text
-    except Exception as e:
-        return f"Vision analysis error: {e}"
 
 
 def register(registry, config):
@@ -107,7 +62,7 @@ def register(registry, config):
                 img.save(tmp.name)
                 tmp.close()
 
-            result = _analyze_image(api_key, tmp.name, question)
+            result = analyze_image(api_key, tmp.name, question)
             os.unlink(tmp.name)
             resized = tmp.name.replace(".png", "_resized.png")
             if os.path.exists(resized):
