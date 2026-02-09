@@ -1,6 +1,8 @@
 """Pydantic request/response schemas for the Jarvis API."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+MAX_MESSAGE_LENGTH = 50_000  # Characters
 
 
 # --- Auth ---
@@ -33,6 +35,15 @@ class AuthResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
+
+    @field_validator("message")
+    @classmethod
+    def message_not_too_long(cls, v: str) -> str:
+        if len(v) > MAX_MESSAGE_LENGTH:
+            raise ValueError(f"Message too long ({len(v)} chars, max {MAX_MESSAGE_LENGTH}).")
+        if not v.strip():
+            raise ValueError("Message cannot be empty.")
+        return v
 
 
 class ToolCallDetail(BaseModel):
