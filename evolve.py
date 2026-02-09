@@ -360,23 +360,58 @@ class EvolutionPlanner:
             f"## Recent Evolution History\n{history_text}\n\n"
             f"## Latest Research\n{research_text}\n\n"
             "## Your Task\n"
-            "Produce 1-3 concrete improvements for this cycle. "
-            "Return ONLY valid JSON matching the schema from your instructions."
+            "Produce exactly 1-2 concrete improvements for this cycle.\n\n"
+            "CRITICAL: Your entire response must be a single JSON object. "
+            "No markdown, no code fences, no commentary before or after. "
+            "Start your response with { and end with }."
         )
 
         messages = [self.backend.format_user_message(user_msg)]
+
+        # First attempt
+        raw, response = self._call_llm(messages)
+        self._log_raw_response(raw)
+        result = self._parse_plan(raw)
+        if result is not None:
+            return result
+
+        # Retry: ask explicitly for JSON only
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content": (
+            "That response was not valid JSON and could not be parsed. "
+            "Please return ONLY a raw JSON object with no markdown fences, "
+            "no explanation, no text before or after. Start with { and end with }."
+        )})
+        raw, _ = self._call_llm(messages)
+        self._log_raw_response(raw)
+        return self._parse_plan(raw)
+
+    def _call_llm(self, messages: list) -> tuple[str, object]:
         try:
             response = self.backend.send(
                 messages=messages,
                 system=EVOLUTION_SYSTEM_PROMPT,
                 tools=[],
-                max_tokens=self.config.max_tokens,
+                max_tokens=8192,
             )
         except Exception as e:
             raise RuntimeError(f"LLM API error: {e}") from e
+        return response.text or "", response
 
-        raw = response.text or ""
-        return self._parse_plan(raw)
+    @staticmethod
+    def _log_raw_response(raw: str):
+        """Log raw LLM response for debugging."""
+        log_path = os.path.join(PROJECT_ROOT, "memory", "evolution_raw_response.log")
+        try:
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"Timestamp: {datetime.now(timezone.utc).isoformat()}\n")
+                f.write(f"Response length: {len(raw)}\n")
+                f.write(raw[:5000])
+                f.write(f"\n{'='*60}\n")
+        except Exception:
+            pass
 
     def _parse_plan(self, raw: str) -> dict | None:
         # Strip markdown fences if present
