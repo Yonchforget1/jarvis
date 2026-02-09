@@ -15,6 +15,7 @@ class ToolDef:
     description: str
     parameters: dict  # {"properties": {...}, "required": [...]}
     func: Callable[..., str]
+    category: str = "general"  # Tool category for grouping/filtering
 
     def schema_anthropic(self) -> dict:
         return {
@@ -70,6 +71,14 @@ class ToolRegistry:
 
     def all_tools(self) -> list[ToolDef]:
         return list(self._tools.values())
+
+    def tools_by_category(self, category: str) -> list[ToolDef]:
+        """Return all tools matching a category."""
+        return [t for t in self._tools.values() if t.category == category]
+
+    def categories(self) -> list[str]:
+        """Return all unique tool categories."""
+        return sorted(set(t.category for t in self._tools.values()))
 
     def handle_call(self, name: str, args: dict) -> str:
         tool = self._tools.get(name)
