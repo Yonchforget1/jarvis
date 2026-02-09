@@ -306,7 +306,7 @@ export function ChatContainer({
       )}
 
       {/* Message area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-smooth">
+      <div ref={scrollRef} role="log" aria-label="Chat messages" aria-live="polite" className="flex-1 overflow-y-auto scroll-smooth">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-4 animate-fade-in-up">
             {/* Logo with animated gradient ring */}

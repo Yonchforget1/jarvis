@@ -111,7 +111,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   };
 
   return (
-    <div
+    <nav
+      aria-label="Main navigation"
+      role="navigation"
       className={`flex h-full flex-col border-r border-border/50 bg-sidebar transition-all duration-300 ease-in-out ${
         collapsed ? "w-[68px]" : "w-[280px]"
       }`}
@@ -158,7 +160,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
       </div>
 
       {/* Navigation */}
-      <nav className={`space-y-0.5 ${collapsed ? "px-2" : "px-3"} pt-2`}>
+      <div role="list" aria-label="Page navigation" className={`space-y-0.5 ${collapsed ? "px-2" : "px-3"} pt-2`}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -167,7 +169,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               href={item.href}
               onClick={onClose}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-xl text-sm transition-all duration-200 ${
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+              className={`flex items-center rounded-xl text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 ${
                 collapsed
                   ? "justify-center p-2.5"
                   : "gap-3 px-3 py-2.5"
@@ -189,7 +193,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
             </Link>
           );
         })}
-      </nav>
+      </div>
 
       <Separator className={`${collapsed ? "mx-2" : "mx-3"} !my-3 bg-muted`} />
 
@@ -370,6 +374,6 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           )}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -92,6 +92,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               }
               disabled={disabled}
               rows={1}
+              aria-label="Message input"
               className={`w-full resize-none rounded-2xl border bg-secondary/50 px-4 py-3 pr-4 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 ${
                 isOverLimit
                   ? "border-red-500/50 focus:border-red-500/50"
@@ -114,7 +115,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           <button
             onClick={handleSubmit}
             disabled={!canSend}
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-200 ${
+            aria-label={disabled ? "Sending message" : "Send message"}
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
               canSend
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 active:scale-95"
                 : "bg-secondary text-muted-foreground/30 cursor-not-allowed"

@@ -179,6 +179,8 @@ export function MessageBubble({
   return (
     <div
       data-message-id={message.id}
+      role="article"
+      aria-label={`${isUser ? "Your" : "JARVIS"} message`}
       className={`flex gap-3 px-4 py-3 animate-fade-in-up transition-colors duration-300 ${
         isUser ? "flex-row-reverse" : ""
       } ${isActiveMatch ? "bg-primary/5 rounded-xl" : ""}`}
