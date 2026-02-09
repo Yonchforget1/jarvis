@@ -8,6 +8,7 @@ import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, Thum
 import { useState, useMemo, useCallback } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
+import { Tooltip } from "@/components/ui/tooltip";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -318,12 +319,26 @@ export function MessageBubble({
             </>
           ) : (
             <>
-              <span className="text-[10px] text-muted-foreground/60">
-                {new Date(message.timestamp).toLocaleTimeString([], {
+              <Tooltip
+                content={new Date(message.timestamp).toLocaleString(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
+                  second: "2-digit",
                 })}
-              </span>
+                side="top"
+                delay={400}
+              >
+                <span className="text-[10px] text-muted-foreground/60 cursor-default">
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </Tooltip>
               {message.content && (
                 <MessageCopyButton text={message.content} />
               )}
