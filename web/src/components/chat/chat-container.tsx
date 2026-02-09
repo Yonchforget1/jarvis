@@ -23,6 +23,17 @@ import { TypingIndicator } from "./typing-indicator";
 import { ChatInput } from "./chat-input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
+function getDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
 interface ChatContainerProps {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -357,16 +368,33 @@ export function ChatContainer({
           </div>
         ) : (
           <div className="mx-auto max-w-3xl py-4">
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                onRetry={msg.isError ? onRetry : undefined}
-                onStop={msg.isStreaming ? onStop : undefined}
-                searchQuery={searchOpen ? searchQuery : ""}
-                isActiveMatch={msg.id === activeMatchMsgId}
-              />
-            ))}
+            {messages.map((msg, idx) => {
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const currentDate = getDateLabel(msg.timestamp);
+              const prevDate = prevMsg ? getDateLabel(prevMsg.timestamp) : null;
+              const showDateSeparator = currentDate !== prevDate;
+
+              return (
+                <div key={msg.id}>
+                  {showDateSeparator && (
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 h-px bg-border/50" />
+                      <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider shrink-0">
+                        {currentDate}
+                      </span>
+                      <div className="flex-1 h-px bg-border/50" />
+                    </div>
+                  )}
+                  <MessageBubble
+                    message={msg}
+                    onRetry={msg.isError ? onRetry : undefined}
+                    onStop={msg.isStreaming ? onStop : undefined}
+                    searchQuery={searchOpen ? searchQuery : ""}
+                    isActiveMatch={msg.id === activeMatchMsgId}
+                  />
+                </div>
+              );
+            })}
             {isLoading && !messages.some((m) => m.isStreaming) && (
               <TypingIndicator />
             )}
