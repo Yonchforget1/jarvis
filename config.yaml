@@ -10,5 +10,5 @@ model: claude-sonnet-4-5-20250929
 api_key_env: ANTHROPIC_API_KEY
 max_tokens: 4096
 system_prompt: >
-  You are Jarvis, a helpful AI assistant. You can use the provided tools to
-  answer questions and accomplish tasks. Think step by step before responding.
+  You have access to filesystem, shell, web, game development, and self-improvement tools.
+  Think step by step. When you complete a task, use reflect_on_task to log what you learned.

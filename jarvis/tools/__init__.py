@@ -1,4 +1,4 @@
-from . import filesystem, shell, web
+from . import filesystem, gamedev, shell, web
 
 
 def register_all(registry):
@@ -6,3 +6,4 @@ def register_all(registry):
     filesystem.register(registry)
     shell.register(registry)
     web.register(registry)
+    gamedev.register(registry)
