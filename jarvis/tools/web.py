@@ -30,6 +30,26 @@ def _is_internal_url(url: str) -> bool:
         return True
 
 
+MAX_CONTENT_LENGTH = 20000
+
+
+def _smart_truncate(text: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
+    """Truncate text at paragraph boundaries to avoid cutting mid-sentence."""
+    if len(text) <= max_length:
+        return text
+    # Find the last paragraph break before the limit
+    truncated = text[:max_length]
+    last_para = truncated.rfind("\n\n")
+    if last_para > max_length * 0.5:  # Only use if we keep at least half
+        truncated = truncated[:last_para]
+    else:
+        # Fall back to sentence boundary
+        last_sentence = max(truncated.rfind(". "), truncated.rfind(".\n"))
+        if last_sentence > max_length * 0.5:
+            truncated = truncated[:last_sentence + 1]
+    return truncated + f"\n\n... (truncated, {len(text)} chars total)"
+
+
 def search_web(query: str) -> str:
     """Search the web via DuckDuckGo and return formatted results."""
     try:
@@ -56,7 +76,7 @@ def fetch_url(url: str, selector: str = "") -> str:
 
         content_type = response.headers.get("content-type", "")
         if "text/html" not in content_type and "application/xhtml" not in content_type:
-            text = response.text[:20000]
+            text = _smart_truncate(response.text)
             return text if text else "(empty response)"
 
         soup = BeautifulSoup(response.text, "lxml")
@@ -75,8 +95,7 @@ def fetch_url(url: str, selector: str = "") -> str:
 
         text = re.sub(r"\n{3,}", "\n\n", text)
 
-        if len(text) > 20000:
-            text = text[:20000] + f"\n\n... (truncated, {len(text)} chars total)"
+        text = _smart_truncate(text)
         return text if text else "(no readable content)"
     except Exception as e:
         return f"Error fetching URL: {e}"
