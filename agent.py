@@ -119,6 +119,52 @@ def cmd_chat(args) -> None:
         print(f"\nJarvis: {response}")
 
 
+def cmd_docs(args) -> None:
+    """Generate tool documentation from ToolDef schemas."""
+    config = Config.load()
+    registry = _build_registry(config)
+    tools = sorted(registry.all_tools(), key=lambda t: (t.category, t.name))
+
+    fmt = args.format
+    if fmt == "markdown":
+        print("# Jarvis Tool Reference\n")
+        current_cat = None
+        for t in tools:
+            if t.category != current_cat:
+                current_cat = t.category
+                print(f"\n## {current_cat.title()}\n")
+            print(f"### `{t.name}`\n")
+            print(f"{t.description}\n")
+            props = t.parameters.get("properties", {})
+            required = set(t.parameters.get("required", []))
+            if props:
+                print("| Parameter | Type | Required | Description |")
+                print("|-----------|------|----------|-------------|")
+                for pname, pinfo in props.items():
+                    req = "Yes" if pname in required else "No"
+                    ptype = pinfo.get("type", "any")
+                    desc = pinfo.get("description", "")
+                    default = pinfo.get("default")
+                    if default is not None:
+                        desc += f" (default: `{default}`)"
+                    print(f"| `{pname}` | {ptype} | {req} | {desc} |")
+                print()
+    else:
+        for t in tools:
+            print(f"[{t.category}] {t.name}")
+            print(f"  {t.description}")
+            props = t.parameters.get("properties", {})
+            required = set(t.parameters.get("required", []))
+            for pname, pinfo in props.items():
+                req = "*" if pname in required else " "
+                ptype = pinfo.get("type", "any")
+                desc = pinfo.get("description", "")
+                print(f"  {req} {pname} ({ptype}): {desc}")
+            print()
+
+    print(f"\n---\nGenerated from {len(tools)} tools")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Jarvis AI Agent")
     subparsers = parser.add_subparsers(dest="command")
@@ -135,6 +181,11 @@ def main() -> None:
     # check-config
     config_parser = subparsers.add_parser("check-config", help="Validate configuration")
     config_parser.set_defaults(func=cmd_check_config)
+
+    # docs
+    docs_parser = subparsers.add_parser("docs", help="Generate tool documentation")
+    docs_parser.add_argument("--format", "-f", choices=["text", "markdown"], default="markdown")
+    docs_parser.set_defaults(func=cmd_docs)
 
     args = parser.parse_args()
 
