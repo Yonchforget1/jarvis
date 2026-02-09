@@ -6,7 +6,11 @@ import type { ChatMessage, ToolCallDetail } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export function useChat(initialSessionId?: string | null) {
+interface UseChatOptions {
+  onAssistantMessage?: () => void;
+}
+
+export function useChat(initialSessionId?: string | null, options?: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(
@@ -180,6 +184,7 @@ export function useChat(initialSessionId?: string | null) {
                   streamStatus: undefined,
                   timestamp: new Date().toISOString(),
                 }));
+                options?.onAssistantMessage?.();
                 break;
             }
           }

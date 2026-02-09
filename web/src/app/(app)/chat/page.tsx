@@ -1,12 +1,27 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
 
 export default function ChatPage() {
-  const { selectedSessionId } = useSessionContext();
+  const { selectedSessionId, clearUnread, incrementUnread, selectSession } = useSessionContext();
+
+  // Clear unread count when visiting chat page
+  useEffect(() => {
+    clearUnread();
+  }, [clearUnread]);
+
+  // Increment unread when assistant responds and tab is hidden
+  const onAssistantMessage = useCallback(() => {
+    if (document.hidden) {
+      incrementUnread();
+    }
+  }, [incrementUnread]);
+
+  const chatOptions = useMemo(() => ({ onAssistantMessage }), [onAssistantMessage]);
+
   const {
     messages,
     isLoading,
@@ -16,7 +31,7 @@ export default function ChatPage() {
     stopStreaming,
     clearChat,
     loadSession,
-  } = useChat(selectedSessionId);
+  } = useChat(selectedSessionId, chatOptions);
 
   const lastLoadedRef = useRef<string | null>(null);
 
@@ -32,7 +47,6 @@ export default function ChatPage() {
   }, [selectedSessionId, loadSession, clearChat]);
 
   // Keep the session context updated with the current session
-  const { selectSession } = useSessionContext();
   useEffect(() => {
     if (sessionId && sessionId !== selectedSessionId) {
       selectSession(sessionId);

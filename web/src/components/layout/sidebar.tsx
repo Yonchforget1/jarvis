@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -69,6 +70,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { unreadCount } = useSessionContext();
   const { sessions, deleteSession, renameSession } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -181,13 +183,24 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <div className="relative shrink-0">
+                <item.icon className="h-4 w-4" />
+                {item.label === "Chat" && unreadCount > 0 && collapsed && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-bold text-primary-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
               {!collapsed && (
                 <>
                   {item.label}
-                  {item.label === "Chat" && (
+                  {item.label === "Chat" && unreadCount > 0 ? (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : item.label === "Chat" ? (
                     <Sparkles className="ml-auto h-3 w-3 text-primary/50" />
-                  )}
+                  ) : null}
                 </>
               )}
             </Link>
