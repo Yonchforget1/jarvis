@@ -8,12 +8,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from api.session_manager import SessionManager
-from api.routers import auth, chat, tools, stats, learnings, conversation
+from api.routers import auth, chat, tools, stats, learnings, conversation, settings
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
 
 
@@ -27,6 +32,7 @@ async def lifespan(app: FastAPI):
     stats.set_session_manager(session_manager)
     learnings.set_session_manager(session_manager)
     conversation.set_session_manager(session_manager)
+    settings.set_session_manager(session_manager)
 
     yield
     session_manager.shutdown()
@@ -38,6 +44,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +61,7 @@ app.include_router(tools.router, prefix="/api", tags=["tools"])
 app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(learnings.router, prefix="/api", tags=["learnings"])
 app.include_router(conversation.router, prefix="/api/conversation", tags=["conversation"])
+app.include_router(settings.router, prefix="/api", tags=["settings"])
 
 
 @app.get("/api/health")
