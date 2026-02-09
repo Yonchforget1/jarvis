@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -165,30 +166,35 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
 
       {/* New Chat Button */}
       <div className={`${collapsed ? "px-2" : "px-3"} pt-3 pb-1`}>
-        <button
-          onClick={handleNewChat}
-          className={`flex items-center rounded-xl border border-dashed border-border/50 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground ${
-            collapsed
-              ? "w-full justify-center p-2.5"
-              : "w-full gap-2.5 px-3 py-2.5"
-          }`}
-          title={collapsed ? "New Chat" : undefined}
-        >
-          <Plus className="h-4 w-4 shrink-0" />
-          {!collapsed && "New Chat"}
-        </button>
+        {collapsed ? (
+          <Tooltip content="New Chat" side="right">
+            <button
+              onClick={handleNewChat}
+              className="flex w-full items-center justify-center rounded-xl border border-dashed border-border/50 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground p-2.5"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+            </button>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={handleNewChat}
+            className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-border/50 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground px-3 py-2.5"
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            New Chat
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
       <div role="list" aria-label="Page navigation" className={`space-y-0.5 ${collapsed ? "px-2" : "px-3"} pt-2`}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
-          return (
+          const linkEl = (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              title={collapsed ? item.label : undefined}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
               className={`flex items-center rounded-xl text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 ${
@@ -223,6 +229,13 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               )}
             </Link>
           );
+          return collapsed ? (
+            <Tooltip key={item.href} content={item.label} side="right">
+              {linkEl}
+            </Tooltip>
+          ) : (
+            <div key={item.href}>{linkEl}</div>
+          );
         })}
       </div>
 
@@ -234,18 +247,22 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           /* Collapsed: show recent chat dots */
           <div className="space-y-1">
             {sessions.slice(0, 5).map((session) => (
-              <button
+              <Tooltip
                 key={session.session_id}
-                onClick={() => handleSessionClick(session.session_id)}
-                title={session.customName || session.autoTitle || session.preview || "New conversation"}
-                className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
-                  activeSessionId === session.session_id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                }`}
+                content={session.customName || session.autoTitle || session.preview || "New conversation"}
+                side="right"
               >
-                <MessageCircle className="h-3.5 w-3.5" />
-              </button>
+                <button
+                  onClick={() => handleSessionClick(session.session_id)}
+                  className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
+                    activeSessionId === session.session_id
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
             ))}
           </div>
         ) : (
@@ -382,24 +399,24 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
       {/* Collapse toggle (desktop only) */}
       {onToggleCollapse && (
         <div className={`${collapsed ? "px-2" : "px-3"} pb-1`}>
-          <button
-            onClick={onToggleCollapse}
-            className={`flex items-center rounded-xl text-xs text-muted-foreground/50 transition-all duration-200 hover:bg-muted hover:text-foreground ${
-              collapsed
-                ? "w-full justify-center p-2.5"
-                : "w-full gap-2.5 px-3 py-2"
-            }`}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronsRight className="h-4 w-4 shrink-0" />
-            ) : (
-              <>
-                <ChevronsLeft className="h-4 w-4 shrink-0" />
-                <span>Collapse</span>
-              </>
-            )}
-          </button>
+          {collapsed ? (
+            <Tooltip content="Expand sidebar" side="right">
+              <button
+                onClick={onToggleCollapse}
+                className="flex w-full items-center justify-center rounded-xl text-xs text-muted-foreground/50 transition-all duration-200 hover:bg-muted hover:text-foreground p-2.5"
+              >
+                <ChevronsRight className="h-4 w-4 shrink-0" />
+              </button>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={onToggleCollapse}
+              className="flex w-full items-center gap-2.5 rounded-xl text-xs text-muted-foreground/50 transition-all duration-200 hover:bg-muted hover:text-foreground px-3 py-2"
+            >
+              <ChevronsLeft className="h-4 w-4 shrink-0" />
+              <span>Collapse</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -407,12 +424,17 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
       <div className="border-t border-border/50 p-3">
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} rounded-xl px-2 py-1.5`}>
           <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0"
-              title={collapsed ? (user?.username || "User") : undefined}
-            >
-              {user?.username?.[0]?.toUpperCase() || "U"}
-            </div>
+            {collapsed ? (
+              <Tooltip content={user?.username || "User"} side="right">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0">
+                  {user?.username?.[0]?.toUpperCase() || "U"}
+                </div>
+              </Tooltip>
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0">
+                {user?.username?.[0]?.toUpperCase() || "U"}
+              </div>
+            )}
             {!collapsed && (
               <div className="overflow-hidden">
                 <span className="text-sm font-medium">{user?.username || "User"}</span>
