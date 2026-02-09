@@ -22,12 +22,16 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(entry, ensure_ascii=False)
 
 
-def setup_logger(name: str = "jarvis", level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name: str = "jarvis", level: int | None = None) -> logging.Logger:
     """Create and configure a logger with console output.
 
     Set LOG_FORMAT=json env var for structured JSON logging.
+    Set JARVIS_DEBUG=1 env var for DEBUG level logging.
     """
     logger = logging.getLogger(name)
+
+    if level is None:
+        level = logging.DEBUG if os.getenv("JARVIS_DEBUG") else logging.INFO
 
     if not logger.handlers:
         logger.setLevel(level)
