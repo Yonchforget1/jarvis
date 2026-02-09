@@ -25,6 +25,7 @@ pyautogui.PAUSE = 0.1
 def register(registry, config):
     """Register desktop automation tools. Requires config with api_key."""
     api_key = config.api_key
+    vision_model = config.model  # Use the configured model for vision calls
 
     def take_screenshot(region: str = "") -> str:
         """Capture the screen and save to a temp file."""
@@ -62,7 +63,7 @@ def register(registry, config):
                 img.save(tmp.name)
                 tmp.close()
 
-            result = analyze_image(api_key, tmp.name, question)
+            result = analyze_image(api_key, tmp.name, question, model=vision_model)
             os.unlink(tmp.name)
             resized = tmp.name.replace(".png", "_resized.png")
             if os.path.exists(resized):

@@ -15,6 +15,7 @@ _page = None
 def register(registry, config):
     """Register browser automation tools. Requires config with api_key."""
     api_key = config.api_key
+    vision_model = config.model
 
     def _ensure_browser(headless=False):
         """Launch browser if not running, return current page."""
@@ -123,7 +124,7 @@ def register(registry, config):
             page.screenshot(path=tmp.name)
             tmp.close()
 
-            result = analyze_image(api_key, tmp.name, question)
+            result = analyze_image(api_key, tmp.name, question, model=vision_model)
             os.unlink(tmp.name)
             resized = tmp.name.replace(".png", "_resized.png")
             if os.path.exists(resized):
