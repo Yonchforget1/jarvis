@@ -122,6 +122,56 @@ async def export_session(
         return export
 
 
+@router.get("/search")
+async def search_conversations(
+    q: str = Query(..., min_length=1, max_length=200, description="Search query"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Full-text search across all conversation messages for the current user."""
+    sessions = _session_manager.get_user_sessions(user.id)
+    query_lower = q.lower()
+    results = []
+
+    for session in sessions:
+        messages = session.conversation.get_display_messages()
+        matches = []
+        for i, msg in enumerate(messages):
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                text_parts = [p.get("text", "") for p in content if isinstance(p, dict) and "text" in p]
+                content = "\n".join(text_parts)
+            if query_lower in content.lower():
+                # Include snippet around match
+                idx = content.lower().find(query_lower)
+                start = max(0, idx - 50)
+                end = min(len(content), idx + len(q) + 50)
+                snippet = content[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(content):
+                    snippet = snippet + "..."
+                matches.append({
+                    "message_index": i,
+                    "role": msg.get("role", ""),
+                    "snippet": snippet,
+                })
+
+        if matches:
+            results.append({
+                "session_id": session.session_id,
+                "created_at": session.created_at.isoformat(),
+                "preview": session.conversation.get_first_user_message(),
+                "matches": matches[:10],  # Cap matches per session
+                "match_count": len(matches),
+            })
+
+    return {
+        "query": q,
+        "total_matches": sum(r["match_count"] for r in results),
+        "sessions": sorted(results, key=lambda r: r["match_count"], reverse=True)[:20],
+    }
+
+
 @router.get("/list", response_model=list[SessionInfo])
 async def list_conversations(user: UserInfo = Depends(get_current_user)):
     """Legacy endpoint - use GET /sessions instead."""
