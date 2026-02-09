@@ -1,13 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+function PasswordStrength({ password }: { password: string }) {
+  const strength = useMemo(() => {
+    if (!password) return 0;
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return Math.min(score, 4);
+  }, [password]);
+
+  if (!password) return null;
+
+  const colors = ["bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-green-500"];
+  const labels = ["Weak", "Fair", "Good", "Strong"];
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              i < strength ? colors[strength - 1] : "bg-white/10"
+            }`}
+          />
+        ))}
+      </div>
+      <p className={`text-[10px] ${strength >= 3 ? "text-green-400" : "text-muted-foreground/50"}`}>
+        {labels[strength - 1] || "Too short"}
+      </p>
+    </div>
+  );
+}
 
 export function RegisterForm() {
   const [username, setUsername] = useState("");
@@ -19,11 +56,17 @@ export function RegisterForm() {
   const { register } = useAuth();
   const router = useRouter();
 
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
     setLoading(true);
@@ -38,43 +81,50 @@ export function RegisterForm() {
   };
 
   return (
-    <Card className="w-full max-w-md border-white/10 bg-card/50 backdrop-blur-xl">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
-          <span className="text-2xl font-bold text-primary">J</span>
+    <Card className="w-full max-w-md mx-auto border-white/10 bg-card/50 backdrop-blur-xl shadow-2xl">
+      <CardHeader className="text-center pb-2">
+        <div className="mx-auto mb-4 relative">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 border border-primary/10">
+            <span className="text-2xl font-bold text-primary">J</span>
+          </div>
         </div>
-        <CardTitle className="text-2xl">Create account</CardTitle>
-        <CardDescription>Get started with Jarvis AI Agent</CardDescription>
+        <CardTitle className="text-2xl font-bold">Create account</CardTitle>
+        <CardDescription className="text-muted-foreground/60">
+          Get started with JARVIS AI Agent
+        </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
               {error}
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username" className="text-xs">Username</Label>
             <Input
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Choose a username"
               required
+              autoFocus
+              className="h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-xs">Email <span className="text-muted-foreground/40">(optional)</span></Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              className="h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-xs">Password</Label>
             <Input
               id="password"
               type="password"
@@ -82,25 +132,49 @@ export function RegisterForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
               required
+              className="h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40"
             />
+            <PasswordStrength password={password} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your password"
-              required
-            />
+            <Label htmlFor="confirmPassword" className="text-xs">Confirm Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                required
+                className={`h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40 pr-10 ${
+                  confirmPassword && !passwordsMatch ? "border-red-500/50" : ""
+                }`}
+              />
+              {passwordsMatch && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500 animate-scale-in" />
+              )}
+            </div>
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
+          <Button
+            type="submit"
+            className="w-full h-11 rounded-xl gap-2 text-sm font-medium"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating account...
+              </>
+            ) : (
+              <>
+                Create Account
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground/60 pt-2">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link href="/login" className="text-primary hover:text-primary/80 transition-colors font-medium">
               Sign in
             </Link>
           </p>
