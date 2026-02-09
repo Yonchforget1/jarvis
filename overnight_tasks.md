@@ -61,66 +61,118 @@
 - [x] 50. Startup time profiling
 - [ ] ~~49. Backend response caching~~ (skipped: not suitable for conversational AI)
 
-## Batch 3: 50 Tasks (Priority Order)
+## Completed (Batch 3)
+- [x] 1. Task planner: decompose complex requests into sub-tasks
+- [x] 2. Tool chaining: compose tool outputs as inputs via {{step_N}} placeholders
+- [x] 3. Parallel tool execution (ThreadPoolExecutor for concurrent tool calls)
+- [x] 4. Conversation branching (save/restore checkpoints)
+- [x] 5. Auto-retry failed tool calls with adjusted parameters
+- [x] 6. Context window management (smart message summarization)
+- [x] 7. Streaming responses (SSE endpoint already existed)
+- [x] 8. Conversation templates (6 pre-built system prompts)
+- [x] 9. WebSocket support for real-time bidirectional chat
+- [x] 10. File upload endpoint (accept files for processing)
+- [x] 11. Conversation export (JSON/Markdown)
+- [x] 12. Conversation search (full-text search across history)
+- [x] 13. User preferences endpoint (theme, language, notifications)
+- [x] 14. API versioning (X-API-Version header)
+- [x] 15. OpenAPI documentation improvements (tags, descriptions)
+- [x] 16. Webhook notifications (POST to user-configured URLs)
+- [x] 17. Batch chat endpoint (process multiple messages)
+- [x] 18. Admin endpoints (system info, all sessions, config reload, tool stats)
+- [x] 19. API key authentication (jrv_ prefix, alternative to JWT)
+- [x] 20. Role-based access control (admin, user, viewer)
+- [x] 21. Request signing/HMAC for sensitive operations
+- [x] 22. Audit logging (JSONL format)
+- [x] 23. Input sanitization (script tags, null bytes)
+- [x] 24. Tool permission system (per-user and per-role restrictions)
+- [x] 25. Secrets management (Fernet encrypted storage)
+- [x] 26. CORS configuration from env vars
+- [x] 27. Prometheus-compatible metrics endpoint (/api/metrics)
+- [x] 28. Structured JSON logging (LOG_FORMAT=json)
+- [x] 29. Circuit breaker for backend API calls (CLOSED/OPEN/HALF_OPEN)
+- [x] 30. Dead letter queue for failed tool executions
+- [x] 31. Health check dashboard (styled HTML page with auto-refresh)
+- [x] 32. Error rate tracking and alerting thresholds
+- [x] 33. Request tracing (correlation IDs)
+- [x] 34. Memory usage monitoring and alerts
+- [x] 35. CLI: `jarvis tools` (list all available tools)
+- [x] 36. CLI: `jarvis test-tool <name>` (test a specific tool)
+- [x] 37. CLI: `jarvis new-plugin <name>` (scaffold a new plugin)
+- [x] 38. Hot-reload for plugins (filesystem polling watcher)
+- [x] 39. Tool documentation generator (auto-generate from ToolDef)
+- [x] 40. Configuration validation CLI: `jarvis check-config`
+- [x] 41. Benchmarking suite (measure tool and backend performance)
+- [x] 42. Development mode with verbose logging (JARVIS_DEBUG=1)
+- [x] 43. Cron-style scheduled tasks (background execution)
+- [x] 44. Tool result caching (TTL-based, thread-safe)
+- [x] 45. Multi-model routing (route requests to optimal model)
+- [x] 46. Conversation summarization (compress long conversations)
+- [x] 47. Tool dependency declaration (topological ordering)
+- [x] 48. Plugin marketplace manifest (version, author, dependencies)
+- [x] 49. A/B testing framework for prompts and models
+- [x] 50. Cost tracking and budget limits per user/session
 
-### Tier 1: Multi-Agent & Planning (1-8)
-- [ ] 1. Add task planner: decompose complex requests into sub-tasks
-- [ ] 2. Add tool chaining: let agent compose tool outputs as inputs
-- [ ] 3. Add parallel tool execution (async tool calls)
-- [x] 4. Add conversation branching (save/restore conversation checkpoints)
-- [x] 5. Add auto-retry failed tool calls with adjusted parameters
-- [ ] 6. Add context window management (smart message summarization)
-- [ ] 7. Add streaming responses from backend to API (SSE for partial results)
-- [x] 8. Add conversation templates (pre-built system prompts for common tasks)
+## Batch 4: 50 Tasks (Priority Order)
 
-### Tier 2: API & Web UI Enhancements (9-18)
-- [ ] 9. Add WebSocket support for real-time chat
-- [x] 10. Add file upload endpoint (accept files for processing)
-- [x] 11. Add conversation export (download as JSON/Markdown)
-- [ ] 12. Add conversation search (full-text search across history)
-- [ ] 13. Add user preferences endpoint (theme, default model, etc.)
-- [x] 14. Add API versioning (v1 prefix, version header)
-- [ ] 15. Add OpenAPI documentation improvements (examples, tags)
-- [ ] 16. Add webhook notifications (POST to URL on task completion)
-- [ ] 17. Add batch chat endpoint (process multiple messages)
-- [ ] 18. Add admin endpoints (list all users, system stats, config reload)
+### Tier 1: Web UI Foundation (1-10)
+- [ ] 1. Create React frontend scaffolding with Vite + TypeScript
+- [ ] 2. Build login/register page with JWT auth flow
+- [ ] 3. Build main chat interface with message bubbles
+- [ ] 4. Add tool call visualization (collapsible panels showing tool name/args/result)
+- [ ] 5. Add session sidebar (list, create, delete, rename sessions)
+- [ ] 6. Add settings page (backend, model, preferences)
+- [ ] 7. Add file upload UI with drag-and-drop
+- [ ] 8. Add real-time streaming via SSE with typing indicator
+- [ ] 9. Add markdown rendering in chat messages (code blocks, tables)
+- [ ] 10. Add dark/light theme toggle with CSS variables
 
-### Tier 3: Security & Auth Improvements (19-26)
-- [ ] 19. Add API key authentication (alternative to JWT for programmatic access)
-- [ ] 20. Add role-based access control (admin, user, viewer roles)
-- [ ] 21. Add request signing/HMAC for sensitive operations
-- [x] 22. Add audit logging (who did what, when)
-- [x] 23. Add input sanitization middleware (strip dangerous HTML/scripts)
-- [ ] 24. Add tool permission system (restrict which tools users can access)
-- [ ] 25. Add secrets management (encrypted storage for API keys)
-- [x] 26. Add CORS configuration from env vars (not hardcoded)
+### Tier 2: Web UI Advanced (11-18)
+- [ ] 11. Add conversation export button (JSON/Markdown download)
+- [ ] 12. Add conversation search UI with highlighted results
+- [ ] 13. Add keyboard shortcuts (Ctrl+Enter send, Escape clear, etc.)
+- [ ] 14. Add responsive mobile layout
+- [ ] 15. Add admin dashboard page (system stats, sessions, tool metrics)
+- [ ] 16. Add API key management page (create, list, revoke)
+- [ ] 17. Add webhook management UI
+- [ ] 18. Add toast notifications for errors and events
 
-### Tier 4: Monitoring & Reliability (27-34)
-- [ ] 27. Add Prometheus metrics endpoint (/metrics)
-- [x] 28. Add structured JSON logging option (for log aggregation)
-- [ ] 29. Add circuit breaker for backend API calls
-- [ ] 30. Add dead letter queue for failed tool executions
-- [ ] 31. Add health check dashboard endpoint (HTML page)
-- [ ] 32. Add error rate tracking and alerting thresholds
-- [x] 33. Add request tracing (correlation IDs across logs)
-- [ ] 34. Add memory usage monitoring and alerts
+### Tier 3: Backend Intelligence (19-26)
+- [ ] 19. Add conversation memory persistence (save/load from disk)
+- [ ] 20. Add multi-turn planning: agent plans before executing
+- [ ] 21. Add tool recommendation engine (suggest tools based on message)
+- [ ] 22. Add response quality scoring (self-evaluation after each response)
+- [ ] 23. Add conversation analytics (topic extraction, sentiment tracking)
+- [ ] 24. Add RAG: vector search over user documents with ChromaDB
+- [ ] 25. Add long-term memory: learn user preferences across sessions
+- [ ] 26. Add autonomous mode: agent works on tasks without human input
 
-### Tier 5: Developer Experience (35-42)
-- [x] 35. Add CLI command: `jarvis tools` (list all available tools)
-- [ ] 36. Add CLI command: `jarvis test-tool <name>` (test a specific tool)
-- [ ] 37. Add plugin scaffolding command: `jarvis new-plugin <name>`
-- [ ] 38. Add hot-reload for plugins (watch filesystem for changes)
-- [x] 39. Add tool documentation generator (auto-generate from ToolDef)
-- [x] 40. Add configuration validation CLI: `jarvis check-config`
-- [ ] 41. Add benchmarking suite (measure tool and backend performance)
-- [x] 42. Add development mode with verbose logging and debug info
+### Tier 4: Integration & Automation (27-34)
+- [ ] 27. Add Slack bot integration (receive/send messages)
+- [ ] 28. Add Discord bot integration
+- [ ] 29. Add email processing (read inbox, draft replies)
+- [ ] 30. Add calendar integration (read/create events)
+- [ ] 31. Add GitHub integration (create PRs, review code, manage issues)
+- [ ] 32. Add database tool (connect to PostgreSQL/MySQL, run queries)
+- [ ] 33. Add Docker management tool (list, start, stop containers)
+- [ ] 34. Add SSH remote execution tool (run commands on remote servers)
 
-### Tier 6: Advanced Features (43-50)
-- [ ] 43. Add cron-style scheduled tasks (run tools on a schedule)
-- [x] 44. Add tool result caching (cache expensive tool outputs with TTL)
-- [ ] 45. Add multi-model routing (use different models for different tasks)
-- [x] 46. Add conversation summarization (compress long conversations)
-- [ ] 47. Add tool dependency declaration (tool A requires tool B's output)
-- [x] 48. Add plugin marketplace manifest (version, author, dependencies)
-- [ ] 49. Add A/B testing framework for prompts and models
-- [x] 50. Add cost tracking and budget limits per user/session
+### Tier 5: Performance & Scale (35-42)
+- [ ] 35. Add Redis-backed session storage (replace in-memory dict)
+- [ ] 36. Add database migration system (Alembic for user/session data)
+- [ ] 37. Add connection pooling for backend API clients
+- [ ] 38. Add request queuing for high-load scenarios
+- [ ] 39. Add Dockerfile and docker-compose.yml for deployment
+- [ ] 40. Add CI/CD pipeline configuration (GitHub Actions)
+- [ ] 41. Add load testing suite with Locust
+- [ ] 42. Add response caching layer (Redis) for repeated queries
+
+### Tier 6: Enterprise Features (43-50)
+- [ ] 43. Add multi-tenant support (organization-level isolation)
+- [ ] 44. Add usage billing integration (track costs per user/org)
+- [ ] 45. Add SSO/SAML authentication
+- [ ] 46. Add data export compliance (GDPR delete, export user data)
+- [ ] 47. Add rate limiting per tier (free/pro/enterprise)
+- [ ] 48. Add custom model fine-tuning workflow
+- [ ] 49. Add plugin auto-discovery from PyPI packages
+- [ ] 50. Add white-label configuration (custom branding, domain, colors)
