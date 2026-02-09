@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from jarvis.backends.base import Backend
 from jarvis.logger import log
+from jarvis.parallel import execute_tools_parallel
 from jarvis.tool_registry import ToolRegistry
 
 
@@ -64,11 +65,15 @@ class Conversation:
                     return f"(Stopped after {self.MAX_TOOL_TURNS} tool turns to prevent runaway loop. Last response: {response.text or ''})"
 
                 self.messages.append(self.backend.format_assistant_message(response))
-                results = []
-                for tc in response.tool_calls:
-                    log.info("tool call: %s", tc.name)
-                    result = self.registry.handle_call(tc.name, tc.args)
-                    results.append((tc.id, result))
+                if len(response.tool_calls) > 1:
+                    log.info("Parallel execution of %d tool calls", len(response.tool_calls))
+                    results = execute_tools_parallel(self.registry, response.tool_calls)
+                else:
+                    results = []
+                    for tc in response.tool_calls:
+                        log.info("tool call: %s", tc.name)
+                        result = self.registry.handle_call(tc.name, tc.args)
+                        results.append((tc.id, result))
 
                 tool_msg = self.backend.format_tool_results(results)
                 # OpenAI returns a list of messages; Claude/Gemini return a single dict
