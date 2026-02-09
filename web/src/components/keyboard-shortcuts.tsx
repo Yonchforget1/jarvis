@@ -9,6 +9,7 @@ const SHORTCUTS = [
     items: [
       { keys: ["Ctrl", "K"], description: "Open command palette" },
       { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
+      { keys: ["Ctrl", "Shift", "F"], description: "Toggle focus mode" },
       { keys: ["Esc"], description: "Close sidebar / modal" },
     ],
   },
@@ -17,6 +18,7 @@ const SHORTCUTS = [
     items: [
       { keys: ["Enter"], description: "Send message" },
       { keys: ["Shift", "Enter"], description: "New line in message" },
+      { keys: ["Ctrl", "/"], description: "Focus chat input" },
       { keys: ["Ctrl", "F"], description: "Search in messages" },
     ],
   },
@@ -29,9 +31,15 @@ const SHORTCUTS = [
     ],
   },
   {
+    category: "Sessions",
+    items: [
+      { keys: ["Double-click"], description: "Rename session" },
+    ],
+  },
+  {
     category: "General",
     items: [
-      { keys: ["Ctrl", "/"], description: "Show this help" },
+      { keys: ["Ctrl", "?"], description: "Show this help" },
     ],
   },
 ];
