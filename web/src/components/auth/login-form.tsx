@@ -33,7 +33,7 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto border-white/10 bg-card/50 backdrop-blur-xl shadow-2xl">
+    <Card className="w-full max-w-md mx-auto border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
       <CardHeader className="text-center pb-2">
         <div className="mx-auto mb-4 relative">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 border border-primary/10">
@@ -64,7 +64,7 @@ export function LoginForm() {
               placeholder="Enter your username"
               required
               autoFocus
-              className="h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40"
+              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
           <div className="space-y-2">
@@ -76,7 +76,7 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              className="h-11 rounded-xl bg-secondary/50 border-white/10 focus:border-primary/40"
+              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
           <Button
