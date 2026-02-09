@@ -34,14 +34,14 @@ export function MobileNav() {
               href={item.href}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground/60 active:text-foreground"
               }`}
             >
               <div className="relative">
-                <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+                <item.icon className={`h-5 w-5 transition-transform duration-200 ${isActive ? "text-primary scale-110" : ""}`} />
                 {item.label === "Chat" && unreadCount > 0 && !isActive && (
                   <span className="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-bold text-primary-foreground">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -52,7 +52,7 @@ export function MobileNav() {
                 {item.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 h-0.5 w-8 rounded-full bg-primary" />
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
               )}
             </Link>
           );
