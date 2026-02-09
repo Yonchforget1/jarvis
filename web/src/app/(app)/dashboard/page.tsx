@@ -8,6 +8,7 @@ import { BackendStatus } from "@/components/dashboard/backend-status";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -16,7 +17,7 @@ function formatTokens(n: number): string {
 }
 
 export default function DashboardPage() {
-  const { stats, loading: statsLoading, refetch } = useStats(15000);
+  const { stats, loading: statsLoading, error: statsError, refetch } = useStats(15000);
   const { learnings, loading: learningsLoading } = useLearnings();
 
   if (statsLoading) {
@@ -31,6 +32,14 @@ export default function DashboardPage() {
           <Skeleton className="lg:col-span-2 h-64 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <div className="h-full overflow-y-auto p-4 sm:p-6">
+        <ErrorState message={statsError} onRetry={refetch} />
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Brain } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   game_dev: { bg: "bg-purple-500/10", text: "text-purple-400" },
@@ -23,7 +24,7 @@ function getCatStyle(cat: string) {
 }
 
 export default function LearningsPage() {
-  const { learnings, loading } = useLearnings();
+  const { learnings, loading, error, refetch } = useLearnings();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
@@ -51,6 +52,14 @@ export default function LearningsPage() {
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full overflow-y-auto p-4 sm:p-6">
+        <ErrorState message={error} onRetry={refetch} />
       </div>
     );
   }

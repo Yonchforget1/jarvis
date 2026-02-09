@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic } from "lucide-react";
 
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
@@ -68,6 +68,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-3xl p-3 sm:p-4">
         <div className="relative flex items-end gap-2">
+          {/* Attachment button (coming soon) */}
+          <div className="hidden sm:flex shrink-0">
+            <button
+              disabled
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground/30 cursor-not-allowed transition-colors"
+              title="File attachments coming soon"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+          </div>
+
           <div className="relative flex-1">
             <textarea
               ref={textareaRef}
@@ -88,6 +99,18 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               }`}
             />
           </div>
+
+          {/* Voice button (coming soon) */}
+          <div className="hidden sm:flex shrink-0">
+            <button
+              disabled
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground/30 cursor-not-allowed transition-colors"
+              title="Voice input coming soon"
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+          </div>
+
           <button
             onClick={handleSubmit}
             disabled={!canSend}
@@ -106,7 +129,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         </div>
         <div className="mt-1.5 flex items-center justify-between px-1">
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
-            <span className="flex items-center gap-1">
+            <span className="hidden sm:flex items-center gap-1">
               <Keyboard className="h-2.5 w-2.5" />
               <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Enter</kbd> send
               <span className="mx-1">&middot;</span>

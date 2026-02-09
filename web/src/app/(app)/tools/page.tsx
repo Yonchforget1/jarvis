@@ -18,6 +18,7 @@ import { useTools } from "@/hooks/use-tools";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import type { ToolInfo } from "@/lib/types";
 
 const CATEGORY_META: Record<
@@ -162,7 +163,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
 }
 
 export default function ToolsPage() {
-  const { tools, loading } = useTools();
+  const { tools, loading, error, refetch } = useTools();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -195,6 +196,14 @@ export default function ToolsPage() {
             <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full overflow-y-auto p-4 sm:p-6">
+        <ErrorState message={error} onRetry={refetch} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { ToolInfo } from "@/lib/types";
 
@@ -12,14 +12,24 @@ interface ToolsResponse {
 export function useTools() {
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .get<ToolsResponse>("/api/tools")
-      .then((res) => setTools(res.tools))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchTools = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get<ToolsResponse>("/api/tools");
+      setTools(res.tools);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load tools");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { tools, loading };
+  useEffect(() => {
+    fetchTools();
+  }, [fetchTools]);
+
+  return { tools, loading, error, refetch: fetchTools };
 }
