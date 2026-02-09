@@ -324,11 +324,11 @@ export function MessageBubble({
                   minute: "2-digit",
                 })}
               </span>
+              {message.content && (
+                <MessageCopyButton text={message.content} />
+              )}
               {!isUser && message.content && (
-                <>
-                  <MessageCopyButton text={message.content} />
-                  <MessageReactions messageId={message.id} />
-                </>
+                <MessageReactions messageId={message.id} />
               )}
               {isError && onRetry && (
                 <button
