@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth";
@@ -15,10 +15,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f8fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "JARVIS AI Agent Platform",
+  title: {
+    default: "JARVIS AI Agent Platform",
+    template: "%s | JARVIS",
+  },
   description:
-    "The most advanced AI agent platform. Execute real tasks on real computers with 16+ professional tools.",
+    "The most advanced AI agent platform. Execute real tasks on real computers with 16+ professional tools. Deploy your AI workforce today.",
+  keywords: [
+    "AI agent",
+    "automation",
+    "artificial intelligence",
+    "task automation",
+    "AI platform",
+    "code execution",
+    "web scraping",
+    "game development",
+  ],
+  authors: [{ name: "Yonatan Weintraub" }],
+  creator: "JARVIS AI",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "JARVIS AI Agent Platform",
+    title: "JARVIS - Deploy Your AI Workforce",
+    description:
+      "The most advanced AI agent platform. Execute real tasks with 16+ professional tools. From code to games to automation.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JARVIS AI Agent Platform",
+    description:
+      "The most advanced AI agent platform. 16+ professional tools. Deploy your AI workforce today.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

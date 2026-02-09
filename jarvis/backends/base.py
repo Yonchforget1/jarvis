@@ -13,12 +13,25 @@ class ToolCall:
 
 
 @dataclass
+class TokenUsage:
+    """Token usage from a single API call."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
+@dataclass
 class BackendResponse:
     """What the backend returns after one API call."""
 
     text: str | None
     tool_calls: list[ToolCall] = field(default_factory=list)
     raw: object = None
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
 
 class Backend(ABC):

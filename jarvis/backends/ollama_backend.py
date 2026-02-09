@@ -14,7 +14,7 @@ import uuid
 
 import httpx
 
-from .base import Backend, BackendResponse, ToolCall
+from .base import Backend, BackendResponse, TokenUsage, ToolCall
 from jarvis.tool_registry import ToolDef
 
 
@@ -76,7 +76,11 @@ class OllamaBackend(Backend):
                     )
                 )
 
-        return BackendResponse(text=text, tool_calls=tool_calls, raw=data)
+        usage = TokenUsage(
+            input_tokens=data.get("prompt_eval_count", 0),
+            output_tokens=data.get("eval_count", 0),
+        )
+        return BackendResponse(text=text, tool_calls=tool_calls, raw=data, usage=usage)
 
     def format_user_message(self, text):
         return {"role": "user", "content": text}

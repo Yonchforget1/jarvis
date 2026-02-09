@@ -6,7 +6,7 @@ try:
 except ImportError:
     HAS_GENAI = False
 
-from .base import Backend, BackendResponse, ToolCall
+from .base import Backend, BackendResponse, TokenUsage, ToolCall
 from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
@@ -54,7 +54,14 @@ class GeminiBackend(Backend):
                 tool_calls.append(
                     ToolCall(id=fc.name, name=fc.name, args=dict(fc.args))
                 )
-        return BackendResponse(text=text, tool_calls=tool_calls, raw=response)
+        usage = TokenUsage()
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
+            um = response.usage_metadata
+            usage = TokenUsage(
+                input_tokens=getattr(um, "prompt_token_count", 0),
+                output_tokens=getattr(um, "candidates_token_count", 0),
+            )
+        return BackendResponse(text=text, tool_calls=tool_calls, raw=response, usage=usage)
 
     def format_user_message(self, text):
         return genai_types.ContentDict(role="user", parts=[text])

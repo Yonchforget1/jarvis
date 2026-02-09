@@ -1,6 +1,6 @@
-from .base import Backend, BackendResponse, ToolCall
+from .base import Backend, BackendResponse, TokenUsage, ToolCall
 
-__all__ = ["Backend", "BackendResponse", "ToolCall", "create_backend"]
+__all__ = ["Backend", "BackendResponse", "TokenUsage", "ToolCall", "create_backend"]
 
 
 def create_backend(config) -> Backend:

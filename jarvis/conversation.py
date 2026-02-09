@@ -17,6 +17,8 @@ class Conversation:
         self.messages: list = []
         self.total_tool_calls: int = 0
         self.total_turns: int = 0
+        self.total_input_tokens: int = 0
+        self.total_output_tokens: int = 0
 
     def _trim_history(self):
         """Trim old messages to stay within MAX_MESSAGES, keeping recent context."""
@@ -41,6 +43,8 @@ class Conversation:
 
         while True:
             response = self._call_backend(tools)
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
 
             if response.tool_calls:
                 turns += 1

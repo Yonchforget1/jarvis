@@ -2,7 +2,7 @@ import json
 
 from openai import OpenAI
 
-from .base import Backend, BackendResponse, ToolCall
+from .base import Backend, BackendResponse, TokenUsage, ToolCall
 from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
@@ -36,7 +36,13 @@ class OpenAIBackend(Backend):
                         args=json.loads(tc.function.arguments),
                     )
                 )
-        return BackendResponse(text=text, tool_calls=tool_calls, raw=choice.message)
+        usage = TokenUsage()
+        if hasattr(response, "usage") and response.usage:
+            usage = TokenUsage(
+                input_tokens=getattr(response.usage, "prompt_tokens", 0),
+                output_tokens=getattr(response.usage, "completion_tokens", 0),
+            )
+        return BackendResponse(text=text, tool_calls=tool_calls, raw=choice.message, usage=usage)
 
     def format_user_message(self, text):
         return {"role": "user", "content": text}
