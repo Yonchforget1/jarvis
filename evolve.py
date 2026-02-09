@@ -608,6 +608,9 @@ class SafeExecutor:
     def rollback(self):
         if not self.dry_run:
             self._run_git("checkout", ".")
+            # Remove untracked files created during this cycle (only in safe dirs)
+            for safe_dir in SAFE_DIRS:
+                self._run_git("clean", "-fd", "--", safe_dir)
         self.return_to_original()
 
     def return_to_original(self):
