@@ -41,6 +41,9 @@ export interface SystemStats {
   learnings_count: number;
   active_sessions: number;
   uptime_seconds: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tool_calls: number;
 }
 
 export interface User {

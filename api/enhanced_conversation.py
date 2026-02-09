@@ -29,6 +29,8 @@ class WebConversation(Conversation):
 
         while True:
             response = self._call_backend(tools)
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
 
             if response.tool_calls:
                 turns += 1
@@ -81,6 +83,8 @@ class WebConversation(Conversation):
 
         while True:
             response = self._call_backend(tools)
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
 
             if response.tool_calls:
                 turns += 1

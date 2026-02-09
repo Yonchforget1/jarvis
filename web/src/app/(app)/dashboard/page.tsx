@@ -1,6 +1,6 @@
 "use client";
 
-import { Wrench, Brain, Cpu, Users, RefreshCw } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -8,6 +8,12 @@ import { BackendStatus } from "@/components/dashboard/backend-status";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return String(n);
+}
 
 export default function DashboardPage() {
   const { stats, loading: statsLoading, refetch } = useStats(15000);
@@ -51,7 +57,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <StatsCard
           title="Backend"
           value={stats?.backend?.toUpperCase() || "N/A"}
@@ -75,6 +81,22 @@ export default function DashboardPage() {
           icon={Brain}
           iconColor="text-purple-400"
           bgColor="bg-purple-400/10"
+        />
+        <StatsCard
+          title="Tokens Used"
+          value={formatTokens((stats?.total_input_tokens || 0) + (stats?.total_output_tokens || 0))}
+          description={`${formatTokens(stats?.total_input_tokens || 0)} in / ${formatTokens(stats?.total_output_tokens || 0)} out`}
+          icon={Zap}
+          iconColor="text-yellow-400"
+          bgColor="bg-yellow-400/10"
+        />
+        <StatsCard
+          title="Tool Calls"
+          value={stats?.total_tool_calls || 0}
+          description="Tools executed this session"
+          icon={Hash}
+          iconColor="text-cyan-400"
+          bgColor="bg-cyan-400/10"
         />
         <StatsCard
           title="Sessions"

@@ -32,6 +32,7 @@ _shutting_down = False
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _shutting_down
+    _shutting_down = False
     log.info("Jarvis API starting up...")
     session_manager.initialize()
 
