@@ -6,9 +6,11 @@ from datetime import datetime, timezone
 class Memory:
     """Persistent memory for learnings across sessions."""
 
-    def __init__(self, path: str = "memory/learnings.json"):
+    def __init__(self, path: str = "memory/learnings.json", use_vectors: bool = False):
         self.path = path
         self._learnings: list[dict] = []
+        self._summary_cache: str | None = None
+        self._summary_cache_count: int = 0
         self.load()
 
     def load(self):
@@ -49,12 +51,19 @@ class Memory:
         }
         self._learnings.append(entry)
         self._save()
+        self._summary_cache = None  # Invalidate cache
         return entry
 
     def get_summary(self, max_entries: int = 20) -> str:
-        """Return a formatted string of recent learnings for prompt injection."""
+        """Return a formatted string of recent learnings for prompt injection.
+
+        Results are cached and invalidated when new learnings are saved.
+        """
         if not self._learnings:
             return ""
+        # Return cached summary if nothing changed
+        if self._summary_cache is not None and self._summary_cache_count == len(self._learnings):
+            return self._summary_cache
         recent = self._learnings[-max_entries:]
         lines = []
         for entry in recent:
@@ -65,7 +74,10 @@ class Memory:
             if context:
                 line += f" (context: {context})"
             lines.append(line)
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        self._summary_cache = result
+        self._summary_cache_count = len(self._learnings)
+        return result
 
     def get_relevant(self, topic: str) -> list[dict]:
         """Return learnings matching a topic keyword across all fields."""
