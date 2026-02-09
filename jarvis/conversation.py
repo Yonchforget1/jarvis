@@ -2,6 +2,7 @@ import copy
 from datetime import datetime, timezone
 
 from jarvis.backends.base import Backend
+from jarvis.context_manager import estimate_tokens, summarize_messages
 from jarvis.logger import log
 from jarvis.parallel import execute_tools_parallel
 from jarvis.tool_registry import ToolRegistry
@@ -12,6 +13,7 @@ class Conversation:
 
     MAX_TOOL_TURNS = 25  # Safety limit to prevent infinite loops
     MAX_MESSAGES = 100  # Keep conversation manageable
+    CONTEXT_TOKEN_THRESHOLD = 30000  # Trigger summarization when estimated tokens exceed this
 
     def __init__(self, backend: Backend, registry: ToolRegistry, system: str, max_tokens: int = 4096):
         self.backend = backend
@@ -26,14 +28,22 @@ class Conversation:
         self._checkpoints: list[dict] = []
 
     def _trim_history(self):
-        """Trim old messages to stay within MAX_MESSAGES, keeping recent context.
+        """Trim old messages to stay within limits, using smart summarization.
 
-        Preserves a summary marker at the front if messages are truncated,
-        so the conversation doesn't lose all context.
+        First tries to summarize if the context window is getting large.
+        Falls back to simple truncation if still over MAX_MESSAGES.
         """
+        # Smart summarization when token estimate is high
+        est_tokens = estimate_tokens(self.messages)
+        if est_tokens > self.CONTEXT_TOKEN_THRESHOLD and len(self.messages) > 20:
+            self.messages, removed = summarize_messages(self.messages, keep_recent=20)
+            if removed > 0:
+                log.info("Context management: summarized %d messages (est. %d tokens)", removed, est_tokens)
+                return
+
+        # Fallback: simple truncation
         if len(self.messages) <= self.MAX_MESSAGES:
             return
-        # Keep the most recent messages, add a summary note
         trimmed_count = len(self.messages) - self.MAX_MESSAGES
         self.messages = self.messages[-self.MAX_MESSAGES:]
         log.info("Trimmed %d old messages from conversation history", trimmed_count)
