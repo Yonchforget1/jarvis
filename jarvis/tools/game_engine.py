@@ -1747,6 +1747,13 @@ def build_player_scene() -> str:
         "albedo_color": "Color(0.2, 0.4, 0.9, 1.0)",
     })
 
+    # Player capsule mesh
+    player_mesh_id = sb.add_sub_resource("CapsuleMesh", {
+        "radius": 0.4,
+        "height": 1.8,
+        "material": f'SubResource("{player_mat_id}")',
+    })
+
     # Attack area collision shape
     attack_shape_id = sb.add_sub_resource("SphereShape3D", {
         "radius": 2.5,
@@ -1770,7 +1777,7 @@ def build_player_scene() -> str:
     # Player mesh (capsule visual)
     sb.add_node("Mesh", "MeshInstance3D", parent=".",
                 properties={
-                    "mesh": 'CapsuleMesh.new()',
+                    "mesh": f'SubResource("{player_mesh_id}")',
                     "transform": 'Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)',
                 })
 
@@ -1819,6 +1826,12 @@ def build_enemy_scene() -> str:
         "albedo_color": "Color(0.8, 0.2, 0.2, 1.0)",
     })
 
+    enemy_mesh_id = sb.add_sub_resource("CapsuleMesh", {
+        "radius": 0.4,
+        "height": 1.6,
+        "material": f'SubResource("{enemy_mat_id}")',
+    })
+
     capsule_id = sb.add_sub_resource("CapsuleShape3D", {
         "radius": 0.4,
         "height": 1.6,
@@ -1835,6 +1848,7 @@ def build_enemy_scene() -> str:
 
     sb.add_node("Mesh", "MeshInstance3D", parent=".",
                 properties={
+                    "mesh": f'SubResource("{enemy_mesh_id}")',
                     "transform": 'Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)',
                 })
 
@@ -1860,6 +1874,12 @@ def build_boss_scene() -> str:
         "emission_energy_multiplier": 1.5,
     })
 
+    boss_mesh_id = sb.add_sub_resource("CapsuleMesh", {
+        "radius": 0.8,
+        "height": 3.0,
+        "material": f'SubResource("{boss_mat_id}")',
+    })
+
     capsule_id = sb.add_sub_resource("CapsuleShape3D", {
         "radius": 0.8,
         "height": 3.0,
@@ -1877,6 +1897,7 @@ def build_boss_scene() -> str:
 
     sb.add_node("Mesh", "MeshInstance3D", parent=".",
                 properties={
+                    "mesh": f'SubResource("{boss_mesh_id}")',
                     "transform": 'Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)',
                 })
 
@@ -2058,7 +2079,7 @@ def build_main_scene() -> str:
     # Navigation mesh
     nav_mesh_id = sb.add_sub_resource("NavigationMesh", {
         "vertices": "PackedVector3Array(-30, 0, -30, -30, 0, 30, 30, 0, 30, 30, 0, -30)",
-        "polygons": "[PackedInt32Array(0, 1, 2, 3)]",
+        "polygons": '[PackedInt32Array(0, 1, 2, 3)]',
     })
 
     # Root
@@ -2077,14 +2098,18 @@ def build_main_scene() -> str:
                     "shadow_enabled": True,
                 })
 
-    # Ground plane
+    # Ground plane mesh
+    ground_mesh_id = sb.add_sub_resource("PlaneMesh", {
+        "size": "Vector2(60, 60)",
+        "material": f'SubResource("{ground_mat_id}")',
+    })
+
     sb.add_node("Ground", "StaticBody3D", parent=".",
                 properties={"collision_layer": 4, "collision_mask": 0})
 
     sb.add_node("GroundMesh", "MeshInstance3D", parent="Ground",
                 properties={
-                    "mesh": 'PlaneMesh.new()',
-                    "transform": 'Transform3D(30, 0, 0, 0, 1, 0, 0, 0, 30, 0, 0, 0)',
+                    "mesh": f'SubResource("{ground_mesh_id}")',
                 })
 
     ground_col_id = sb.add_sub_resource("BoxShape3D", {
@@ -2131,6 +2156,10 @@ def build_main_scene() -> str:
     pillar_mat_id = sb.add_sub_resource("StandardMaterial3D", {
         "albedo_color": "Color(0.5, 0.5, 0.55, 1.0)",
     })
+    pillar_mesh_id = sb.add_sub_resource("BoxMesh", {
+        "size": "Vector3(2, 4, 2)",
+        "material": f'SubResource("{pillar_mat_id}")',
+    })
     pillar_positions = [(-10, 0, -10), (10, 0, -10), (-10, 0, 10), (10, 0, 10),
                         (-20, 0, 0), (20, 0, 0), (0, 0, -20), (0, 0, 20)]
     for i, (px, py, pz) in enumerate(pillar_positions):
@@ -2142,7 +2171,8 @@ def build_main_scene() -> str:
                     })
         sb.add_node(f"{pname}Mesh", "MeshInstance3D", parent=pname,
                     properties={
-                        "transform": 'Transform3D(1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 2, 0)',
+                        "mesh": f'SubResource("{pillar_mesh_id}")',
+                        "transform": 'Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)',
                     })
         pillar_col_id = sb.add_sub_resource("BoxShape3D", {
             "size": "Vector3(2, 4, 2)",
