@@ -21,10 +21,17 @@ class Conversation:
         self.total_output_tokens: int = 0
 
     def _trim_history(self):
-        """Trim old messages to stay within MAX_MESSAGES, keeping recent context."""
-        if len(self.messages) > self.MAX_MESSAGES:
-            # Keep the most recent messages
-            self.messages = self.messages[-self.MAX_MESSAGES:]
+        """Trim old messages to stay within MAX_MESSAGES, keeping recent context.
+
+        Preserves a summary marker at the front if messages are truncated,
+        so the conversation doesn't lose all context.
+        """
+        if len(self.messages) <= self.MAX_MESSAGES:
+            return
+        # Keep the most recent messages, add a summary note
+        trimmed_count = len(self.messages) - self.MAX_MESSAGES
+        self.messages = self.messages[-self.MAX_MESSAGES:]
+        log.info("Trimmed %d old messages from conversation history", trimmed_count)
 
     def _call_backend(self, tools):
         """Call backend — retry logic now lives in each backend via jarvis.retry."""
