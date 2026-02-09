@@ -24,9 +24,10 @@ def main():
     # Build composite system prompt: identity + config + game workflow + memory
     system_prompt = build_system_prompt(config.system_prompt, memory.get_summary())
 
-    # Register tools
+    # Register tools (pass config to enable computer/browser tools)
     registry = ToolRegistry()
-    registry.load_builtin_tools()
+    from jarvis.tools import register_all
+    register_all(registry, config)
 
     # Register memory tools (needs Memory instance)
     from jarvis.tools.memory_tools import register as register_memory_tools

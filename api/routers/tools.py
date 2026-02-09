@@ -24,6 +24,31 @@ TOOL_CATEGORIES = {
     "reflect_on_task": "memory",
     "recall_learnings": "memory",
     "self_improve": "memory",
+    # Computer use tools
+    "take_screenshot": "computer",
+    "analyze_screen": "computer",
+    "click_at": "computer",
+    "double_click_at": "computer",
+    "right_click_at": "computer",
+    "type_text": "computer",
+    "press_key": "computer",
+    "scroll": "computer",
+    "move_mouse": "computer",
+    "drag_to": "computer",
+    "find_on_screen": "computer",
+    "get_screen_size": "computer",
+    # Browser automation tools
+    "open_browser": "browser",
+    "navigate_to": "browser",
+    "click_element": "browser",
+    "fill_field": "browser",
+    "get_page_text": "browser",
+    "get_page_html": "browser",
+    "browser_screenshot": "browser",
+    "run_javascript": "browser",
+    "wait_for_element": "browser",
+    "list_elements": "browser",
+    "close_browser": "browser",
 }
 
 _session_manager = None

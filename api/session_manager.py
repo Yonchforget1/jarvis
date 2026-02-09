@@ -76,7 +76,8 @@ class SessionManager:
         system_prompt = build_system_prompt(self._config.system_prompt, memory_summary)
 
         registry = ToolRegistry()
-        registry.load_builtin_tools()
+        from jarvis.tools import register_all
+        register_all(registry, self._config)
         register_memory_tools(registry, self._memory)
         registry.load_plugins(os.path.join(project_root, "plugins"))
 

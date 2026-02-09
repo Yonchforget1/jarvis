@@ -44,15 +44,36 @@ When asked to build a game:
 7. Use reflect_on_task to log what you learned about game development\
 """
 
+COMPUTER_USE_WORKFLOW = """\
+## Computer Use Workflow
+
+You can see and control the computer screen. When asked to interact with the computer \
+or automate a task:
+1. Call analyze_screen to see what's currently on screen
+2. Plan your actions based on what you see
+3. Execute actions: click_at, type_text, press_key for desktop apps; browser tools for web
+4. Call analyze_screen again to verify the result
+5. Repeat until the task is complete
+
+Guidelines:
+- For web tasks, prefer browser tools (open_browser, navigate_to, fill_field) -- they're \
+faster and more reliable than clicking on screen coordinates
+- For desktop apps, use the analyze_screen → click_at/type_text → analyze_screen loop
+- Always verify actions completed successfully before moving on
+- Use get_page_text before browser_screenshot when you just need to read content
+- Use list_elements to discover clickable items instead of guessing coordinates\
+"""
+
 
 def build_system_prompt(config_prompt: str, memory_summary: str = "") -> str:
-    """Assemble the final system prompt: identity + config + game workflow + memory."""
+    """Assemble the final system prompt: identity + config + workflows + memory."""
     parts = [JARVIS_IDENTITY]
 
     if config_prompt:
         parts.append(config_prompt)
 
     parts.append(GAME_DEV_WORKFLOW)
+    parts.append(COMPUTER_USE_WORKFLOW)
 
     if memory_summary:
         parts.append(

@@ -83,4 +83,7 @@ urllib3==2.6.3
 ursina==8.3.0
 uuid_utils==0.14.0
 xxhash==3.6.0
+mss>=9.0
+playwright>=1.40
+pyautogui>=0.9.54
 zstandard==0.25.0
