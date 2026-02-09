@@ -15,6 +15,8 @@ import {
   ChevronDown,
   ArrowDown,
   Download,
+  FileJson,
+  FileText,
   Trash2,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
@@ -228,6 +230,31 @@ export function ChatContainer({
     URL.revokeObjectURL(url);
   }, [messages]);
 
+  const exportChatJSON = useCallback(() => {
+    if (messages.length === 0) return;
+    const data = {
+      exported_at: new Date().toISOString(),
+      message_count: messages.length,
+      messages: messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        ...(msg.tool_calls?.length ? { tool_calls: msg.tool_calls } : {}),
+        ...(msg.isError ? { is_error: true } : {}),
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages]);
+
   // Determine which message is the active match
   const activeMatchMsgId =
     matchingIndices.length > 0
@@ -298,10 +325,18 @@ export function ChatContainer({
           <button
             onClick={exportChat}
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
-            title="Export chat as Markdown"
+            title="Export as Markdown"
           >
-            <Download className="h-3 w-3" />
-            <span className="hidden sm:inline">Export</span>
+            <FileText className="h-3 w-3" />
+            <span className="hidden sm:inline">.md</span>
+          </button>
+          <button
+            onClick={exportChatJSON}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
+            title="Export as JSON"
+          >
+            <FileJson className="h-3 w-3" />
+            <span className="hidden sm:inline">.json</span>
           </button>
           {onClear && (
             <button
