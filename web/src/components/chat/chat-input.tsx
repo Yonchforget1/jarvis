@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard, Paperclip, Mic } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic, Upload } from "lucide-react";
 
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
@@ -13,7 +13,9 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [value, setValue] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dragCountRef = useRef(0);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -65,7 +67,36 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
 
   return (
-    <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+    <div
+      className="border-t border-border/50 bg-background/80 backdrop-blur-xl relative"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragCountRef.current++;
+        setIsDragOver(true);
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={() => {
+        dragCountRef.current--;
+        if (dragCountRef.current <= 0) {
+          dragCountRef.current = 0;
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragCountRef.current = 0;
+        setIsDragOver(false);
+      }}
+    >
+      {/* Drop zone overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 backdrop-blur-sm animate-fade-in">
+          <div className="flex items-center gap-2 text-sm text-primary/70">
+            <Upload className="h-5 w-5" />
+            <span>File attachments coming soon</span>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-3xl p-3 sm:p-4">
         <div className="relative flex items-end gap-2">
           {/* Attachment button (coming soon) */}
