@@ -1,3 +1,6 @@
+import copy
+from datetime import datetime, timezone
+
 from jarvis.backends.base import Backend
 from jarvis.logger import log
 from jarvis.tool_registry import ToolRegistry
@@ -19,6 +22,7 @@ class Conversation:
         self.total_turns: int = 0
         self.total_input_tokens: int = 0
         self.total_output_tokens: int = 0
+        self._checkpoints: list[dict] = []
 
     def _trim_history(self):
         """Trim old messages to stay within MAX_MESSAGES, keeping recent context.
@@ -76,6 +80,51 @@ class Conversation:
                 self.messages.append(self.backend.format_assistant_message(response))
                 self._trim_history()
                 return response.text or ""
+
+    def save_checkpoint(self, label: str = "") -> dict:
+        """Save the current conversation state as a checkpoint.
+
+        Returns a checkpoint dict that can be passed to restore_checkpoint().
+        """
+        checkpoint = {
+            "label": label or f"checkpoint-{len(self._checkpoints)}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "messages": copy.deepcopy(self.messages),
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "message_count": len(self.messages),
+        }
+        self._checkpoints.append(checkpoint)
+        log.info("Saved checkpoint '%s' (%d messages)", checkpoint["label"], len(self.messages))
+        return checkpoint
+
+    def restore_checkpoint(self, index: int = -1) -> bool:
+        """Restore conversation to a saved checkpoint.
+
+        Args:
+            index: Checkpoint index (-1 for most recent).
+
+        Returns:
+            True if restored, False if no checkpoints exist.
+        """
+        if not self._checkpoints:
+            return False
+        try:
+            checkpoint = self._checkpoints[index]
+        except IndexError:
+            return False
+        self.messages = copy.deepcopy(checkpoint["messages"])
+        self.total_input_tokens = checkpoint["total_input_tokens"]
+        self.total_output_tokens = checkpoint["total_output_tokens"]
+        log.info("Restored checkpoint '%s' (%d messages)", checkpoint["label"], len(self.messages))
+        return True
+
+    def list_checkpoints(self) -> list[dict]:
+        """Return metadata for all saved checkpoints."""
+        return [
+            {"index": i, "label": cp["label"], "timestamp": cp["timestamp"], "messages": cp["message_count"]}
+            for i, cp in enumerate(self._checkpoints)
+        ]
 
     def clear(self) -> None:
         """Reset conversation history."""
