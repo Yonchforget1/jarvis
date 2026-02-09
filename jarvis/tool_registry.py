@@ -74,9 +74,13 @@ class ToolStats:
 class ToolRegistry:
     """Collects tools and handles dispatch."""
 
+    # Tools whose results are safe to cache (read-only, deterministic for a window)
+    CACHEABLE_TOOLS: set[str] = {"search_web", "fetch_url", "file_search", "system_info"}
+
     def __init__(self):
         self._tools: dict[str, ToolDef] = {}
         self._stats: dict[str, ToolStats] = {}
+        self._cache = None  # Lazy-initialized ToolCache
 
     def register(self, tool: ToolDef) -> None:
         self._tools[tool.name] = tool
@@ -95,6 +99,13 @@ class ToolRegistry:
         """Return all unique tool categories."""
         return sorted(set(t.category for t in self._tools.values()))
 
+    def _get_cache(self):
+        """Lazy-init the cache to avoid import cycles."""
+        if self._cache is None:
+            from jarvis.cache import ToolCache
+            self._cache = ToolCache()
+        return self._cache
+
     def handle_call(self, name: str, args: dict) -> str:
         tool = self._tools.get(name)
         if tool is None:
@@ -105,6 +116,14 @@ class ToolRegistry:
         if missing:
             return f"Tool error ({name}): missing required parameters: {', '.join(missing)}"
 
+        # Check cache for cacheable tools
+        cache = self._get_cache()
+        if name in self.CACHEABLE_TOOLS:
+            cached = cache.get(name, args)
+            if cached is not None:
+                log.info("Tool %s cache hit", name)
+                return cached
+
         stats = self._stats.setdefault(name, ToolStats())
         start = time.perf_counter()
         try:
@@ -113,6 +132,9 @@ class ToolRegistry:
             stats.call_count += 1
             stats.total_duration_ms += duration_ms
             log.info("Tool %s completed in %.0fms", name, duration_ms)
+            # Cache successful results for cacheable tools
+            if name in self.CACHEABLE_TOOLS:
+                cache.set(name, args, result)
             return result
         except Exception as e:
             duration_ms = (time.perf_counter() - start) * 1000
