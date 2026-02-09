@@ -7,6 +7,8 @@ import threading
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.responses import StreamingResponse
@@ -119,6 +121,68 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class BatchChatRequest(BaseModel):
+    messages: list[ChatRequest]
+
+
+@router.post("/chat/batch")
+@limiter.limit("5/minute")
+async def chat_batch(
+    request: Request,
+    body: BatchChatRequest,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Process multiple chat messages in a single request.
+
+    Each message can target a different session. Returns results in order.
+    Maximum 10 messages per batch.
+    """
+    if len(body.messages) > 10:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Maximum 10 messages per batch"},
+        )
+
+    loop = asyncio.get_event_loop()
+    results = []
+
+    for msg in body.messages:
+        session = _session_manager.get_or_create(msg.session_id, user.id)
+        try:
+            response_text = await loop.run_in_executor(
+                None, session.conversation.send, msg.message
+            )
+            raw_calls = session.conversation.get_and_clear_tool_calls()
+            tool_calls = [
+                ToolCallDetail(id=tc["id"], name=tc["name"], args=tc["args"], result=tc["result"])
+                for tc in raw_calls
+            ]
+            results.append({
+                "session_id": session.session_id,
+                "response": response_text,
+                "tool_calls": [tc.model_dump() for tc in tool_calls],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "success",
+            })
+        except Exception as e:
+            results.append({
+                "session_id": session.session_id,
+                "response": "",
+                "tool_calls": [],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "error",
+                "error": str(e),
+            })
+
+    audit_log(
+        user_id=user.id, username=user.username, action="chat_batch",
+        detail=f"count={len(body.messages)}",
+        ip=request.client.host if request.client else "",
+    )
+
+    return {"results": results, "count": len(results)}
 
 
 def _sse(event: str, data: dict) -> str:
