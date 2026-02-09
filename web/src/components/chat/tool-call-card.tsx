@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -14,6 +14,9 @@ import {
   Loader2,
   Copy,
   Check,
+  XCircle,
+  Monitor,
+  FileText,
 } from "lucide-react";
 import type { ToolCallDetail } from "@/lib/types";
 
@@ -30,13 +33,26 @@ const TOOL_META: Record<string, { icon: typeof Wrench; color: string; bg: string
   search_web: { icon: Globe, color: "text-orange-400", bg: "bg-orange-400/10" },
   fetch_url: { icon: Globe, color: "text-orange-400", bg: "bg-orange-400/10" },
   create_game_project: { icon: Gamepad2, color: "text-purple-400", bg: "bg-purple-400/10" },
+  create_godot_project: { icon: Gamepad2, color: "text-purple-400", bg: "bg-purple-400/10" },
   generate_game_asset: { icon: Gamepad2, color: "text-purple-400", bg: "bg-purple-400/10" },
   reflect_on_task: { icon: Brain, color: "text-yellow-400", bg: "bg-yellow-400/10" },
   recall_learnings: { icon: Brain, color: "text-yellow-400", bg: "bg-yellow-400/10" },
   self_improve: { icon: Brain, color: "text-yellow-400", bg: "bg-yellow-400/10" },
+  screenshot: { icon: Monitor, color: "text-cyan-400", bg: "bg-cyan-400/10" },
+  create_pdf: { icon: FileText, color: "text-pink-400", bg: "bg-pink-400/10" },
+  create_docx: { icon: FileText, color: "text-pink-400", bg: "bg-pink-400/10" },
 };
 
 const DEFAULT_META = { icon: Wrench, color: "text-muted-foreground", bg: "bg-muted" };
+
+function getResultPreview(result: string): { preview: string; isError: boolean } {
+  if (!result) return { preview: "", isError: false };
+  const lower = result.toLowerCase();
+  const isError = lower.startsWith("error") || lower.includes("traceback") || lower.includes("exception:");
+  const firstLine = result.split("\n")[0].trim();
+  const preview = firstLine.length > 80 ? firstLine.slice(0, 77) + "..." : firstLine;
+  return { preview, isError };
+}
 
 export function ToolCallCard({ call }: { call: ToolCallDetail }) {
   const [expanded, setExpanded] = useState(false);
@@ -50,15 +66,31 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const argsSummary = Object.entries(call.args)
-    .map(([k, v]) => {
-      const val = typeof v === "string" ? v : JSON.stringify(v);
-      return `${k}: ${val.length > 40 ? val.slice(0, 40) + "..." : val}`;
-    })
-    .join(", ");
+  const argsSummary = useMemo(() => {
+    return Object.entries(call.args)
+      .map(([k, v]) => {
+        const val = typeof v === "string" ? v : JSON.stringify(v);
+        return `${k}: ${val.length > 40 ? val.slice(0, 40) + "..." : val}`;
+      })
+      .join(", ");
+  }, [call.args]);
+
+  const { preview: resultPreview, isError: isResultError } = useMemo(
+    () => getResultPreview(call.result),
+    [call.result],
+  );
+
+  const isRunning = !call.result;
+  const resultLines = call.result ? call.result.split("\n").length : 0;
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden transition-all duration-200 hover:border-border animate-scale-in">
+    <div
+      className={`rounded-xl border overflow-hidden transition-all duration-200 animate-scale-in ${
+        isResultError
+          ? "border-red-500/30 bg-red-500/[0.03]"
+          : "border-border/50 bg-card/50 hover:border-border"
+      }`}
+    >
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-muted/50 transition-colors"
@@ -73,18 +105,32 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
             <Icon className={`h-3 w-3 ${meta.color}`} />
           </div>
         </div>
-        <span className={`font-mono text-xs font-medium ${meta.color}`}>
-          {call.name}
-        </span>
-        {argsSummary && (
-          <span className="text-xs text-muted-foreground/60 truncate">
-            {argsSummary}
-          </span>
-        )}
-        {call.result ? (
-          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500/60 shrink-0" />
-        ) : (
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`font-mono text-xs font-medium ${meta.color}`}>
+              {call.name}
+            </span>
+            {argsSummary && !expanded && (
+              <span className="text-xs text-muted-foreground/50 truncate">
+                {argsSummary}
+              </span>
+            )}
+          </div>
+          {/* Result preview when collapsed */}
+          {!expanded && resultPreview && (
+            <p className={`text-[10px] mt-0.5 truncate ${
+              isResultError ? "text-red-400/70" : "text-muted-foreground/40"
+            }`}>
+              {resultPreview}
+            </p>
+          )}
+        </div>
+        {isRunning ? (
           <Loader2 className="ml-auto h-3.5 w-3.5 text-primary/60 shrink-0 animate-spin" />
+        ) : isResultError ? (
+          <XCircle className="ml-auto h-3.5 w-3.5 text-red-400/60 shrink-0" />
+        ) : (
+          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500/60 shrink-0" />
         )}
       </button>
 
@@ -105,29 +151,52 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
           {/* Result */}
           <div className="px-3 pt-1.5 pb-2.5">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                Result
-              </p>
-              <button
-                onClick={handleCopyResult}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3 w-3 text-green-400" />
-                    <span className="text-green-400">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3 w-3" />
-                    Copy
-                  </>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                  Result
+                </p>
+                {resultLines > 0 && (
+                  <span className="text-[9px] text-muted-foreground/40 font-mono">
+                    {resultLines} line{resultLines !== 1 ? "s" : ""}
+                  </span>
                 )}
-              </button>
+              </div>
+              {call.result && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyResult();
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3 w-3 text-green-400" />
+                      <span className="text-green-400">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-            <pre className="text-xs bg-muted dark:bg-black/30 rounded-lg p-2.5 overflow-x-auto text-foreground max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin">
-              {call.result}
-            </pre>
+            {isRunning ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/50 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Running...</span>
+              </div>
+            ) : (
+              <pre className={`text-xs rounded-lg p-2.5 overflow-x-auto max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin ${
+                isResultError
+                  ? "bg-red-500/5 dark:bg-red-500/10 text-red-300"
+                  : "bg-muted dark:bg-black/30 text-foreground"
+              }`}>
+                {call.result}
+              </pre>
+            )}
           </div>
         </div>
       )}
