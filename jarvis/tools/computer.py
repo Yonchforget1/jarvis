@@ -10,6 +10,7 @@ import mss
 import pyautogui
 from PIL import Image
 
+from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
 # Fix Windows high-DPI coordinate issues
@@ -40,7 +41,8 @@ def _analyze_image(api_key: str, image_path: str, question: str) -> str:
             image_data = base64.standard_b64encode(f.read()).decode("utf-8")
 
         client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
+        response = retry_api_call(
+            client.messages.create,
             model="claude-sonnet-4-5-20250929",
             max_tokens=2048,
             messages=[

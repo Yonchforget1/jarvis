@@ -3,6 +3,7 @@ import json
 from openai import OpenAI
 
 from .base import Backend, BackendResponse, ToolCall
+from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
 
@@ -16,7 +17,8 @@ class OpenAIBackend(Backend):
         full_messages = [{"role": "system", "content": system}] + messages
         tool_schemas = [t.schema_openai() for t in tools]
 
-        response = self.client.chat.completions.create(
+        response = retry_api_call(
+            self.client.chat.completions.create,
             model=self.model,
             max_tokens=max_tokens,
             messages=full_messages,

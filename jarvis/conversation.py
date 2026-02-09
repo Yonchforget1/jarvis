@@ -24,6 +24,15 @@ class Conversation:
             # Keep the most recent messages
             self.messages = self.messages[-self.MAX_MESSAGES:]
 
+    def _call_backend(self, tools):
+        """Call backend — retry logic now lives in each backend via jarvis.retry."""
+        return self.backend.send(
+            messages=self.messages,
+            system=self.system,
+            tools=tools,
+            max_tokens=self.max_tokens,
+        )
+
     def send(self, user_input: str) -> str:
         """Send a message, run the tool loop, return the final text response."""
         self.messages.append(self.backend.format_user_message(user_input))
@@ -31,12 +40,7 @@ class Conversation:
         turns = 0
 
         while True:
-            response = self.backend.send(
-                messages=self.messages,
-                system=self.system,
-                tools=tools,
-                max_tokens=self.max_tokens,
-            )
+            response = self._call_backend(tools)
 
             if response.tool_calls:
                 turns += 1

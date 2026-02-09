@@ -418,6 +418,7 @@ class EvolutionPlanner:
         return self._parse_plan(raw)
 
     def _call_llm(self, messages: list) -> tuple[str, object]:
+        # Backend.send() already uses retry_api_call internally
         try:
             response = self.backend.send(
                 messages=messages,

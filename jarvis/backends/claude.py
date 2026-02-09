@@ -1,5 +1,6 @@
 import anthropic
 from .base import Backend, BackendResponse, ToolCall
+from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
 
@@ -10,7 +11,8 @@ class ClaudeBackend(Backend):
 
     def send(self, messages, system, tools, max_tokens=4096):
         tool_schemas = [t.schema_anthropic() for t in tools]
-        response = self.client.messages.create(
+        response = retry_api_call(
+            self.client.messages.create,
             model=self.model,
             max_tokens=max_tokens,
             system=system,

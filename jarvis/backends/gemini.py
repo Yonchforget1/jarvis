@@ -7,6 +7,7 @@ except ImportError:
     HAS_GENAI = False
 
 from .base import Backend, BackendResponse, ToolCall
+from jarvis.retry import retry_api_call
 from jarvis.tool_registry import ToolDef
 
 
@@ -37,7 +38,8 @@ class GeminiBackend(Backend):
             system_instruction=system,
             tools=gemini_tools,
         )
-        response = model.generate_content(
+        response = retry_api_call(
+            model.generate_content,
             messages,
             generation_config=genai_types.GenerationConfig(max_output_tokens=max_tokens),
         )
