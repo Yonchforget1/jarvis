@@ -14,11 +14,13 @@ import {
   Sparkles,
   Sliders,
   Download,
+  Upload,
   Trash2,
   AlertTriangle,
   Sun,
   Moon,
   Monitor,
+  RotateCcw,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -99,6 +101,35 @@ export default function SettingsPage() {
     } catch {
       toast.error("Failed to save", "Please check your settings and try again.");
     }
+  };
+
+  const handleResetOnboarding = () => {
+    localStorage.removeItem("jarvis-onboarding-seen");
+    toast.success("Onboarding reset", "The welcome tour will show on your next page load.");
+  };
+
+  const handleExportSettings = () => {
+    const data = JSON.stringify(
+      {
+        exported_at: new Date().toISOString(),
+        backend,
+        model,
+        max_tokens: maxTokens,
+        theme,
+      },
+      null,
+      2,
+    );
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-settings-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Settings exported", "Your configuration has been downloaded.");
   };
 
   const handleExportLearnings = () => {
@@ -400,6 +431,23 @@ export default function SettingsPage() {
             >
               <Download className="h-4 w-4 text-primary" />
               Export Learnings ({learnings.length} entries)
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
+              onClick={handleExportSettings}
+            >
+              <Upload className="h-4 w-4 text-primary" />
+              Export Current Settings
+            </Button>
+            <Separator className="bg-border/30" />
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
+              onClick={handleResetOnboarding}
+            >
+              <RotateCcw className="h-4 w-4 text-primary" />
+              Replay Welcome Tour
             </Button>
           </CardContent>
         </Card>
