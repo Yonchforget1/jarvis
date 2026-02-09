@@ -61,9 +61,32 @@ API_VERSION = "1.0.0"
 
 app = FastAPI(
     title="Jarvis AI Agent API",
-    description="API for the Jarvis AI Agent Platform",
+    description=(
+        "## Jarvis AI Agent Platform API\n\n"
+        "Jarvis is an AI agent platform that executes tasks using configurable AI backends "
+        "(Claude, OpenAI, Gemini) with 30+ tools for filesystem, web, shell, and more.\n\n"
+        "### Authentication\n"
+        "Most endpoints require a JWT bearer token obtained via `POST /api/auth/login`.\n\n"
+        "### Real-time\n"
+        "- **SSE**: `POST /api/chat/stream` for server-sent events\n"
+        "- **WebSocket**: `WS /api/ws/chat` for bidirectional real-time chat\n\n"
+        "### Rate Limits\n"
+        "- General: 60 requests/minute\n"
+        "- Chat: 20 requests/minute"
+    ),
     version=API_VERSION,
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "auth", "description": "User authentication and registration"},
+        {"name": "chat", "description": "Send messages and receive AI responses"},
+        {"name": "tools", "description": "List and inspect available AI tools"},
+        {"name": "stats", "description": "System and usage statistics"},
+        {"name": "learnings", "description": "AI learning memory management"},
+        {"name": "conversation", "description": "Session and conversation management"},
+        {"name": "settings", "description": "User preferences and configuration"},
+        {"name": "files", "description": "File upload and management"},
+        {"name": "websocket", "description": "Real-time WebSocket chat"},
+    ],
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
