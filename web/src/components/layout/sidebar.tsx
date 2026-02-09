@@ -23,6 +23,7 @@ import {
   ChevronsRight,
   Pencil,
   Check,
+  Clock,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
@@ -66,6 +67,20 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function sessionDuration(createdAt: string, lastActive: string): string {
+  const diff = new Date(lastActive).getTime() - new Date(createdAt).getTime();
+  if (diff < 0) return "";
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
 }
 
 export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, onToggleCollapse }: SidebarProps) {
@@ -291,8 +306,17 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                         {session.customName || session.autoTitle || session.preview || "New conversation"}
                       </p>
                     )}
-                    <p className="text-[10px] text-muted-foreground/40">
-                      {timeAgo(session.last_active)} &middot; {session.message_count} msgs
+                    <p className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
+                      <span>{timeAgo(session.last_active)}</span>
+                      <span>&middot;</span>
+                      <span>{session.message_count} msgs</span>
+                      {sessionDuration(session.created_at, session.last_active) && (
+                        <>
+                          <span>&middot;</span>
+                          <Clock className="h-2 w-2 inline" />
+                          <span>{sessionDuration(session.created_at, session.last_active)}</span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
