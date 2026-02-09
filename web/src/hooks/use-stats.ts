@@ -1,20 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { SystemStats } from "@/lib/types";
 
-export function useStats() {
+export function useStats(pollInterval: number = 15000) {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .get<SystemStats>("/api/stats")
-      .then(setStats)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await api.get<SystemStats>("/api/stats");
+      setStats(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch stats");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { stats, loading };
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, pollInterval);
+    return () => clearInterval(interval);
+  }, [fetchStats, pollInterval]);
+
+  return { stats, loading, error, refetch: fetchStats };
 }
