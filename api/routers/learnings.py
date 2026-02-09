@@ -25,7 +25,7 @@ async def get_learnings(
     if topic:
         raw = memory.get_relevant(topic)
     else:
-        raw = memory._learnings
+        raw = memory.all_learnings
 
     entries = [
         LearningEntry(

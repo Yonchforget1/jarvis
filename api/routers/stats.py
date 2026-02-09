@@ -20,10 +20,13 @@ async def get_stats(user: UserInfo = Depends(get_current_user)):
     config = _session_manager.config
     memory = _session_manager.memory
 
+    session = _session_manager.get_or_create(None, user.id)
+    tool_count = len(session.conversation.registry.all_tools())
+
     return StatsResponse(
         backend=config.backend,
         model=config.model,
-        tool_count=16,
+        tool_count=tool_count,
         learnings_count=memory.count,
         active_sessions=_session_manager.active_session_count,
         uptime_seconds=_session_manager.uptime_seconds,

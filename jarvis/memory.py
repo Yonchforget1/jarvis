@@ -72,3 +72,8 @@ class Memory:
     @property
     def count(self) -> int:
         return len(self._learnings)
+
+    @property
+    def all_learnings(self) -> list[dict]:
+        """Public accessor for all learnings."""
+        return list(self._learnings)
