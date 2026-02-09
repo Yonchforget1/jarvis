@@ -1,10 +1,33 @@
+import ipaddress
 import re
+from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 from ddgs import DDGS
 
 from jarvis.tool_registry import ToolDef
+
+
+def _is_internal_url(url: str) -> bool:
+    """Check if a URL points to an internal/private IP address (SSRF protection)."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return True
+        # Block common internal hostnames
+        if hostname in ("localhost", "0.0.0.0", "127.0.0.1", "::1"):
+            return True
+        # Block private/reserved IP ranges
+        try:
+            addr = ipaddress.ip_address(hostname)
+            return addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local
+        except ValueError:
+            # Not a raw IP — hostname is fine
+            return False
+    except Exception:
+        return True
 
 
 def search_web(query: str) -> str:
@@ -24,6 +47,8 @@ def search_web(query: str) -> str:
 
 def fetch_url(url: str, selector: str = "") -> str:
     """Fetch a URL and extract text content, optionally filtered by CSS selector."""
+    if _is_internal_url(url):
+        return "Error: cannot fetch internal/private URLs (SSRF protection)."
     try:
         headers = {"User-Agent": "Mozilla/5.0 (compatible; Jarvis/1.0)"}
         response = httpx.get(url, headers=headers, follow_redirects=True, timeout=15)
