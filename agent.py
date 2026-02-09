@@ -165,6 +165,67 @@ def cmd_docs(args) -> None:
     print(f"\n---\nGenerated from {len(tools)} tools")
 
 
+def cmd_new_plugin(args) -> None:
+    """Scaffold a new plugin from a template."""
+    name = args.name.lower().replace("-", "_")
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    plugin_path = os.path.join(project_root, "plugins", f"{name}.py")
+
+    if os.path.exists(plugin_path):
+        print(f"Error: Plugin '{name}' already exists at {plugin_path}", file=sys.stderr)
+        sys.exit(1)
+
+    template = f'''"""Plugin: {name}
+
+Description: TODO - describe what this plugin does.
+Author: Jarvis Team
+Version: 1.0.0
+"""
+
+from jarvis.tool_registry import ToolDef
+
+
+def {name}_action(input_text: str) -> str:
+    """TODO: Implement the main action for this tool.
+
+    Args:
+        input_text: The input to process.
+
+    Returns:
+        Result string.
+    """
+    # TODO: implement
+    return f"Processed: {{input_text}}"
+
+
+def register(registry) -> None:
+    """Register tools with the Jarvis tool registry."""
+    registry.register(ToolDef(
+        name="{name}",
+        description="TODO: describe what this tool does.",
+        parameters={{
+            "properties": {{
+                "input_text": {{
+                    "type": "string",
+                    "description": "The input to process.",
+                }},
+            }},
+            "required": ["input_text"],
+        }},
+        func={name}_action,
+        category="custom",
+    ))
+'''
+    os.makedirs(os.path.dirname(plugin_path), exist_ok=True)
+    with open(plugin_path, "w", encoding="utf-8") as f:
+        f.write(template)
+    print(f"Created plugin scaffold: {plugin_path}")
+    print(f"Next steps:")
+    print(f"  1. Edit {plugin_path} to implement your tool logic")
+    print(f"  2. Run 'python agent.py tools' to verify it loads")
+    print(f"  3. Run 'python agent.py test-tool {name}' to test it")
+
+
 def cmd_test_tool(args) -> None:
     """Test a specific tool interactively."""
     import json as _json
@@ -247,6 +308,11 @@ def main() -> None:
     # check-config
     config_parser = subparsers.add_parser("check-config", help="Validate configuration")
     config_parser.set_defaults(func=cmd_check_config)
+
+    # new-plugin
+    plugin_parser = subparsers.add_parser("new-plugin", help="Scaffold a new plugin")
+    plugin_parser.add_argument("name", help="Plugin name (e.g., my_tool)")
+    plugin_parser.set_defaults(func=cmd_new_plugin)
 
     # test-tool
     test_parser = subparsers.add_parser("test-tool", help="Test a specific tool interactively")
