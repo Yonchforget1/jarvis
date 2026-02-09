@@ -743,8 +743,6 @@ def _gdscript_enemy_base() -> str:
 
         func _ready() -> void:
         \thealth = max_health
-        \tspawn_position = global_position
-        \tpatrol_target = spawn_position
         \t
         \t# Find navigation agent
         \tfor child in get_children():
@@ -761,6 +759,13 @@ def _gdscript_enemy_base() -> str:
         \tif GameManager:
         \t\tGameManager.register_enemy()
         \t\tplayer = GameManager.player_ref
+        \t
+        \t# Defer transform access until fully in scene tree
+        \tcall_deferred("_init_position")
+
+        func _init_position() -> void:
+        \tspawn_position = global_position
+        \tpatrol_target = spawn_position
 
         func _physics_process(delta: float) -> void:
         \tif not is_on_floor():
@@ -1186,14 +1191,15 @@ def _gdscript_wave_spawner() -> str:
         \t\tvar enemy = enemy_scene.instantiate()
         \t\tvar angle = randf() * TAU
         \t\tvar dist = randf_range(spawn_radius * 0.5, spawn_radius)
-        \t\tenemy.global_position = global_position + Vector3(cos(angle) * dist, 0, sin(angle) * dist)
+        \t\tvar spawn_pos = global_position + Vector3(cos(angle) * dist, 0, sin(angle) * dist)
         \t\t
         \t\t# Scale difficulty with wave
-        \t\tif enemy.has_method("set") and current_wave > 1:
+        \t\tif current_wave > 1:
         \t\t\tenemy.max_health = int(enemy.max_health * (1.0 + current_wave * 0.15))
         \t\t\tenemy.attack_damage = int(enemy.attack_damage * (1.0 + current_wave * 0.1))
         \t\t
         \t\tget_parent().add_child(enemy)
+        \t\tenemy.global_position = spawn_pos
         \t
         \tspawning = false
 
@@ -1204,8 +1210,8 @@ def _gdscript_wave_spawner() -> str:
         \t\treturn
         \t
         \tvar boss = boss_scene.instantiate()
-        \tboss.global_position = global_position + Vector3(0, 0, -5)
         \tget_parent().add_child(boss)
+        \tboss.global_position = global_position + Vector3(0, 0, -5)
 
         func _on_wave_completed(wave_number: int) -> void:
         \tif wave_number == current_wave and not spawning:
