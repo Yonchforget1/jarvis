@@ -1,8 +1,16 @@
 """Pydantic request/response schemas for the Jarvis API."""
 
+import re
+
 from pydantic import BaseModel, field_validator
 
 MAX_MESSAGE_LENGTH = 50_000  # Characters
+
+# Patterns that could indicate script injection in chat messages
+_SCRIPT_PATTERNS = re.compile(
+    r"<script[^>]*>|</script>|javascript:|on\w+\s*=\s*[\"']",
+    re.IGNORECASE,
+)
 
 
 # --- Auth ---
@@ -38,11 +46,16 @@ class ChatRequest(BaseModel):
 
     @field_validator("message")
     @classmethod
-    def message_not_too_long(cls, v: str) -> str:
+    def validate_message(cls, v: str) -> str:
         if len(v) > MAX_MESSAGE_LENGTH:
             raise ValueError(f"Message too long ({len(v)} chars, max {MAX_MESSAGE_LENGTH}).")
         if not v.strip():
             raise ValueError("Message cannot be empty.")
+        # Strip null bytes that could cause issues downstream
+        v = v.replace("\x00", "")
+        # Warn-log but don't block script-like patterns (they might be legitimate code questions)
+        # Just strip the most dangerous ones: actual script tags
+        v = re.sub(r"<script[^>]*>.*?</script>", "[script removed]", v, flags=re.IGNORECASE | re.DOTALL)
         return v
 
 
