@@ -13,6 +13,7 @@ import { TopLoader } from "@/components/top-loader";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageTransition } from "@/components/page-transition";
 import { ConnectionMonitor } from "@/components/connection-monitor";
+import { Onboarding } from "@/components/onboarding";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -157,6 +158,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <KeyboardShortcuts />
       {/* Connection status monitoring */}
       <ConnectionMonitor />
+      {/* First-time user onboarding */}
+      <Onboarding />
     </div>
   );
 }
