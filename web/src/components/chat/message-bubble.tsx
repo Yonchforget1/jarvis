@@ -328,7 +328,12 @@ export function MessageBubble({
                 <MessageCopyButton text={message.content} />
               )}
               {!isUser && message.content && (
-                <MessageReactions messageId={message.id} />
+                <>
+                  <span className="text-[10px] text-muted-foreground/40">
+                    {message.content.split(/\s+/).filter(Boolean).length}w
+                  </span>
+                  <MessageReactions messageId={message.id} />
+                </>
               )}
               {isError && onRetry && (
                 <button
