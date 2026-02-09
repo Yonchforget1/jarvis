@@ -67,7 +67,15 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
     {
       icon: Activity,
       label: "Status",
-      value: <span className="text-green-400 font-medium">Online</span>,
+      value: (
+        <span className="flex items-center gap-2 text-green-400 font-medium">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          Online
+        </span>
+      ),
       color: "text-green-500",
     },
     {
@@ -116,6 +124,28 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
         </span>
       ),
       color: "text-orange-400",
+    });
+  }
+  if (sysInfo?.cpu_percent !== undefined) {
+    const cpuPct = Math.round(sysInfo.cpu_percent);
+    const cpuColor = cpuPct > 80 ? "text-red-400" : cpuPct > 50 ? "text-yellow-400" : "text-green-400";
+    systemItems.push({
+      icon: Cpu,
+      label: "CPU Usage",
+      value: (
+        <div className="flex items-center gap-2">
+          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                cpuPct > 80 ? "bg-red-400" : cpuPct > 50 ? "bg-yellow-400" : "bg-green-400"
+              }`}
+              style={{ width: `${cpuPct}%` }}
+            />
+          </div>
+          <span className={`text-sm font-mono tabular-nums ${cpuColor}`}>{cpuPct}%</span>
+        </div>
+      ),
+      color: "text-cyan-400",
     });
   }
   if (sysInfo?.memory_mb) {
