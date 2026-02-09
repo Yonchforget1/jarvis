@@ -22,7 +22,7 @@ from slowapi.util import get_remote_address
 log = logging.getLogger("jarvis.api")
 
 from api.session_manager import SessionManager
-from api.routers import admin, auth, chat, compliance, dashboard, tools, stats, learnings, conversation, settings, files, metrics, websocket, webhook_routes
+from api.routers import admin, auth, chat, compliance, dashboard, tools, stats, learnings, conversation, settings, files, metrics, websocket, webhook_routes, whatsapp
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
     metrics.set_session_manager(session_manager)
     dashboard.set_session_manager(session_manager)
     compliance.set_session_manager(session_manager)
+    whatsapp.set_session_manager(session_manager)
 
     log.info("Jarvis API ready (backend=%s, model=%s)",
              session_manager.config.backend, session_manager.config.model)
@@ -148,6 +149,7 @@ app.include_router(admin.router, prefix="/api", tags=["admin"])
 app.include_router(metrics.router, prefix="/api", tags=["monitoring"])
 app.include_router(dashboard.router, prefix="/api", tags=["monitoring"])
 app.include_router(compliance.router, prefix="/api", tags=["compliance"])
+app.include_router(whatsapp.router, prefix="/api", tags=["whatsapp"])
 
 
 @app.get("/api/health")
