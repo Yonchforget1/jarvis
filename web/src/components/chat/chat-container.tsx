@@ -19,6 +19,7 @@ interface ChatContainerProps {
   isLoading: boolean;
   onSend: (message: string) => void;
   onRetry?: () => void;
+  onStop?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -53,6 +54,7 @@ export function ChatContainer({
   isLoading,
   onSend,
   onRetry,
+  onStop,
 }: ChatContainerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -113,9 +115,12 @@ export function ChatContainer({
                 key={msg.id}
                 message={msg}
                 onRetry={msg.isError ? onRetry : undefined}
+                onStop={msg.isStreaming ? onStop : undefined}
               />
             ))}
-            {isLoading && <TypingIndicator />}
+            {isLoading && !messages.some((m) => m.isStreaming) && (
+              <TypingIndicator />
+            )}
           </div>
         )}
       </div>

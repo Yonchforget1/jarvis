@@ -11,6 +11,7 @@ import {
   Brain,
   Wrench,
   CheckCircle2,
+  Loader2,
   Copy,
   Check,
 } from "lucide-react";
@@ -80,7 +81,11 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
             {argsSummary}
           </span>
         )}
-        <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500/60 shrink-0" />
+        {call.result ? (
+          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500/60 shrink-0" />
+        ) : (
+          <Loader2 className="ml-auto h-3.5 w-3.5 text-primary/60 shrink-0 animate-spin" />
+        )}
       </button>
 
       {expanded && (

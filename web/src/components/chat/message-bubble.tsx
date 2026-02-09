@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square } from "lucide-react";
 import { useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -34,12 +34,15 @@ function CopyButton({ text }: { text: string }) {
 export function MessageBubble({
   message,
   onRetry,
+  onStop,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
+  onStop?: () => void;
 }) {
   const isUser = message.role === "user";
   const isError = message.isError;
+  const isStreaming = message.isStreaming;
 
   return (
     <div
@@ -54,6 +57,8 @@ export function MessageBubble({
             ? "bg-primary/20"
             : isError
             ? "bg-red-500/20"
+            : isStreaming
+            ? "bg-primary/20 animate-glow-pulse"
             : "bg-secondary"
         }`}
       >
@@ -61,6 +66,8 @@ export function MessageBubble({
           <User className="h-4 w-4 text-primary" />
         ) : isError ? (
           <AlertTriangle className="h-4 w-4 text-red-400" />
+        ) : isStreaming ? (
+          <Loader2 className="h-4 w-4 text-primary animate-spin" />
         ) : (
           <Bot className="h-4 w-4 text-primary" />
         )}
@@ -88,6 +95,8 @@ export function MessageBubble({
               ? "bg-primary text-primary-foreground rounded-br-md"
               : isError
               ? "bg-red-500/10 border border-red-500/20 text-red-200 rounded-bl-md"
+              : isStreaming
+              ? "bg-secondary/80 backdrop-blur-sm border border-primary/20 text-secondary-foreground rounded-bl-md"
               : "bg-secondary/80 backdrop-blur-sm border border-white/5 text-secondary-foreground rounded-bl-md"
           }`}
         >
@@ -95,6 +104,11 @@ export function MessageBubble({
             <p className="text-sm whitespace-pre-wrap leading-relaxed">
               {message.content}
             </p>
+          ) : isStreaming && !message.content ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{message.streamStatus || "Thinking..."}</span>
+              <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm" />
+            </div>
           ) : (
             <div className="prose prose-invert prose-sm max-w-none prose-pre:relative prose-pre:bg-transparent prose-pre:p-0 prose-p:leading-relaxed prose-headings:text-foreground prose-a:text-primary prose-strong:text-foreground">
               <ReactMarkdown
@@ -142,26 +156,50 @@ export function MessageBubble({
               >
                 {message.content}
               </ReactMarkdown>
+              {isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm ml-0.5 align-text-bottom" />
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer: timestamp + retry */}
+        {/* Footer: timestamp + retry/stop */}
         <div className="flex items-center gap-2 px-1">
-          <span className="text-[10px] text-muted-foreground/60">
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          {isError && onRetry && (
-            <button
-              onClick={onRetry}
-              className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Retry
-            </button>
+          {isStreaming ? (
+            <>
+              {message.streamStatus && (
+                <span className="text-[10px] text-primary/60 animate-pulse">
+                  {message.streamStatus}
+                </span>
+              )}
+              {onStop && (
+                <button
+                  onClick={onStop}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Square className="h-2.5 w-2.5" />
+                  Stop
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] text-muted-foreground/60">
+                {new Date(message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              {isError && onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -1,15 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import type { ChatMessage, ToolCallDetail } from "@/lib/types";
 
-interface ChatApiResponse {
-  session_id: string;
-  response: string;
-  tool_calls: ToolCallDetail[];
-  timestamp: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -17,6 +12,15 @@ export function useChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const updateStreamingMessage = useCallback(
+    (msgId: string, updater: (msg: ChatMessage) => ChatMessage) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? updater(m) : m)),
+      );
+    },
+    [],
+  );
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -30,45 +34,188 @@ export function useChat() {
       setIsLoading(true);
       setError(null);
 
+      const assistantMsgId = crypto.randomUUID();
+      const streamingMsg: ChatMessage = {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        tool_calls: [],
+        timestamp: new Date().toISOString(),
+        isStreaming: true,
+        streamStatus: "Connecting...",
+      };
+      setMessages((prev) => [...prev, streamingMsg]);
+
       abortRef.current = new AbortController();
 
       try {
-        const res = await api.post<ChatApiResponse>("/api/chat", {
-          message: content,
-          session_id: sessionId,
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("jarvis_token")
+            : null;
+
+        const response = await fetch(`${API_URL}/api/chat/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ message: content, session_id: sessionId }),
+          signal: abortRef.current.signal,
         });
 
-        setSessionId(res.session_id);
-
-        const assistantMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: res.response,
-          tool_calls: res.tool_calls,
-          timestamp: res.timestamp,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401) {
-          // Auth error handled by api.ts redirect
+        if (response.status === 401) {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("jarvis_token");
+            localStorage.removeItem("jarvis_user");
+            window.location.href = "/login";
+          }
           return;
         }
-        const errorMessage = err instanceof Error ? err.message : "Failed to get response";
-        setError(errorMessage);
-        const errorMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `I encountered an error: ${errorMessage}\n\nPlease try again or start a new chat.`,
-          timestamp: new Date().toISOString(),
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
+
+        if (!response.ok) {
+          const body = await response
+            .json()
+            .catch(() => ({ detail: response.statusText }));
+          throw new ApiError(
+            body.detail || response.statusText,
+            response.status,
+          );
+        }
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse SSE events from the buffer
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            if (!part.trim() || part.startsWith(":")) continue;
+
+            let eventType = "";
+            let eventData = "";
+
+            for (const line of part.split("\n")) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7);
+              } else if (line.startsWith("data: ")) {
+                eventData = line.slice(6);
+              }
+            }
+
+            if (!eventType || !eventData) continue;
+
+            const data = JSON.parse(eventData);
+
+            switch (eventType) {
+              case "session":
+                setSessionId(data.session_id);
+                break;
+
+              case "thinking":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  streamStatus: data.status,
+                }));
+                break;
+
+              case "tool_call":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  streamStatus: `Running ${data.name}...`,
+                  tool_calls: [
+                    ...(m.tool_calls || []),
+                    {
+                      id: data.id,
+                      name: data.name,
+                      args: data.args,
+                      result: "",
+                    } as ToolCallDetail,
+                  ],
+                }));
+                break;
+
+              case "tool_result":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  tool_calls: (m.tool_calls || []).map((tc) =>
+                    tc.id === data.id ? { ...tc, result: data.result } : tc,
+                  ),
+                }));
+                break;
+
+              case "text":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  content: data.content,
+                  streamStatus: undefined,
+                }));
+                break;
+
+              case "error":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  content: `Error: ${data.message}`,
+                  isError: true,
+                  isStreaming: false,
+                  streamStatus: undefined,
+                }));
+                setError(data.message);
+                break;
+
+              case "done":
+                updateStreamingMessage(assistantMsgId, (m) => ({
+                  ...m,
+                  isStreaming: false,
+                  streamStatus: undefined,
+                  timestamp: new Date().toISOString(),
+                }));
+                break;
+            }
+          }
+        }
+
+        // Ensure streaming flag is cleared when reader finishes
+        updateStreamingMessage(assistantMsgId, (m) => ({
+          ...m,
+          isStreaming: false,
+          streamStatus: undefined,
+        }));
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // User cancelled - just clean up
+          updateStreamingMessage(assistantMsgId, (m) => ({
+            ...m,
+            content: m.content || "Request cancelled.",
+            isStreaming: false,
+            streamStatus: undefined,
+          }));
+        } else {
+          const errorMessage =
+            err instanceof Error ? err.message : "Failed to get response";
+          setError(errorMessage);
+          updateStreamingMessage(assistantMsgId, (m) => ({
+            ...m,
+            content: `I encountered an error: ${errorMessage}\n\nPlease try again or start a new chat.`,
+            isError: true,
+            isStreaming: false,
+            streamStatus: undefined,
+          }));
+        }
       } finally {
         setIsLoading(false);
         abortRef.current = null;
       }
     },
-    [sessionId],
+    [sessionId, updateStreamingMessage],
   );
 
   const clearChat = useCallback(() => {
@@ -83,13 +230,28 @@ export function useChat() {
   const retryLast = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
-      // Remove error message and retry
-      setMessages((prev) => prev.filter((m) => !m.isError));
-      // Re-send the message content (remove the user msg too since sendMessage adds it)
-      setMessages((prev) => prev.filter((m) => m.id !== lastUserMsg.id));
+      // Remove the error/streaming message and retry
+      setMessages((prev) =>
+        prev.filter((m) => !m.isError && m.id !== lastUserMsg.id),
+      );
       sendMessage(lastUserMsg.content);
     }
   }, [messages, sendMessage]);
 
-  return { messages, isLoading, sessionId, error, sendMessage, clearChat, retryLast };
+  const stopStreaming = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+  }, []);
+
+  return {
+    messages,
+    isLoading,
+    sessionId,
+    error,
+    sendMessage,
+    clearChat,
+    retryLast,
+    stopStreaming,
+  };
 }

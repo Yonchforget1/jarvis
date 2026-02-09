@@ -4,7 +4,8 @@ import { useChat } from "@/hooks/use-chat";
 import { ChatContainer } from "@/components/chat/chat-container";
 
 export default function ChatPage() {
-  const { messages, isLoading, sendMessage, retryLast, clearChat } = useChat();
+  const { messages, isLoading, sendMessage, retryLast, stopStreaming } =
+    useChat();
 
   return (
     <ChatContainer
@@ -12,6 +13,7 @@ export default function ChatPage() {
       isLoading={isLoading}
       onSend={sendMessage}
       onRetry={retryLast}
+      onStop={stopStreaming}
     />
   );
 }

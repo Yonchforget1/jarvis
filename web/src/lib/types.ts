@@ -12,6 +12,8 @@ export interface ChatMessage {
   tool_calls?: ToolCallDetail[];
   timestamp: string;
   isError?: boolean;
+  isStreaming?: boolean;
+  streamStatus?: string;
 }
 
 export interface ToolInfo {
