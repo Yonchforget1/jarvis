@@ -78,13 +78,16 @@ class SessionManager:
         with self._memory_lock:
             memory_summary = self._memory.get_summary()
 
-        system_prompt = build_system_prompt(self._config.system_prompt, memory_summary)
+        compact = self._config.backend == "ollama"
+        system_prompt = build_system_prompt(self._config.system_prompt, memory_summary, compact=compact)
 
         registry = ToolRegistry()
         from jarvis.tools import register_all
         register_all(registry, self._config)
         register_memory_tools(registry, self._memory)
-        registry.load_plugins(os.path.join(project_root, "plugins"))
+        # Skip plugins for local models -- too many tool schemas confuses small models
+        if self._config.backend != "ollama":
+            registry.load_plugins(os.path.join(project_root, "plugins"))
 
         convo = WebConversation(backend, registry, system_prompt, self._config.max_tokens)
 

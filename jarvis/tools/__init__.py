@@ -5,17 +5,29 @@ __all__ = ["register_all"]
 
 
 def register_all(registry, config=None):
-    """Register all built-in tools. Pass config to enable computer/browser tools."""
+    """Register built-in tools.
+
+    When *config* is provided and the backend is ``ollama``, only core tools
+    (filesystem, shell, web, memory) are registered so that the local model
+    is not overwhelmed by dozens of tool schemas.  Cloud backends get the
+    full suite.
+    """
+    # Core tools — always registered
     filesystem.register(registry)
     shell.register(registry)
     web.register(registry)
-    gamedev.register(registry)
-    game_engine.register(registry)
-    planner_tools.register(registry)
-    tool_chain.register(registry)
-    if config:
-        # Lazy-load heavy computer vision modules only when needed
-        from . import computer, browser
 
-        computer.register(registry, config)
-        browser.register(registry, config)
+    is_local = config and config.backend == "ollama"
+
+    if not is_local:
+        # Extended tools for cloud backends
+        gamedev.register(registry)
+        game_engine.register(registry)
+        planner_tools.register(registry)
+        tool_chain.register(registry)
+        if config:
+            # Lazy-load heavy computer vision modules only when needed
+            from . import computer, browser
+
+            computer.register(registry, config)
+            browser.register(registry, config)

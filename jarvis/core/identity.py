@@ -86,16 +86,33 @@ faster and more reliable than clicking on screen coordinates
 """
 
 
-def build_system_prompt(config_prompt: str, memory_summary: str = "") -> str:
-    """Assemble the final system prompt: identity + config + workflows + memory."""
-    parts = [JARVIS_IDENTITY]
+JARVIS_IDENTITY_COMPACT = """\
+You are JARVIS, an AI agent with access to tools. \
+When the user asks you to do something, call the appropriate tool instead of \
+describing how to do it. Always use tools to take action. \
+Use relative paths (e.g. "." or "config.yaml") — do NOT guess absolute paths like /home/user.\
+"""
+
+
+def build_system_prompt(config_prompt: str, memory_summary: str = "", *, compact: bool = False) -> str:
+    """Assemble the final system prompt.
+
+    Args:
+        config_prompt: Extra instructions from config.yaml.
+        memory_summary: Summary of past learnings.
+        compact: If True, use a short prompt suited for small local models
+                 (e.g. Ollama). Large prompts confuse 8B-class models.
+    """
+    if compact:
+        parts = [JARVIS_IDENTITY_COMPACT]
+    else:
+        parts = [JARVIS_IDENTITY]
+        parts.append(GAME_DEV_WORKFLOW)
+        parts.append(DOCUMENT_AUTOMATION_WORKFLOW)
+        parts.append(COMPUTER_USE_WORKFLOW)
 
     if config_prompt:
         parts.append(config_prompt)
-
-    parts.append(GAME_DEV_WORKFLOW)
-    parts.append(DOCUMENT_AUTOMATION_WORKFLOW)
-    parts.append(COMPUTER_USE_WORKFLOW)
 
     if memory_summary:
         parts.append(

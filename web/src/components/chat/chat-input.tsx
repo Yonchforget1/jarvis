@@ -27,6 +27,9 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragCountRef = useRef(0);
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  const draftRef = useRef("");
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -70,6 +73,10 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
     if (!trimmed || disabled || trimmed.length > MAX_LENGTH) return;
+    historyRef.current.push(trimmed);
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = -1;
+    draftRef.current = "";
     onSend(trimmed);
     setValue("");
     if (textareaRef.current) {

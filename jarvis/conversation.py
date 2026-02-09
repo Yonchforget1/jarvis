@@ -96,6 +96,61 @@ class Conversation:
                 self._trim_history()
                 return response.text or ""
 
+    def send_stream(self, user_input: str, event_queue) -> None:
+        """Send a message with tool loop, emitting SSE events to event_queue.
+
+        Events emitted:
+            thinking  - {"status": "Processing your request..."}
+            tool_call - {"id": str, "name": str, "args": dict}
+            tool_result - {"id": str, "result": str}
+            text      - {"content": str}
+            done      - {}
+        """
+        self.messages.append(self.backend.format_user_message(user_input))
+        tools = self.registry.all_tools()
+        turns = 0
+
+        event_queue.put({"event": "thinking", "data": {"status": "Processing your request..."}})
+
+        while True:
+            response = self._call_backend(tools)
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
+
+            if response.tool_calls:
+                turns += 1
+                if turns > self.MAX_TOOL_TURNS:
+                    self.messages.append(self.backend.format_assistant_message(response))
+                    text = f"(Stopped after {self.MAX_TOOL_TURNS} tool turns to prevent runaway loop. Last response: {response.text or ''})"
+                    event_queue.put({"event": "text", "data": {"content": text}})
+                    event_queue.put({"event": "done", "data": {}})
+                    return
+
+                self.messages.append(self.backend.format_assistant_message(response))
+
+                # Execute tools and emit events
+                results = []
+                for tc in response.tool_calls:
+                    event_queue.put({"event": "tool_call", "data": {"id": tc.id, "name": tc.name, "args": tc.args}})
+                    log.info("tool call: %s", tc.name)
+                    result = self.registry.handle_call(tc.name, tc.args)
+                    results.append((tc.id, result))
+                    event_queue.put({"event": "tool_result", "data": {"id": tc.id, "result": result}})
+
+                tool_msg = self.backend.format_tool_results(results)
+                if isinstance(tool_msg, list):
+                    self.messages.extend(tool_msg)
+                else:
+                    self.messages.append(tool_msg)
+
+                event_queue.put({"event": "thinking", "data": {"status": "Processing tool results..."}})
+            else:
+                self.messages.append(self.backend.format_assistant_message(response))
+                self._trim_history()
+                event_queue.put({"event": "text", "data": {"content": response.text or ""}})
+                event_queue.put({"event": "done", "data": {}})
+                return
+
     def save_checkpoint(self, label: str = "") -> dict:
         """Save the current conversation state as a checkpoint.
 

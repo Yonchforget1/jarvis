@@ -27,7 +27,9 @@ def _build_registry(config: Config) -> ToolRegistry:
     from jarvis.tools.memory_tools import register as register_memory_tools
     memory = Memory(path=os.path.join(project_root, "memory", "learnings.json"))
     register_memory_tools(registry, memory)
-    registry.load_plugins(os.path.join(project_root, "plugins"))
+    # Skip plugins for local models -- too many tool schemas confuses small models
+    if config.backend != "ollama":
+        registry.load_plugins(os.path.join(project_root, "plugins"))
     return registry
 
 
@@ -87,7 +89,8 @@ def cmd_chat(args) -> None:
         sys.exit(1)
 
     memory = Memory(path=os.path.join(project_root, "memory", "learnings.json"))
-    system_prompt = build_system_prompt(config.system_prompt, memory.get_summary())
+    compact = config.backend == "ollama"
+    system_prompt = build_system_prompt(config.system_prompt, memory.get_summary(), compact=compact)
 
     registry = _build_registry(config)
 
