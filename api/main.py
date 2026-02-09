@@ -26,8 +26,13 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
 
 
+_shutting_down = False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _shutting_down
+    log.info("Jarvis API starting up...")
     session_manager.initialize()
 
     # Inject session manager into routers that need it
@@ -38,8 +43,14 @@ async def lifespan(app: FastAPI):
     conversation.set_session_manager(session_manager)
     settings.set_session_manager(session_manager)
 
+    log.info("Jarvis API ready (backend=%s, model=%s)",
+             session_manager.config.backend, session_manager.config.model)
     yield
+
+    log.info("Jarvis API shutting down...")
+    _shutting_down = True
     session_manager.shutdown()
+    log.info("Jarvis API shutdown complete.")
 
 
 app = FastAPI(
@@ -61,12 +72,19 @@ app.add_middleware(
 
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
-    """Log all HTTP requests with method, path, status, and duration."""
+    """Log all HTTP requests with method, path, status, and duration.
+
+    Rejects non-health requests during shutdown with 503.
+    """
+    path = request.url.path
+    if _shutting_down and path != "/api/health":
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Server is shutting down"},
+        )
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
-    # Skip noisy health checks at INFO level
-    path = request.url.path
     if path == "/api/health" and response.status_code == 200:
         log.debug("%s %s %d %.0fms", request.method, path, response.status_code, duration_ms)
     else:
