@@ -13,6 +13,7 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  ArrowDown,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -66,6 +67,9 @@ export function ChatContainer({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const prevMessageCountRef = useRef(messages.length);
 
   // Find matching message indices
   const matchingIndices = useMemo(() => {
@@ -120,15 +124,45 @@ export function ChatContainer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [searchOpen, closeSearch, messages.length]);
 
-  // Auto-scroll to bottom on new messages
+  // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
-    if (scrollRef.current && !searchOpen) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollButton(distanceFromBottom > 200);
+      // Reset new message count when scrolled to bottom
+      if (distanceFromBottom < 100) {
+        setNewMessageCount(0);
+      }
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Auto-scroll to bottom on new messages (only if already near bottom)
+  useEffect(() => {
+    if (!scrollRef.current || searchOpen) return;
+    const el = scrollRef.current;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNearBottom = distanceFromBottom < 200;
+
+    if (isNearBottom) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      setNewMessageCount(0);
+    } else if (messages.length > prevMessageCountRef.current) {
+      // User is scrolled up and new messages arrived
+      setNewMessageCount((prev) => prev + (messages.length - prevMessageCountRef.current));
     }
+    prevMessageCountRef.current = messages.length;
   }, [messages, isLoading, searchOpen]);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      setNewMessageCount(0);
+    }
+  }, []);
 
   // Determine which message is the active match
   const activeMatchMsgId =
@@ -262,6 +296,30 @@ export function ChatContainer({
           </div>
         )}
       </div>
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && messages.length > 0 && (
+        <div className="relative">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 animate-fade-in-up">
+            <button
+              onClick={scrollToBottom}
+              className="flex items-center gap-1.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-card transition-all duration-200 hover:shadow-xl"
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+              {newMessageCount > 0 ? (
+                <span className="flex items-center gap-1">
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                    {newMessageCount}
+                  </span>
+                  <span>new</span>
+                </span>
+              ) : (
+                <span>Latest</span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <ChatInput onSend={onSend} disabled={isLoading} />
