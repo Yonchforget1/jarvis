@@ -191,7 +191,7 @@ export default function ToolsPage() {
             <Skeleton key={i} className="h-8 w-24 rounded-full" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
@@ -273,7 +273,7 @@ export default function ToolsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((tool) => (
             <ToolCard key={tool.name} tool={tool} />
           ))}
