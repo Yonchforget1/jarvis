@@ -12,6 +12,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { TopLoader } from "@/components/top-loader";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageTransition } from "@/components/page-transition";
+import { ConnectionMonitor } from "@/components/connection-monitor";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -154,6 +155,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       {/* Keyboard shortcuts help */}
       <KeyboardShortcuts />
+      {/* Connection status monitoring */}
+      <ConnectionMonitor />
     </div>
   );
 }
