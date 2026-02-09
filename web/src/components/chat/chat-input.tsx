@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard, Paperclip, Mic, Upload } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic, Upload, Image } from "lucide-react";
 
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
@@ -14,6 +14,7 @@ interface ChatInputProps {
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [pastedImage, setPastedImage] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragCountRef = useRef(0);
 
@@ -60,6 +61,19 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       handleSubmit();
     }
   };
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        setPastedImage(true);
+        setTimeout(() => setPastedImage(false), 3000);
+        return;
+      }
+    }
+  }, []);
 
   const charCount = value.length;
   const isNearLimit = charCount > WARN_THRESHOLD;
@@ -116,6 +130,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={
                 disabled
                   ? "Jarvis is working..."
@@ -160,6 +175,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             )}
           </button>
         </div>
+        {/* Paste image notification */}
+        {pastedImage && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 animate-fade-in">
+            <Image className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-xs text-amber-500">Image attachments coming soon</span>
+          </div>
+        )}
         <div className="mt-1.5 flex items-center justify-between px-1">
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
             <span className="hidden sm:flex items-center gap-1">
