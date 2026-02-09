@@ -11,6 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.responses import StreamingResponse
 
+from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import ChatRequest, ChatResponse, ToolCallDetail, UserInfo
 
@@ -46,6 +47,12 @@ async def chat(request: Request, body: ChatRequest, user: UserInfo = Depends(get
         )
         for tc in raw_calls
     ]
+
+    audit_log(
+        user_id=user.id, username=user.username, action="chat",
+        detail=f"session={session.session_id} tools={len(tool_calls)}",
+        ip=request.client.host if request.client else "",
+    )
 
     return ChatResponse(
         session_id=session.session_id,
