@@ -85,6 +85,19 @@ export function Header({ onMenuClick }: HeaderProps) {
           />
         </div>
 
+        {/* Mobile search / command palette trigger */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+          }}
+          className="h-8 w-8 sm:hidden text-muted-foreground hover:text-foreground"
+        >
+          <Search className="h-4 w-4" />
+          <span className="sr-only">Search</span>
+        </Button>
+
         {/* Theme toggle */}
         <Button
           variant="ghost"
