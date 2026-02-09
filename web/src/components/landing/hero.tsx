@@ -1,6 +1,99 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const TERMINAL_LINES = [
+  { type: "user", text: "Create a platformer game called SpaceRunner" },
+  { type: "tool", text: "  [tool: create_game_project]" },
+  { type: "tool", text: "  [tool: generate_game_asset] x4" },
+  { type: "tool", text: "  [tool: write_file]" },
+  { type: "tool", text: "  [tool: run_shell]" },
+  {
+    type: "bot",
+    text: "Done. Complete platformer with enemies, coins, physics, and scoring. Ready to play at /games/SpaceRunner/",
+  },
+];
+
+function AnimatedTerminal() {
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [currentChar, setCurrentChar] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (visibleLines >= TERMINAL_LINES.length) {
+      // Reset after a pause
+      timerRef.current = setTimeout(() => {
+        setVisibleLines(0);
+        setCurrentChar(0);
+      }, 4000);
+      return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    }
+
+    const line = TERMINAL_LINES[visibleLines];
+    if (currentChar < line.text.length) {
+      const speed = line.type === "tool" ? 15 : 30;
+      timerRef.current = setTimeout(() => setCurrentChar((c) => c + 1), speed);
+    } else {
+      const delay = line.type === "tool" ? 300 : 600;
+      timerRef.current = setTimeout(() => {
+        setVisibleLines((v) => v + 1);
+        setCurrentChar(0);
+      }, delay);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [visibleLines, currentChar]);
+
+  return (
+    <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5">
+      <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
+        <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+        <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
+        <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+        <span className="ml-3 text-[10px] text-muted-foreground">jarvis terminal</span>
+      </div>
+      <div className="p-4 font-mono text-sm space-y-2 min-h-[180px]">
+        {TERMINAL_LINES.map((line, i) => {
+          if (i > visibleLines) return null;
+          const isCurrentLine = i === visibleLines;
+          const displayText = isCurrentLine ? line.text.slice(0, currentChar) : line.text;
+          const showCursor = isCurrentLine && visibleLines < TERMINAL_LINES.length;
+
+          if (line.type === "user") {
+            return (
+              <p key={i}>
+                <span className="text-green-400">You:</span>{" "}
+                <span className="text-zinc-300">
+                  {displayText}
+                  {showCursor && <span className="inline-block w-1.5 h-4 bg-green-400/60 animate-pulse rounded-sm ml-0.5 align-text-bottom" />}
+                </span>
+              </p>
+            );
+          }
+          if (line.type === "tool") {
+            return (
+              <p key={i} className="text-muted-foreground text-xs">
+                {displayText}
+                {showCursor && <span className="inline-block w-1.5 h-3 bg-muted-foreground/40 animate-pulse rounded-sm ml-0.5 align-text-bottom" />}
+              </p>
+            );
+          }
+          return (
+            <p key={i}>
+              <span className="text-primary">Jarvis:</span>{" "}
+              <span className="text-zinc-300">
+                {displayText}
+                {showCursor && <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm ml-0.5 align-text-bottom" />}
+              </span>
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function Hero() {
   return (
@@ -41,40 +134,8 @@ export function Hero() {
           </Button>
         </div>
 
-        {/* Terminal mockup */}
-        <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5">
-          <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
-            <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
-            <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
-            <span className="ml-3 text-[10px] text-muted-foreground">jarvis terminal</span>
-          </div>
-          <div className="p-4 font-mono text-sm space-y-2">
-            <p>
-              <span className="text-green-400">You:</span>{" "}
-              <span className="text-zinc-300">Create a platformer game called SpaceRunner</span>
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {"  "}[tool: create_game_project]
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {"  "}[tool: generate_game_asset] x4
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {"  "}[tool: write_file]
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {"  "}[tool: run_shell]
-            </p>
-            <p>
-              <span className="text-primary">Jarvis:</span>{" "}
-              <span className="text-zinc-300">
-                Done. Complete platformer with enemies, coins, physics, and scoring.
-                Ready to play at /games/SpaceRunner/
-              </span>
-            </p>
-          </div>
-        </div>
+        {/* Animated terminal */}
+        <AnimatedTerminal />
       </div>
     </section>
   );
