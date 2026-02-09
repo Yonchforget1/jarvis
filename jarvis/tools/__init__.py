@@ -1,7 +1,7 @@
 from . import filesystem, gamedev, game_engine, planner_tools, shell, web
 from jarvis import tool_chain
 
-__all__ = ["register_all"]
+__all__ = ["register_all", "register_all_tools"]
 
 
 def register_all(registry, config=None):
@@ -31,3 +31,7 @@ def register_all(registry, config=None):
 
             computer.register(registry, config)
             browser.register(registry, config)
+
+
+# Alias so both names work across the codebase
+register_all_tools = register_all
