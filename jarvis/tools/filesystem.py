@@ -5,6 +5,30 @@ import shutil
 
 from jarvis.tool_registry import ToolDef
 
+# Paths that should never be written to / deleted by the AI agent
+_SENSITIVE_PATTERNS = (
+    ".env", ".git", "config.yaml", "__pycache__",
+)
+
+
+def _validate_path(path: str, *, write: bool = False) -> str | None:
+    """Validate a filesystem path. Returns an error message or None if safe.
+
+    Checks:
+    - Resolves to a real path (no symlink tricks)
+    - No null bytes
+    - For write operations: blocks sensitive files
+    """
+    if "\x00" in path:
+        return "Error: path contains null bytes."
+    resolved = os.path.realpath(os.path.expanduser(path))
+    if write:
+        basename = os.path.basename(resolved).lower()
+        for pattern in _SENSITIVE_PATTERNS:
+            if basename == pattern or (os.sep + pattern) in resolved.lower():
+                return f"Error: refusing to modify sensitive path: {path}"
+    return None
+
 
 def read_file(path: str) -> str:
     """Read and return the contents of a file."""
@@ -21,6 +45,9 @@ def read_file(path: str) -> str:
 
 def write_file(path: str, content: str) -> str:
     """Write content to a file."""
+    err = _validate_path(path, write=True)
+    if err:
+        return err
     try:
         path = os.path.expanduser(path)
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
@@ -55,6 +82,9 @@ def list_directory(path: str) -> str:
 
 def delete_path(path: str) -> str:
     """Delete a file or directory."""
+    err = _validate_path(path, write=True)
+    if err:
+        return err
     try:
         path = os.path.expanduser(path)
         if os.path.isfile(path):
@@ -71,6 +101,13 @@ def delete_path(path: str) -> str:
 
 def move_copy(source: str, destination: str, operation: str = "move") -> str:
     """Move or copy a file/directory."""
+    if operation == "move":
+        err = _validate_path(source, write=True)
+        if err:
+            return err
+    err = _validate_path(destination, write=True)
+    if err:
+        return err
     try:
         source = os.path.expanduser(source)
         destination = os.path.expanduser(destination)
