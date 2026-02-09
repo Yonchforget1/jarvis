@@ -124,7 +124,20 @@ export default function LearningsPage() {
       </div>
 
       {/* Timeline */}
-      {filtered.length === 0 ? (
+      {learnings.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in-up">
+          <div className="relative mb-6">
+            <div className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-purple-500/10 via-cyan-500/10 to-yellow-500/10 blur-xl animate-glow-pulse" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border/50">
+              <Brain className="h-8 w-8 text-purple-400" />
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold mb-1">No learnings yet</h3>
+          <p className="text-sm text-muted-foreground/60 max-w-xs text-center leading-relaxed">
+            As JARVIS completes tasks, it saves insights here. Start a conversation to build your knowledge base.
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 animate-fade-in-up">
           <Brain className="h-10 w-10 text-muted-foreground/20 mb-3" />
           <p className="text-sm text-muted-foreground">No learnings match your filters</p>
