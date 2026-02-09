@@ -1,3 +1,5 @@
+import { Star } from "lucide-react";
+
 const TESTIMONIALS = [
   {
     quote:
@@ -5,6 +7,7 @@ const TESTIMONIALS = [
     name: "Marcus Chen",
     title: "CTO, TechForge",
     initial: "M",
+    stars: 5,
   },
   {
     quote:
@@ -12,6 +15,7 @@ const TESTIMONIALS = [
     name: "Sarah Kim",
     title: "Indie Game Developer",
     initial: "S",
+    stars: 5,
   },
   {
     quote:
@@ -19,6 +23,15 @@ const TESTIMONIALS = [
     name: "David Park",
     title: "AI Researcher",
     initial: "D",
+    stars: 5,
+  },
+  {
+    quote:
+      "We replaced three separate SaaS tools with Jarvis. The ROI was immediate - web scraping, file management, and code execution all in one platform.",
+    name: "Elena Voss",
+    title: "VP of Engineering, DataPulse",
+    initial: "E",
+    stars: 5,
   },
 ];
 
@@ -35,17 +48,23 @@ export function Testimonials() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {TESTIMONIALS.map((t) => (
             <div
               key={t.name}
-              className="rounded-2xl border border-white/5 bg-white/[0.02] p-6"
+              className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 hover:border-primary/20 hover:bg-white/[0.04] hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
             >
+              {/* Stars */}
+              <div className="flex gap-0.5 mb-4">
+                {Array.from({ length: t.stars }).map((_, i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                 &ldquo;{t.quote}&rdquo;
               </p>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary group-hover:bg-primary/20 transition-colors">
                   {t.initial}
                 </div>
                 <div>
