@@ -11,6 +11,7 @@ export interface ChatMessage {
   content: string;
   tool_calls?: ToolCallDetail[];
   timestamp: string;
+  isError?: boolean;
 }
 
 export interface ToolInfo {

@@ -170,3 +170,87 @@
 .animate-pulse-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 5%), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.585 0.233 264 / 0); }
+  50% { box-shadow: 0 0 20px 4px oklch(0.585 0.233 264 / 0.15); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Smooth scrolling */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Selection color */
+::selection {
+  background: oklch(0.585 0.233 264 / 0.3);
+}
+
+/* Prose overrides for chat */
+.prose pre {
+  margin: 0.5rem 0 !important;
+}
+.prose p {
+  margin: 0.25rem 0 !important;
+}
+.prose ul, .prose ol {
+  margin: 0.25rem 0 !important;
+}
+.prose li {
+  margin: 0.125rem 0 !important;
+}

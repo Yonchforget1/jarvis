@@ -17,12 +17,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // Close sidebar on route change (handled by sidebar onClose)
+  // Close sidebar on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-sm text-muted-foreground">Loading...</span>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-fade-in-up">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-2xl bg-primary/20 border border-primary/10 flex items-center justify-center">
+              <span className="text-lg font-bold text-primary">J</span>
+            </div>
+            <div className="absolute inset-0 rounded-2xl animate-glow-pulse" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-dot" />
+            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-dot" style={{ animationDelay: "0.2s" }} />
+            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-dot" style={{ animationDelay: "0.4s" }} />
+          </div>
         </div>
       </div>
     );
@@ -31,30 +50,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block shrink-0">
         <Sidebar />
       </div>
 
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="relative z-10 h-full">
-            <Sidebar onClose={() => setSidebarOpen(false)} />
-          </div>
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+        <div
+          className={`relative z-10 h-full transition-transform duration-300 ease-out ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <Sidebar onClose={() => setSidebarOpen(false)} />
         </div>
-      )}
+      </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          onMenuClick={() => setSidebarOpen(true)}
-        />
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
