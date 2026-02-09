@@ -13,6 +13,7 @@ import {
   Wrench,
   Monitor,
   Eye,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useTools } from "@/hooks/use-tools";
 import { Input } from "@/components/ui/input";
@@ -83,8 +84,9 @@ const CATEGORY_META: Record<
   },
 };
 
-function ToolCard({ tool }: { tool: ToolInfo }) {
+function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const isExpanded = forceExpanded !== undefined ? forceExpanded : expanded;
   const meta = CATEGORY_META[tool.category] || CATEGORY_META.other;
   const paramCount = Object.keys(tool.parameters?.properties || {}).length;
 
@@ -93,7 +95,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
       className={`rounded-xl border border-border/50 border-l-2 ${meta.border} bg-card/50 overflow-hidden transition-all duration-200 hover:border-border hover:bg-card/80`}
     >
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setExpanded(!isExpanded)}
         className="flex w-full items-center gap-3 p-4 text-left transition-colors"
       >
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${meta.bg} shrink-0`}>
@@ -112,13 +114,13 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
             {tool.description}
           </p>
         </div>
-        {expanded ? (
+        {isExpanded ? (
           <ChevronDown className="h-4 w-4 text-muted-foreground/50 shrink-0" />
         ) : (
           <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
         )}
       </button>
-      {expanded && (
+      {isExpanded && (
         <div className="border-t border-border/50 p-4 animate-fade-in-up">
           <p className="text-sm leading-relaxed mb-3">{tool.description}</p>
           {tool.parameters?.properties &&
@@ -166,6 +168,7 @@ export default function ToolsPage() {
   const { tools, loading, error, refetch } = useTools();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [allExpanded, setAllExpanded] = useState<boolean | undefined>(undefined);
 
   const filtered = tools.filter((t) => {
     const matchesSearch =
@@ -212,11 +215,22 @@ export default function ToolsPage() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
       <div className="mx-auto max-w-6xl space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Tools</h1>
-        <p className="text-sm text-muted-foreground/60 mt-0.5">
-          {filtered.length} of {tools.length} professional tools
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Tools</h1>
+          <p className="text-sm text-muted-foreground/60 mt-0.5">
+            {filtered.length} of {tools.length} professional tools
+          </p>
+        </div>
+        {tools.length > 0 && (
+          <button
+            onClick={() => setAllExpanded(allExpanded === true ? false : true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5" />
+            {allExpanded ? "Collapse All" : "Expand All"}
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -289,7 +303,7 @@ export default function ToolsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((tool) => (
-            <ToolCard key={tool.name} tool={tool} />
+            <ToolCard key={tool.name} tool={tool} forceExpanded={allExpanded} />
           ))}
         </div>
       )}
