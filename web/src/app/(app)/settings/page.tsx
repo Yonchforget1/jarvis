@@ -13,18 +13,29 @@ import {
   EyeOff,
   Sparkles,
   Sliders,
+  Download,
+  Trash2,
+  AlertTriangle,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
+import { useLearnings } from "@/hooks/use-learnings";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { api } from "@/lib/api";
 
 export default function SettingsPage() {
   const { settings, modelsData, loading, saving, updateSettings } = useSettings();
+  const { learnings } = useLearnings();
   const toast = useToast();
+  const { theme, setTheme } = useTheme();
 
   const [backend, setBackend] = useState("");
   const [model, setModel] = useState("");
@@ -32,6 +43,8 @@ export default function SettingsPage() {
   const [maxTokens, setMaxTokens] = useState(4096);
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [clearingAllSessions, setClearingAllSessions] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Initialize form from settings
   useEffect(() => {
@@ -55,7 +68,6 @@ export default function SettingsPage() {
 
   const handleBackendChange = (newBackend: string) => {
     setBackend(newBackend);
-    // Auto-select first model for the new backend
     const models = modelsData?.models[newBackend];
     if (models && models.length > 0) {
       setModel(models[0].id);
@@ -71,11 +83,46 @@ export default function SettingsPage() {
       if (apiKey) update.api_key = apiKey;
 
       await updateSettings(update);
-      setApiKey(""); // Clear after save
+      setApiKey("");
       setHasChanges(false);
       toast.success("Settings saved", "Your preferences have been updated.");
     } catch {
       toast.error("Failed to save", "Please check your settings and try again.");
+    }
+  };
+
+  const handleExportLearnings = () => {
+    const data = JSON.stringify(learnings, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-learnings-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Export complete", `${learnings.length} learnings exported.`);
+  };
+
+  const handleClearAllSessions = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 5000);
+      return;
+    }
+    setClearingAllSessions(true);
+    try {
+      const sessions = await api.get<{ session_id: string }[]>("/api/sessions");
+      for (const s of sessions) {
+        await api.delete(`/api/sessions/${s.session_id}`);
+      }
+      setConfirmClear(false);
+      toast.success("Sessions cleared", `${sessions.length} sessions deleted.`);
+    } catch {
+      toast.error("Failed", "Could not clear all sessions.");
+    } finally {
+      setClearingAllSessions(false);
     }
   };
 
@@ -92,6 +139,12 @@ export default function SettingsPage() {
 
   const currentModels = modelsData?.models[backend] || [];
 
+  const themeOptions = [
+    { id: "light", label: "Light", icon: Sun },
+    { id: "dark", label: "Dark", icon: Moon },
+    { id: "system", label: "System", icon: Monitor },
+  ];
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 pb-20 animate-fade-in-up">
@@ -99,12 +152,46 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure your AI backend, model, and tools.
+            Configure your AI backend, model, appearance, and data.
           </p>
         </div>
 
+        {/* Theme */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sun className="h-4 w-4 text-primary" />
+              Appearance
+            </CardTitle>
+            <CardDescription>Choose how Jarvis looks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {themeOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setTheme(opt.id)}
+                  className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
+                    theme === opt.id
+                      ? "border-primary/50 bg-primary/5 shadow-sm shadow-primary/10"
+                      : "border-border/50 bg-muted/30 hover:border-border hover:bg-muted/50"
+                  }`}
+                >
+                  {theme === opt.id && (
+                    <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />
+                  )}
+                  <opt.icon className={`h-5 w-5 ${theme === opt.id ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`text-sm font-medium ${theme === opt.id ? "text-primary" : ""}`}>
+                    {opt.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* AI Backend */}
-        <Card className="border-white/5 bg-card/50 backdrop-blur-sm">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Cpu className="h-4 w-4 text-primary" />
@@ -121,7 +208,7 @@ export default function SettingsPage() {
                   className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
                     backend === b.id
                       ? "border-primary/50 bg-primary/5 shadow-sm shadow-primary/10"
-                      : "border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]"
+                      : "border-border/50 bg-muted/30 hover:border-border hover:bg-muted/50"
                   }`}
                 >
                   {backend === b.id && (
@@ -138,7 +225,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Model Selection */}
-        <Card className="border-white/5 bg-card/50 backdrop-blur-sm">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Sliders className="h-4 w-4 text-primary" />
@@ -155,7 +242,7 @@ export default function SettingsPage() {
                   className={`flex w-full items-center justify-between rounded-xl border p-3 transition-all duration-200 ${
                     model === m.id
                       ? "border-primary/50 bg-primary/5"
-                      : "border-white/5 bg-white/[0.02] hover:border-white/10"
+                      : "border-border/50 bg-muted/30 hover:border-border"
                   }`}
                 >
                   <div className="text-left">
@@ -171,7 +258,7 @@ export default function SettingsPage() {
               ))}
             </div>
 
-            <Separator className="bg-white/5" />
+            <Separator className="bg-border/50" />
 
             {/* Max tokens */}
             <div className="space-y-2">
@@ -184,7 +271,7 @@ export default function SettingsPage() {
                   max={32768}
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(Number(e.target.value))}
-                  className="w-32 bg-secondary/50 border-white/10"
+                  className="w-32 bg-secondary/50 border-border/50"
                 />
                 <span className="text-xs text-muted-foreground">
                   (256 - 32,768)
@@ -195,7 +282,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* API Key */}
-        <Card className="border-white/5 bg-card/50 backdrop-blur-sm">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Key className="h-4 w-4 text-primary" />
@@ -227,7 +314,7 @@ export default function SettingsPage() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="Enter your API key to override server default"
-                  className="pr-10 bg-secondary/50 border-white/10"
+                  className="pr-10 bg-secondary/50 border-border/50"
                 />
                 <button
                   type="button"
@@ -249,7 +336,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Tools Configuration */}
-        <Card className="border-white/5 bg-card/50 backdrop-blur-sm">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Wrench className="h-4 w-4 text-primary" />
@@ -272,12 +359,12 @@ export default function SettingsPage() {
               ].map((group) => (
                 <div
                   key={group.name}
-                  className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-2.5"
+                  className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 p-2.5"
                 >
                   <div className={`text-xs font-medium ${group.color}`}>
                     {group.name}
                   </div>
-                  <span className="ml-auto rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                     {group.count}
                   </span>
                 </div>
@@ -286,8 +373,61 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Data & Export */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Download className="h-4 w-4 text-primary" />
+              Data Export
+            </CardTitle>
+            <CardDescription>Download your data for backup or analysis</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
+              onClick={handleExportLearnings}
+            >
+              <Download className="h-4 w-4 text-primary" />
+              Export Learnings ({learnings.length} entries)
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="border-red-500/20 bg-red-500/[0.02] backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-red-400">
+              <AlertTriangle className="h-4 w-4" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>Irreversible actions. Be careful.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="outline"
+              className={`w-full justify-start gap-2 h-11 rounded-xl transition-all duration-200 ${
+                confirmClear
+                  ? "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                  : "border-red-500/20 text-muted-foreground hover:text-red-400 hover:border-red-500/30"
+              }`}
+              onClick={handleClearAllSessions}
+              disabled={clearingAllSessions}
+            >
+              {clearingAllSessions ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {confirmClear
+                ? "Click again to confirm - this cannot be undone"
+                : "Delete All Chat Sessions"}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Save Button */}
-        <div className="sticky bottom-0 bg-background/80 backdrop-blur-xl py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 border-t border-white/5">
+        <div className="sticky bottom-0 bg-background/80 backdrop-blur-xl py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 border-t border-border/50">
           <Button
             onClick={handleSave}
             disabled={!hasChanges || saving}
