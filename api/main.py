@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 import time
+import uuid
 
 # Ensure project root is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -88,13 +89,16 @@ async def request_logging_middleware(request: Request, call_next):
             status_code=503,
             content={"detail": "Server is shutting down"},
         )
+    # Assign a correlation ID for request tracing
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Request-ID"] = request_id
     if path == "/api/health" and response.status_code == 200:
-        log.debug("%s %s %d %.0fms", request.method, path, response.status_code, duration_ms)
+        log.debug("[%s] %s %s %d %.0fms", request_id, request.method, path, response.status_code, duration_ms)
     else:
-        log.info("%s %s %d %.0fms", request.method, path, response.status_code, duration_ms)
+        log.info("[%s] %s %s %d %.0fms", request_id, request.method, path, response.status_code, duration_ms)
     return response
 
 
