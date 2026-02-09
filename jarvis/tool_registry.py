@@ -1,7 +1,8 @@
 import importlib.util
 import logging
 import os
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from typing import Callable
 
 log = logging.getLogger("jarvis.tools")
@@ -57,11 +58,25 @@ class ToolDef:
         return self.func(**args)
 
 
+@dataclass
+class ToolStats:
+    """Tracks tool usage statistics."""
+
+    call_count: int = 0
+    error_count: int = 0
+    total_duration_ms: float = 0.0
+
+    @property
+    def avg_duration_ms(self) -> float:
+        return self.total_duration_ms / self.call_count if self.call_count else 0.0
+
+
 class ToolRegistry:
     """Collects tools and handles dispatch."""
 
     def __init__(self):
         self._tools: dict[str, ToolDef] = {}
+        self._stats: dict[str, ToolStats] = {}
 
     def register(self, tool: ToolDef):
         self._tools[tool.name] = tool
@@ -89,11 +104,44 @@ class ToolRegistry:
         missing = [r for r in required if r not in args]
         if missing:
             return f"Tool error ({name}): missing required parameters: {', '.join(missing)}"
+
+        stats = self._stats.setdefault(name, ToolStats())
+        start = time.perf_counter()
         try:
-            return tool.execute(args)
+            result = tool.execute(args)
+            duration_ms = (time.perf_counter() - start) * 1000
+            stats.call_count += 1
+            stats.total_duration_ms += duration_ms
+            log.info("Tool %s completed in %.0fms", name, duration_ms)
+            return result
         except Exception as e:
-            log.exception("Tool %s failed with args %s", name, args)
+            duration_ms = (time.perf_counter() - start) * 1000
+            stats.call_count += 1
+            stats.error_count += 1
+            stats.total_duration_ms += duration_ms
+            log.exception("Tool %s failed in %.0fms with args %s", name, duration_ms, args)
             return f"Tool error ({name}): {e}"
+
+    def get_stats(self) -> dict[str, ToolStats]:
+        """Return usage statistics for all tools that have been called."""
+        return dict(self._stats)
+
+    def get_stats_summary(self) -> list[dict]:
+        """Return a list of tool stats dicts sorted by call count descending."""
+        return sorted(
+            [
+                {
+                    "name": name,
+                    "calls": s.call_count,
+                    "errors": s.error_count,
+                    "avg_ms": round(s.avg_duration_ms, 1),
+                    "total_ms": round(s.total_duration_ms, 1),
+                }
+                for name, s in self._stats.items()
+            ],
+            key=lambda x: x["calls"],
+            reverse=True,
+        )
 
     def load_builtin_tools(self):
         from jarvis.tools import register_all
