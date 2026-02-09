@@ -1,8 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Cpu, Clock, Zap } from "lucide-react";
+import { Activity, Cpu, Clock, Zap, HardDrive, Server, MemoryStick } from "lucide-react";
 import type { SystemStats } from "@/lib/types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface HealthData {
+  system?: {
+    python_version?: string;
+    platform?: string;
+    architecture?: string;
+    memory_mb?: number;
+    cpu_percent?: number;
+  };
+  version?: string;
+  tool_count?: number;
+  learnings_count?: number;
+}
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -30,6 +45,24 @@ function LiveUptime({ initialSeconds }: { initialSeconds: number }) {
 }
 
 export function BackendStatus({ stats }: { stats: SystemStats }) {
+  const [health, setHealth] = useState<HealthData | null>(null);
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/health`);
+        if (res.ok) {
+          setHealth(await res.json());
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const items = [
     {
       icon: Activity,
@@ -61,6 +94,45 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
     },
   ];
 
+  // Add system info from health endpoint
+  const sysInfo = health?.system;
+  const systemItems = [];
+
+  if (sysInfo?.python_version) {
+    systemItems.push({
+      icon: Server,
+      label: "Python",
+      value: <span className="text-sm font-mono">{sysInfo.python_version}</span>,
+      color: "text-cyan-400",
+    });
+  }
+  if (sysInfo?.platform) {
+    systemItems.push({
+      icon: HardDrive,
+      label: "Platform",
+      value: (
+        <span className="text-sm font-mono">
+          {sysInfo.platform} {sysInfo.architecture ? `(${sysInfo.architecture})` : ""}
+        </span>
+      ),
+      color: "text-orange-400",
+    });
+  }
+  if (sysInfo?.memory_mb) {
+    systemItems.push({
+      icon: MemoryStick,
+      label: "Memory",
+      value: (
+        <span className="text-sm font-mono tabular-nums">
+          {sysInfo.memory_mb >= 1024
+            ? `${(sysInfo.memory_mb / 1024).toFixed(1)} GB`
+            : `${sysInfo.memory_mb} MB`}
+        </span>
+      ),
+      color: "text-pink-400",
+    });
+  }
+
   return (
     <div className="rounded-2xl border border-border/50 bg-card/50 p-5 animate-fade-in-up">
       <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
@@ -77,6 +149,35 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
           </div>
         ))}
       </div>
+
+      {/* System details */}
+      {systemItems.length > 0 && (
+        <>
+          <div className="my-4 border-t border-border/30" />
+          <h4 className="mb-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">
+            Runtime
+          </h4>
+          <div className="space-y-3">
+            {systemItems.map((item) => (
+              <div key={item.label} className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <item.icon className={`h-4 w-4 ${item.color}`} />
+                  {item.label}
+                </div>
+                {item.value}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* API Version */}
+      {health?.version && (
+        <div className="mt-4 pt-3 border-t border-border/30 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">API Version</span>
+          <span className="text-xs font-mono text-muted-foreground/60">v{health.version}</span>
+        </div>
+      )}
     </div>
   );
 }
