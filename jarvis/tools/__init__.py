@@ -1,5 +1,7 @@
 from . import filesystem, gamedev, shell, web, computer, browser
 
+__all__ = ["register_all"]
+
 
 def register_all(registry, config=None):
     """Register all built-in tools. Pass config to enable computer/browser tools."""
