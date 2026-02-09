@@ -56,7 +56,7 @@ const TOOL_GROUPS = [
 
 interface SidebarProps {
   onClose?: () => void;
-  onSessionSelect?: (sessionId: string) => void;
+  onSessionSelect?: (sessionId: string, name?: string) => void;
   activeSessionId?: string | null;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -151,9 +151,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
     onClose?.();
   };
 
-  const handleSessionClick = (sessionId: string) => {
+  const handleSessionClick = (sessionId: string, name?: string) => {
     if (onSessionSelect) {
-      onSessionSelect(sessionId);
+      onSessionSelect(sessionId, name);
     }
     router.push("/chat");
     onClose?.();
@@ -281,7 +281,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 side="right"
               >
                 <button
-                  onClick={() => handleSessionClick(session.session_id)}
+                  onClick={() => handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation")}
                   className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"
@@ -351,7 +351,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
                   }`}
-                  onClick={() => handleSessionClick(session.session_id)}
+                  onClick={() => handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation")}
                 >
                   <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                   <div className="flex-1 min-w-0">

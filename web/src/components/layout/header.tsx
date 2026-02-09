@@ -2,9 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
+import { useSessionContext } from "@/lib/session-context";
 
 const PAGE_TITLES: Record<string, string> = {
   "/chat": "Chat",
@@ -23,6 +24,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const title = PAGE_TITLES[pathname] || "Jarvis";
   const { status, latency } = useConnection();
   const { theme, setTheme } = useTheme();
+  const { selectedSessionName } = useSessionContext();
 
   return (
     <header role="banner" className="flex h-14 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
@@ -35,10 +37,18 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-4 w-4" />
         </Button>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm text-muted-foreground/50 hidden sm:inline">JARVIS</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/30 hidden sm:block" />
-          <h2 className="text-sm font-semibold">{title}</h2>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm text-muted-foreground/50 hidden sm:inline shrink-0">JARVIS</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/30 hidden sm:block shrink-0" />
+          <h2 className="text-sm font-semibold shrink-0">{title}</h2>
+          {pathname === "/chat" && selectedSessionName && (
+            <>
+              <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />
+              <span className="text-sm text-muted-foreground/60 truncate max-w-[200px]">
+                {selectedSessionName}
+              </span>
+            </>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">

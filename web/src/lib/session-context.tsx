@@ -4,8 +4,10 @@ import { createContext, useContext, useState, useCallback } from "react";
 
 interface SessionContextType {
   selectedSessionId: string | null;
-  selectSession: (id: string) => void;
+  selectedSessionName: string | null;
+  selectSession: (id: string, name?: string) => void;
   clearSelection: () => void;
+  setSessionName: (name: string) => void;
   unreadCount: number;
   incrementUnread: () => void;
   clearUnread: () => void;
@@ -13,8 +15,10 @@ interface SessionContextType {
 
 const SessionContext = createContext<SessionContextType>({
   selectedSessionId: null,
+  selectedSessionName: null,
   selectSession: () => {},
   clearSelection: () => {},
+  setSessionName: () => {},
   unreadCount: 0,
   incrementUnread: () => {},
   clearUnread: () => {},
@@ -24,14 +28,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
   );
+  const [selectedSessionName, setSelectedSessionName] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const selectSession = useCallback((id: string) => {
+  const selectSession = useCallback((id: string, name?: string) => {
     setSelectedSessionId(id || null);
+    setSelectedSessionName(name || null);
   }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedSessionId(null);
+    setSelectedSessionName(null);
+  }, []);
+
+  const setSessionName = useCallback((name: string) => {
+    setSelectedSessionName(name);
   }, []);
 
   const incrementUnread = useCallback(() => {
@@ -44,7 +55,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionContext.Provider
-      value={{ selectedSessionId, selectSession, clearSelection, unreadCount, incrementUnread, clearUnread }}
+      value={{ selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread }}
     >
       {children}
     </SessionContext.Provider>
