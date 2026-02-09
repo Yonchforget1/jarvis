@@ -26,6 +26,7 @@ import {
   Clock,
   Pin,
   PinOff,
+  Search,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
@@ -119,6 +120,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [editValue, setEditValue] = useState("");
   const avatarHue = usernameHue(user?.username || "User");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [sessionSearch, setSessionSearch] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -293,6 +295,18 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           </div>
         ) : (
           <>
+            {/* Session search */}
+            {sessions.length > 3 && (
+              <div className="relative px-1 mb-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
+                <input
+                  value={sessionSearch}
+                  onChange={(e) => setSessionSearch(e.target.value)}
+                  placeholder="Search chats..."
+                  className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
+                />
+              </div>
+            )}
             {sessionsLoading ? (
               <div className="space-y-1.5 px-1">
                 {[1, 2, 3].map((i) => (
@@ -310,7 +324,17 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 No conversations yet
               </p>
             ) : (
-              sessions.slice(0, 15).map((session, idx, arr) => {
+              sessions
+                .filter((s) => {
+                  if (!sessionSearch.trim()) return true;
+                  const q = sessionSearch.toLowerCase();
+                  return (
+                    (s.customName?.toLowerCase().includes(q)) ||
+                    (s.autoTitle?.toLowerCase().includes(q)) ||
+                    (s.preview?.toLowerCase().includes(q))
+                  );
+                })
+                .slice(0, 15).map((session, idx, arr) => {
                 const group = sessionDateGroup(session.last_active);
                 const prevGroup = idx > 0 ? sessionDateGroup(arr[idx - 1].last_active) : null;
                 const showGroupHeader = group !== prevGroup;
