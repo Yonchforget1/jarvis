@@ -17,6 +17,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const { selectedSessionId, selectSession } = useSessionContext();
 
   // Load collapsed state from localStorage
@@ -52,6 +53,11 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         e.preventDefault();
         toggleSidebarCollapse();
       }
+      // Ctrl+Shift+F toggles focus mode
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setFocusMode((prev) => !prev);
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -83,7 +89,11 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background">
       <TopLoader />
       {/* Desktop sidebar */}
-      <div className="hidden lg:block shrink-0">
+      <div
+        className={`hidden lg:block shrink-0 transition-all duration-300 ease-in-out ${
+          focusMode ? "lg:hidden" : ""
+        }`}
+      >
         <Sidebar
           onSessionSelect={selectSession}
           activeSessionId={selectedSessionId}
@@ -93,36 +103,49 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile sidebar overlay */}
-      <div
-        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
-          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-      >
+      {!focusMode && (
         <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <div
-          className={`relative z-10 h-full transition-transform duration-300 ease-out ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+            sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
-          <Sidebar
-            onClose={() => setSidebarOpen(false)}
-            onSessionSelect={selectSession}
-            activeSessionId={selectedSessionId}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
           />
+          <div
+            className={`relative z-10 h-full transition-transform duration-300 ease-out ${
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <Sidebar
+              onClose={() => setSidebarOpen(false)}
+              onSessionSelect={selectSession}
+              activeSessionId={selectedSessionId}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-hidden pb-14 lg:pb-0">
+        {!focusMode && <Header onMenuClick={() => setSidebarOpen(true)} />}
+        <main className={`flex-1 overflow-hidden ${focusMode ? "pb-0" : "pb-14 lg:pb-0"}`}>
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
-        <MobileNav />
+        {!focusMode && <MobileNav />}
       </div>
+
+      {/* Focus mode exit hint */}
+      {focusMode && (
+        <button
+          onClick={() => setFocusMode(false)}
+          className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 px-3 py-1.5 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-card transition-all duration-200 opacity-0 hover:opacity-100 focus:opacity-100"
+        >
+          <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+Shift+F</kbd>
+          <span>Exit focus</span>
+        </button>
+      )}
 
       {/* Command palette */}
       <CommandPalette />
