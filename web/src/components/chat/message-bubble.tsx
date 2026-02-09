@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -127,6 +127,43 @@ function MessageReactions({ messageId }: { messageId: string }) {
   );
 }
 
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+
+function extractUrls(text: string): string[] {
+  const matches = text.match(URL_REGEX);
+  if (!matches) return [];
+  // Deduplicate
+  return [...new Set(matches)].slice(0, 3);
+}
+
+function LinkBadges({ urls }: { urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1">
+      {urls.map((url) => {
+        let domain: string;
+        try {
+          domain = new URL(url).hostname.replace("www.", "");
+        } catch {
+          domain = url.slice(0, 30);
+        }
+        return (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg bg-primary/5 border border-primary/10 px-2 py-0.5 text-[10px] text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <ExternalLink className="h-2.5 w-2.5" />
+            {domain}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function HighlightedText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
 
@@ -178,6 +215,11 @@ export function MessageBubble({
     if (!isUser || !searchQuery) return null;
     return <HighlightedText text={message.content} query={searchQuery} />;
   }, [isUser, message.content, searchQuery]);
+
+  const userUrls = useMemo(() => {
+    if (!isUser) return [];
+    return extractUrls(message.content);
+  }, [isUser, message.content]);
 
   return (
     <div
@@ -245,9 +287,12 @@ export function MessageBubble({
           }`}
         >
           {isUser ? (
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">
-              {userContent || message.content}
-            </p>
+            <div>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                {userContent || message.content}
+              </p>
+              <LinkBadges urls={userUrls} />
+            </div>
           ) : isStreaming && !message.content ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{message.streamStatus || "Thinking..."}</span>
