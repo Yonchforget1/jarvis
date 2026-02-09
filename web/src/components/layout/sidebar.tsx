@@ -21,7 +21,10 @@ import {
   MessageCircle,
   ChevronsLeft,
   ChevronsRight,
+  Pencil,
+  Check,
 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
@@ -66,7 +69,30 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { sessions, deleteSession } = useSessions();
+  const { sessions, deleteSession, renameSession } = useSessions();
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingSessionId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingSessionId]);
+
+  const startRename = (sessionId: string, currentName: string) => {
+    setEditingSessionId(sessionId);
+    setEditValue(currentName);
+  };
+
+  const finishRename = () => {
+    if (editingSessionId) {
+      renameSession(editingSessionId, editValue);
+      setEditingSessionId(null);
+      setEditValue("");
+    }
+  };
 
   const handleNewChat = () => {
     if (onSessionSelect) {
@@ -209,22 +235,60 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 >
                   <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs truncate">
-                      {session.preview || "New conversation"}
-                    </p>
+                    {editingSessionId === session.session_id ? (
+                      <input
+                        ref={editInputRef}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") finishRename();
+                          if (e.key === "Escape") setEditingSessionId(null);
+                        }}
+                        onBlur={finishRename}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full text-xs bg-transparent outline-none border-b border-primary/40 pb-0.5"
+                      />
+                    ) : (
+                      <p className="text-xs truncate">
+                        {session.customName || session.preview || "New conversation"}
+                      </p>
+                    )}
                     <p className="text-[10px] text-muted-foreground/40">
                       {timeAgo(session.last_active)} &middot; {session.message_count} msgs
                     </p>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteSession(session.session_id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-400/10 hover:text-red-400 transition-all"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                    {editingSessionId === session.session_id ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          finishRename();
+                        }}
+                        className="p-1 rounded-md hover:bg-green-400/10 hover:text-green-400"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRename(session.session_id, session.customName || session.preview || "");
+                        }}
+                        className="p-1 rounded-md hover:bg-primary/10 hover:text-primary"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSession(session.session_id);
+                      }}
+                      className="p-1 rounded-md hover:bg-red-400/10 hover:text-red-400"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
