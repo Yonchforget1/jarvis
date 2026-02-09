@@ -209,7 +209,8 @@ export default function ToolsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-5 pb-20">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
+      <div className="mx-auto max-w-6xl space-y-5">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Tools</h1>
@@ -292,6 +293,7 @@ export default function ToolsPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

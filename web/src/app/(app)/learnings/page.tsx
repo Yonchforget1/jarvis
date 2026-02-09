@@ -65,7 +65,8 @@ export default function LearningsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-5 pb-20">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
+      <div className="mx-auto max-w-6xl space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -148,6 +149,7 @@ export default function LearningsPage() {
       ) : (
         <LearningsTimeline learnings={filtered} />
       )}
+      </div>
     </div>
   );
 }

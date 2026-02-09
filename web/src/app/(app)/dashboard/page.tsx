@@ -23,7 +23,8 @@ export default function DashboardPage() {
 
   if (statsLoading) {
     return (
-      <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-6">
+      <div className="h-full overflow-y-auto p-4 sm:p-6">
+        <div className="mx-auto max-w-6xl space-y-6">
         {/* Header skeleton */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
@@ -59,6 +60,7 @@ export default function DashboardPage() {
           <Skeleton className="md:col-span-2 lg:col-span-2 h-48 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
         </div>
+        </div>
       </div>
     );
   }
@@ -72,7 +74,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-6 pb-20">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
+      <div className="mx-auto max-w-6xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -187,6 +190,7 @@ export default function DashboardPage() {
           </h3>
           {stats && <BackendStatus stats={stats} />}
         </div>
+      </div>
       </div>
     </div>
   );
