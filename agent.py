@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from jarvis.config import Config
 from jarvis.conversation import Conversation
+from jarvis.logger import log
 from jarvis.tool_registry import ToolRegistry
 from jarvis.backends import create_backend
 from jarvis.core import build_system_prompt
@@ -15,8 +16,19 @@ from jarvis.memory import Memory
 
 def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
-    config = Config.load()
-    backend = create_backend(config)
+    try:
+        config = Config.load()
+    except ValueError as e:
+        log.error("Configuration error: %s", e)
+        sys.exit(1)
+    except Exception as e:
+        log.error("Failed to load config: %s", e)
+        sys.exit(1)
+    try:
+        backend = create_backend(config)
+    except Exception as e:
+        log.error("Failed to initialize %s backend: %s", config.backend, e)
+        sys.exit(1)
 
     # Load persistent memory
     memory = Memory(path=os.path.join(project_root, "memory", "learnings.json"))
@@ -36,10 +48,10 @@ def main():
 
     registry.load_plugins(os.path.join(project_root, "plugins"))
 
-    print(f"Jarvis AI Agent ({config.backend}/{config.model})")
-    print(f"Tools loaded: {len(registry.all_tools())}")
+    log.info("Jarvis AI Agent (%s/%s)", config.backend, config.model)
+    log.info("Tools loaded: %d", len(registry.all_tools()))
     if memory.count:
-        print(f"Learnings loaded: {memory.count}")
+        log.info("Learnings loaded: %d", memory.count)
     print("Commands: 'quit' to exit, '/clear' to reset conversation")
     print("-" * 50)
 
