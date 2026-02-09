@@ -19,13 +19,41 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-2 right-2 rounded-lg bg-white/10 p-1.5 text-zinc-400 hover:text-white hover:bg-white/20 transition-all duration-200 opacity-0 group-hover:opacity-100"
+      className="absolute top-2 right-2 rounded-lg bg-background/80 backdrop-blur-sm p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 opacity-0 group-hover:opacity-100 border border-border/50"
       title="Copy code"
     >
       {copied ? (
         <Check className="h-3.5 w-3.5 text-green-400" />
       ) : (
         <Copy className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
+function MessageCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+      title="Copy message"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-green-400" />
+          <span className="text-green-400">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" />
+          <span>Copy</span>
+        </>
       )}
     </button>
   );
@@ -94,10 +122,10 @@ export function MessageBubble({
             isUser
               ? "bg-primary text-primary-foreground rounded-br-md"
               : isError
-              ? "bg-red-500/10 border border-red-500/20 text-red-200 rounded-bl-md"
+              ? "bg-red-500/10 border border-red-500/20 text-foreground rounded-bl-md"
               : isStreaming
               ? "bg-secondary/80 backdrop-blur-sm border border-primary/20 text-secondary-foreground rounded-bl-md"
-              : "bg-secondary/80 backdrop-blur-sm border border-white/5 text-secondary-foreground rounded-bl-md"
+              : "bg-secondary/80 backdrop-blur-sm border border-border/50 text-secondary-foreground rounded-bl-md"
           }`}
         >
           {isUser ? (
@@ -110,13 +138,12 @@ export function MessageBubble({
               <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm" />
             </div>
           ) : (
-            <div className="prose prose-invert prose-sm max-w-none prose-pre:relative prose-pre:bg-transparent prose-pre:p-0 prose-p:leading-relaxed prose-headings:text-foreground prose-a:text-primary prose-strong:text-foreground">
+            <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:relative prose-pre:bg-transparent prose-pre:p-0 prose-p:leading-relaxed prose-headings:text-foreground prose-a:text-primary prose-strong:text-foreground">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
                   pre: ({ children, ...props }) => {
-                    // Extract text content from children for copy button
                     let codeText = "";
                     try {
                       const child = children as React.ReactElement<{ children?: string }>;
@@ -125,7 +152,7 @@ export function MessageBubble({
                     return (
                       <div className="relative group my-2">
                         <pre
-                          className="!bg-black/40 !rounded-xl !border !border-white/5 overflow-x-auto"
+                          className="!bg-black/40 dark:!bg-black/40 !rounded-xl !border !border-border/50 overflow-x-auto"
                           {...props}
                         >
                           {children}
@@ -139,7 +166,7 @@ export function MessageBubble({
                     if (isInline) {
                       return (
                         <code
-                          className="rounded-md bg-white/10 px-1.5 py-0.5 text-xs font-mono text-primary/90"
+                          className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-mono text-primary/90"
                           {...props}
                         >
                           {children}
@@ -163,7 +190,7 @@ export function MessageBubble({
           )}
         </div>
 
-        {/* Footer: timestamp + retry/stop */}
+        {/* Footer: timestamp + actions */}
         <div className="flex items-center gap-2 px-1">
           {isStreaming ? (
             <>
@@ -190,6 +217,9 @@ export function MessageBubble({
                   minute: "2-digit",
                 })}
               </span>
+              {!isUser && message.content && (
+                <MessageCopyButton text={message.content} />
+              )}
               {isError && onRetry && (
                 <button
                   onClick={onRetry}

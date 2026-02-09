@@ -20,7 +20,7 @@ function getCategoryColor(category: string): string {
 export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] }) {
   if (learnings.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-8 text-center animate-fade-in-up">
+      <div className="rounded-2xl border border-border/50 bg-card/50 p-8 text-center animate-fade-in-up">
         <Brain className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground">No learnings yet</p>
         <p className="mt-1 text-xs text-muted-foreground/50">
@@ -35,7 +35,7 @@ export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] })
       {[...learnings].reverse().map((entry, i) => (
         <div
           key={`${entry.timestamp}-${i}`}
-          className="group rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04] animate-fade-in-up"
+          className="group rounded-2xl border border-border/50 bg-card/50 p-4 transition-all duration-200 hover:border-border hover:bg-card/80 animate-fade-in-up"
           style={{ animationDelay: `${i * 0.05}s` }}
         >
           <div className="flex items-center gap-2 mb-2">

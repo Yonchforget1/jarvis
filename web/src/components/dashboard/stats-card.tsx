@@ -15,10 +15,10 @@ export function StatsCard({
   description,
   icon: Icon,
   iconColor = "text-primary",
-  bgColor = "bg-white/5",
+  bgColor = "bg-muted",
 }: StatsCardProps) {
   return (
-    <div className="group rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] animate-fade-in-up">
+    <div className="group rounded-2xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-border hover:bg-card/80 animate-fade-in-up">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
           {title}

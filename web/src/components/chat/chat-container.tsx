@@ -8,6 +8,7 @@ import {
   Globe,
   Gamepad2,
   Sparkles,
+  Keyboard,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -27,25 +28,25 @@ const SUGGESTIONS = [
     icon: Code,
     text: "Write a Python script that generates a fractal image",
     color: "text-green-400",
-    bg: "bg-green-400/10 border-green-400/20",
+    bg: "bg-green-400/10 border-green-400/20 hover:bg-green-400/15",
   },
   {
     icon: Globe,
     text: "Search the web for the latest AI news",
     color: "text-orange-400",
-    bg: "bg-orange-400/10 border-orange-400/20",
+    bg: "bg-orange-400/10 border-orange-400/20 hover:bg-orange-400/15",
   },
   {
     icon: Gamepad2,
     text: "Create a platformer game called SpaceRunner",
     color: "text-purple-400",
-    bg: "bg-purple-400/10 border-purple-400/20",
+    bg: "bg-purple-400/10 border-purple-400/20 hover:bg-purple-400/15",
   },
   {
     icon: Zap,
     text: "List all files in the current directory",
     color: "text-blue-400",
-    bg: "bg-blue-400/10 border-blue-400/20",
+    bg: "bg-blue-400/10 border-blue-400/20 hover:bg-blue-400/15",
   },
 ];
 
@@ -73,9 +74,10 @@ export function ChatContainer({
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-smooth">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-4 animate-fade-in-up">
-            {/* Logo */}
+            {/* Logo with animated gradient ring */}
             <div className="relative mb-8">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 border border-primary/20">
+              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/20 via-purple-500/20 to-cyan-500/20 blur-lg animate-glow-pulse" />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-card border border-border/50">
                 <MessageSquare className="h-10 w-10 text-primary" />
               </div>
               <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-green-500/20 border border-green-500/30">
@@ -106,6 +108,16 @@ export function ChatContainer({
                   </span>
                 </button>
               ))}
+            </div>
+
+            {/* Keyboard shortcut hint */}
+            <div className="mt-8 flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+              <Keyboard className="h-3 w-3" />
+              <span>
+                Press{" "}
+                <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+K</kbd>{" "}
+                for new chat
+              </span>
             </div>
           </div>
         ) : (

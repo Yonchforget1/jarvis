@@ -36,7 +36,7 @@ const TOOL_META: Record<string, { icon: typeof Wrench; color: string; bg: string
   self_improve: { icon: Brain, color: "text-yellow-400", bg: "bg-yellow-400/10" },
 };
 
-const DEFAULT_META = { icon: Wrench, color: "text-muted-foreground", bg: "bg-white/5" };
+const DEFAULT_META = { icon: Wrench, color: "text-muted-foreground", bg: "bg-muted" };
 
 export function ToolCallCard({ call }: { call: ToolCallDetail }) {
   const [expanded, setExpanded] = useState(false);
@@ -58,10 +58,10 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
     .join(", ");
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden transition-all duration-200 hover:border-white/10 animate-scale-in">
+    <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden transition-all duration-200 hover:border-border animate-scale-in">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-white/[0.03] transition-colors"
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2 shrink-0">
           {expanded ? (
@@ -89,14 +89,14 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-white/5 animate-fade-in-up">
+        <div className="border-t border-border/50 animate-fade-in-up">
           {/* Arguments */}
           {Object.keys(call.args).length > 0 && (
             <div className="px-3 pt-2.5 pb-1.5">
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">
                 Arguments
               </p>
-              <pre className="text-xs bg-black/30 rounded-lg p-2.5 overflow-x-auto text-zinc-300 font-mono leading-relaxed">
+              <pre className="text-xs bg-muted dark:bg-black/30 rounded-lg p-2.5 overflow-x-auto text-foreground font-mono leading-relaxed">
                 {JSON.stringify(call.args, null, 2)}
               </pre>
             </div>
@@ -125,7 +125,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
                 )}
               </button>
             </div>
-            <pre className="text-xs bg-black/30 rounded-lg p-2.5 overflow-x-auto text-zinc-300 max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin">
+            <pre className="text-xs bg-muted dark:bg-black/30 rounded-lg p-2.5 overflow-x-auto text-foreground max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin">
               {call.result}
             </pre>
           </div>

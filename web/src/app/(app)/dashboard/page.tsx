@@ -49,7 +49,7 @@ export default function DashboardPage() {
           variant="outline"
           size="sm"
           onClick={refetch}
-          className="h-8 gap-1.5 text-xs rounded-lg border-white/10"
+          className="h-8 gap-1.5 text-xs rounded-lg border-border/50"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Refresh</span>

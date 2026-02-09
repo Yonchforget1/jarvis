@@ -65,7 +65,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
 
   return (
-    <div className="border-t border-white/5 bg-background/80 backdrop-blur-xl">
+    <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-3xl p-3 sm:p-4">
         <div className="relative flex items-end gap-2">
           <div className="relative flex-1">
@@ -84,7 +84,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               className={`w-full resize-none rounded-2xl border bg-secondary/50 px-4 py-3 pr-4 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 ${
                 isOverLimit
                   ? "border-red-500/50 focus:border-red-500/50"
-                  : "border-white/10 focus:border-primary/40"
+                  : "border-border focus:border-primary/40"
               }`}
             />
           </div>
@@ -108,11 +108,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
             <span className="flex items-center gap-1">
               <Keyboard className="h-2.5 w-2.5" />
-              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Enter</kbd> send
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Enter</kbd> send
               <span className="mx-1">&middot;</span>
-              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Shift+Enter</kbd> new line
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Shift+Enter</kbd> new line
               <span className="mx-1">&middot;</span>
-              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Ctrl+/</kbd> focus
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+/</kbd> focus
             </span>
           </div>
           {isNearLimit && (

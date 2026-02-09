@@ -62,7 +62,7 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
   ];
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 animate-fade-in-up">
+    <div className="rounded-2xl border border-border/50 bg-card/50 p-5 animate-fade-in-up">
       <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
         System Status
       </h3>

@@ -89,7 +89,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
 
   return (
     <div
-      className={`rounded-xl border border-white/5 border-l-2 ${meta.border} bg-white/[0.02] overflow-hidden transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04]`}
+      className={`rounded-xl border border-border/50 border-l-2 ${meta.border} bg-card/50 overflow-hidden transition-all duration-200 hover:border-border hover:bg-card/80`}
     >
       <button
         onClick={() => setExpanded(!expanded)}
@@ -118,7 +118,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
         )}
       </button>
       {expanded && (
-        <div className="border-t border-white/5 p-4 animate-fade-in-up">
+        <div className="border-t border-border/50 p-4 animate-fade-in-up">
           <p className="text-sm leading-relaxed mb-3">{tool.description}</p>
           {tool.parameters?.properties &&
             Object.keys(tool.parameters.properties).length > 0 && (
@@ -126,7 +126,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-2">
                   Parameters
                 </p>
-                <div className="space-y-2 bg-black/20 rounded-lg p-3">
+                <div className="space-y-2 bg-muted dark:bg-black/20 rounded-lg p-3">
                   {Object.entries(tool.parameters.properties).map(
                     ([name, schema]) => {
                       const s = schema as Record<string, string>;
@@ -134,7 +134,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
                         tool.parameters.required?.includes(name);
                       return (
                         <div key={name} className="flex items-start gap-2 text-xs">
-                          <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-primary shrink-0">
+                          <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary shrink-0">
                             {name}
                           </code>
                           <span className="text-muted-foreground/60 shrink-0">
@@ -216,7 +216,7 @@ export default function ToolsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tools by name or description..."
-          className="pl-9 h-10 rounded-xl bg-secondary/50 border-white/10"
+          className="pl-9 h-10 rounded-xl bg-secondary/50 border-border"
         />
       </div>
 
@@ -227,7 +227,7 @@ export default function ToolsPage() {
           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
             !activeCategory
               ? "bg-primary/20 text-primary border border-primary/30"
-              : "bg-white/5 text-muted-foreground/70 border border-white/5 hover:bg-white/10"
+              : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
           }`}
         >
           All ({tools.length})
@@ -244,7 +244,7 @@ export default function ToolsPage() {
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                 activeCategory === cat
                   ? `${meta.bg} ${meta.color} border border-current/30`
-                  : "bg-white/5 text-muted-foreground/70 border border-white/5 hover:bg-white/10"
+                  : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
               }`}
             >
               <meta.icon className="h-3 w-3" />

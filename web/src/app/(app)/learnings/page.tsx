@@ -77,7 +77,7 @@ export default function LearningsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search insights, context, or tasks..."
-          className="pl-9 h-10 rounded-xl bg-secondary/50 border-white/10"
+          className="pl-9 h-10 rounded-xl bg-secondary/50 border-border"
         />
       </div>
 
@@ -88,7 +88,7 @@ export default function LearningsPage() {
           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
             !categoryFilter
               ? "bg-primary/20 text-primary border border-primary/30"
-              : "bg-white/5 text-muted-foreground/70 border border-white/5 hover:bg-white/10"
+              : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
           }`}
         >
           All ({learnings.length})
@@ -105,7 +105,7 @@ export default function LearningsPage() {
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                 categoryFilter === cat
                   ? `${style.bg} ${style.text} border border-current/30`
-                  : "bg-white/5 text-muted-foreground/70 border border-white/5 hover:bg-white/10"
+                  : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
               }`}
             >
               {cat.replace(/_/g, " ")} ({count})
