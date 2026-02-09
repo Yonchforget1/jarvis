@@ -17,6 +17,7 @@ class ToolDef:
     parameters: dict  # {"properties": {...}, "required": [...]}
     func: Callable[..., str]
     category: str = "general"  # Tool category for grouping/filtering
+    retryable: bool = False  # If True, transient failures are retried once
 
     def schema_anthropic(self) -> dict:
         return {
@@ -125,24 +126,33 @@ class ToolRegistry:
                 return cached
 
         stats = self._stats.setdefault(name, ToolStats())
-        start = time.perf_counter()
-        try:
-            result = tool.execute(args)
-            duration_ms = (time.perf_counter() - start) * 1000
-            stats.call_count += 1
-            stats.total_duration_ms += duration_ms
-            log.info("Tool %s completed in %.0fms", name, duration_ms)
-            # Cache successful results for cacheable tools
-            if name in self.CACHEABLE_TOOLS:
-                cache.set(name, args, result)
-            return result
-        except Exception as e:
-            duration_ms = (time.perf_counter() - start) * 1000
-            stats.call_count += 1
-            stats.error_count += 1
-            stats.total_duration_ms += duration_ms
-            log.exception("Tool %s failed in %.0fms with args %s", name, duration_ms, args)
-            return f"Tool error ({name}): {e}"
+        max_attempts = 2 if tool.retryable else 1
+        last_error = None
+
+        for attempt in range(max_attempts):
+            start = time.perf_counter()
+            try:
+                result = tool.execute(args)
+                duration_ms = (time.perf_counter() - start) * 1000
+                stats.call_count += 1
+                stats.total_duration_ms += duration_ms
+                log.info("Tool %s completed in %.0fms", name, duration_ms)
+                if name in self.CACHEABLE_TOOLS:
+                    cache.set(name, args, result)
+                return result
+            except Exception as e:
+                duration_ms = (time.perf_counter() - start) * 1000
+                stats.total_duration_ms += duration_ms
+                last_error = e
+                if attempt < max_attempts - 1:
+                    log.warning("Tool %s failed (attempt %d), retrying: %s", name, attempt + 1, e)
+                    time.sleep(1)  # Brief delay before retry
+                else:
+                    stats.call_count += 1
+                    stats.error_count += 1
+                    log.exception("Tool %s failed in %.0fms with args %s", name, duration_ms, args)
+
+        return f"Tool error ({name}): {last_error}"
 
     def get_stats(self) -> dict[str, ToolStats]:
         """Return usage statistics for all tools that have been called."""

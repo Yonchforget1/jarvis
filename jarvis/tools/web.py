@@ -112,6 +112,8 @@ def register(registry):
             "required": ["query"],
         },
         func=search_web,
+        category="web",
+        retryable=True,
     ))
     registry.register(ToolDef(
         name="fetch_url",
@@ -124,4 +126,6 @@ def register(registry):
             "required": ["url"],
         },
         func=fetch_url,
+        category="web",
+        retryable=True,
     ))
