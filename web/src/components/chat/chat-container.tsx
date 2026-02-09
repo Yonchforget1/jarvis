@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   MessageSquare,
   Zap,
@@ -9,6 +9,10 @@ import {
   Gamepad2,
   Sparkles,
   Keyboard,
+  Search,
+  X,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -58,18 +62,138 @@ export function ChatContainer({
   onStop,
 }: ChatContainerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
+  // Find matching message indices
+  const matchingIndices = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return messages
+      .map((msg, i) => (msg.content.toLowerCase().includes(q) ? i : -1))
+      .filter((i) => i !== -1);
+  }, [messages, searchQuery]);
+
+  // Scroll to active match
   useEffect(() => {
-    if (scrollRef.current) {
+    if (matchingIndices.length === 0 || !scrollRef.current) return;
+    const msgId = messages[matchingIndices[activeMatchIndex]]?.id;
+    if (!msgId) return;
+    const el = scrollRef.current.querySelector(`[data-message-id="${msgId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeMatchIndex, matchingIndices, messages]);
+
+  const navigateMatch = useCallback(
+    (direction: "next" | "prev") => {
+      if (matchingIndices.length === 0) return;
+      setActiveMatchIndex((prev) => {
+        if (direction === "next") return (prev + 1) % matchingIndices.length;
+        return (prev - 1 + matchingIndices.length) % matchingIndices.length;
+      });
+    },
+    [matchingIndices.length]
+  );
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setActiveMatchIndex(0);
+  }, []);
+
+  // Ctrl+F to open search, Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f" && messages.length > 0) {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.key === "Escape" && searchOpen) {
+        closeSearch();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [searchOpen, closeSearch, messages.length]);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current && !searchOpen) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
         behavior: "smooth",
       });
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, searchOpen]);
+
+  // Determine which message is the active match
+  const activeMatchMsgId =
+    matchingIndices.length > 0
+      ? messages[matchingIndices[activeMatchIndex]]?.id
+      : null;
 
   return (
     <div className="flex h-full flex-col">
+      {/* Search bar */}
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          searchOpen ? "max-h-14" : "max-h-0"
+        }`}
+      >
+        <div className="flex items-center gap-2 border-b border-border/50 bg-card/80 backdrop-blur-sm px-4 py-2">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setActiveMatchIndex(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                navigateMatch(e.shiftKey ? "prev" : "next");
+              }
+            }}
+            placeholder="Search messages..."
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+          />
+          {searchQuery && (
+            <span className="text-xs text-muted-foreground/60 shrink-0">
+              {matchingIndices.length === 0
+                ? "No matches"
+                : `${activeMatchIndex + 1} of ${matchingIndices.length}`}
+            </span>
+          )}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => navigateMatch("prev")}
+              disabled={matchingIndices.length === 0}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-colors"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => navigateMatch("next")}
+              disabled={matchingIndices.length === 0}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-colors"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+          <button
+            onClick={closeSearch}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
       {/* Message area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-smooth">
         {messages.length === 0 ? (
@@ -128,6 +252,8 @@ export function ChatContainer({
                 message={msg}
                 onRetry={msg.isError ? onRetry : undefined}
                 onStop={msg.isStreaming ? onStop : undefined}
+                searchQuery={searchOpen ? searchQuery : ""}
+                isActiveMatch={msg.id === activeMatchMsgId}
               />
             ))}
             {isLoading && !messages.some((m) => m.isStreaming) && (

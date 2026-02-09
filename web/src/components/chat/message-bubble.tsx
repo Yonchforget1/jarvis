@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
 
@@ -59,24 +59,62 @@ function MessageCopyButton({ text }: { text: string }) {
   );
 }
 
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+
+  const parts: React.ReactNode[] = [];
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let lastIndex = 0;
+
+  let idx = lowerText.indexOf(lowerQuery, lastIndex);
+  while (idx !== -1) {
+    if (idx > lastIndex) {
+      parts.push(text.slice(lastIndex, idx));
+    }
+    parts.push(
+      <mark key={idx} className="bg-yellow-400/30 text-inherit rounded-sm px-0.5">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+    );
+    lastIndex = idx + query.length;
+    idx = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return <>{parts}</>;
+}
+
 export function MessageBubble({
   message,
   onRetry,
   onStop,
+  searchQuery = "",
+  isActiveMatch = false,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
   onStop?: () => void;
+  searchQuery?: string;
+  isActiveMatch?: boolean;
 }) {
   const isUser = message.role === "user";
   const isError = message.isError;
   const isStreaming = message.isStreaming;
 
+  // For user messages, highlight search terms in the plain text
+  const userContent = useMemo(() => {
+    if (!isUser || !searchQuery) return null;
+    return <HighlightedText text={message.content} query={searchQuery} />;
+  }, [isUser, message.content, searchQuery]);
+
   return (
     <div
-      className={`flex gap-3 px-4 py-3 animate-fade-in-up ${
+      data-message-id={message.id}
+      className={`flex gap-3 px-4 py-3 animate-fade-in-up transition-colors duration-300 ${
         isUser ? "flex-row-reverse" : ""
-      }`}
+      } ${isActiveMatch ? "bg-primary/5 rounded-xl" : ""}`}
     >
       {/* Avatar */}
       <div
@@ -130,7 +168,7 @@ export function MessageBubble({
         >
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap leading-relaxed">
-              {message.content}
+              {userContent || message.content}
             </p>
           ) : isStreaming && !message.content ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
