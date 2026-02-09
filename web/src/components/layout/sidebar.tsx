@@ -86,6 +86,14 @@ function sessionDuration(createdAt: string, lastActive: string): string {
   return `${days}d`;
 }
 
+function usernameHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+}
+
 export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -94,6 +102,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const { sessions, loading: sessionsLoading, deleteSession, renameSession, togglePin } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const avatarHue = usernameHue(user?.username || "User");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -442,12 +451,14 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
             {collapsed ? (
               <Tooltip content={user?.username || "User"} side="right">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold border shrink-0"
+                style={{ background: `linear-gradient(135deg, hsl(${avatarHue}, 60%, 35%) 0%, hsl(${avatarHue}, 50%, 20%) 100%)`, borderColor: `hsl(${avatarHue}, 50%, 40%)`, color: `hsl(${avatarHue}, 80%, 80%)` }}>
                   {user?.username?.[0]?.toUpperCase() || "U"}
                 </div>
               </Tooltip>
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold border shrink-0"
+                style={{ background: `linear-gradient(135deg, hsl(${avatarHue}, 60%, 35%) 0%, hsl(${avatarHue}, 50%, 20%) 100%)`, borderColor: `hsl(${avatarHue}, 50%, 40%)`, color: `hsl(${avatarHue}, 80%, 80%)` }}>
                 {user?.username?.[0]?.toUpperCase() || "U"}
               </div>
             )}
