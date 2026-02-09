@@ -56,10 +56,12 @@ async def lifespan(app: FastAPI):
     log.info("Jarvis API shutdown complete.")
 
 
+API_VERSION = "1.0.0"
+
 app = FastAPI(
     title="Jarvis AI Agent API",
     description="API for the Jarvis AI Agent Platform",
-    version="1.0.0",
+    version=API_VERSION,
     lifespan=lifespan,
 )
 app.state.limiter = limiter
@@ -96,6 +98,7 @@ async def request_logging_middleware(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-API-Version"] = API_VERSION
     if path == "/api/health" and response.status_code == 200:
         log.debug("[%s] %s %s %d %.0fms", request_id, request.method, path, response.status_code, duration_ms)
     else:
