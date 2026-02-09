@@ -24,14 +24,40 @@ export default function DashboardPage() {
   if (statsLoading) {
     return (
       <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-36 rounded-lg" />
+            <Skeleton className="h-4 w-64 rounded-lg" />
+          </div>
+          <Skeleton className="h-8 w-20 rounded-lg" />
+        </div>
+        {/* Stats grid skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-2xl border border-border/50 bg-card/50 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-9 rounded-xl" />
+                <Skeleton className="h-3 w-16 rounded" />
+              </div>
+              <Skeleton className="h-7 w-12 rounded" />
+              <Skeleton className="h-3 w-24 rounded" />
+            </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="lg:col-span-2 h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
+        {/* Quick actions skeleton */}
+        <div className="space-y-3">
+          <Skeleton className="h-3 w-24 rounded" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-11 rounded-xl" />
+            ))}
+          </div>
+        </div>
+        {/* Bottom sections skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Skeleton className="md:col-span-2 lg:col-span-2 h-48 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
         </div>
       </div>
     );
