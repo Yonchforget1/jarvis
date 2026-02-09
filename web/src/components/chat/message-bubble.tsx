@@ -4,8 +4,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square } from "lucide-react";
-import { useState, useMemo } from "react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
 
@@ -56,6 +56,73 @@ function MessageCopyButton({ text }: { text: string }) {
         </>
       )}
     </button>
+  );
+}
+
+type Reaction = "up" | "down" | null;
+
+function getReaction(messageId: string): Reaction {
+  try {
+    const stored = localStorage.getItem("jarvis-reactions");
+    const reactions = stored ? JSON.parse(stored) : {};
+    return reactions[messageId] || null;
+  } catch {
+    return null;
+  }
+}
+
+function setReaction(messageId: string, reaction: Reaction) {
+  try {
+    const stored = localStorage.getItem("jarvis-reactions");
+    const reactions = stored ? JSON.parse(stored) : {};
+    if (reaction) {
+      reactions[messageId] = reaction;
+    } else {
+      delete reactions[messageId];
+    }
+    localStorage.setItem("jarvis-reactions", JSON.stringify(reactions));
+  } catch {
+    // ignore
+  }
+}
+
+function MessageReactions({ messageId }: { messageId: string }) {
+  const [reaction, setReactionState] = useState<Reaction>(() => getReaction(messageId));
+
+  const toggle = useCallback(
+    (type: "up" | "down") => {
+      const next = reaction === type ? null : type;
+      setReactionState(next);
+      setReaction(messageId, next);
+    },
+    [messageId, reaction]
+  );
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <button
+        onClick={() => toggle("up")}
+        className={`flex items-center rounded-md p-0.5 transition-colors ${
+          reaction === "up"
+            ? "text-green-400"
+            : "text-muted-foreground/40 hover:text-green-400/70"
+        }`}
+        title="Helpful"
+      >
+        <ThumbsUp className="h-3 w-3" />
+      </button>
+      <button
+        onClick={() => toggle("down")}
+        className={`flex items-center rounded-md p-0.5 transition-colors ${
+          reaction === "down"
+            ? "text-red-400"
+            : "text-muted-foreground/40 hover:text-red-400/70"
+        }`}
+        title="Not helpful"
+      >
+        <ThumbsDown className="h-3 w-3" />
+      </button>
+    </div>
   );
 }
 
@@ -256,7 +323,10 @@ export function MessageBubble({
                 })}
               </span>
               {!isUser && message.content && (
-                <MessageCopyButton text={message.content} />
+                <>
+                  <MessageCopyButton text={message.content} />
+                  <MessageReactions messageId={message.id} />
+                </>
               )}
               {isError && onRetry && (
                 <button
