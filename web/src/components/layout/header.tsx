@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
 
@@ -35,7 +35,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-4 w-4" />
         </Button>
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-muted-foreground/50 hidden sm:inline">JARVIS</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/30 hidden sm:block" />
+          <h2 className="text-sm font-semibold">{title}</h2>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {/* Connection status */}
