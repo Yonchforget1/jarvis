@@ -165,6 +165,23 @@ def cmd_docs(args) -> None:
     print(f"\n---\nGenerated from {len(tools)} tools")
 
 
+def cmd_benchmark(args) -> None:
+    """Run performance benchmarks on tools."""
+    config = Config.load()
+    registry = _build_registry(config)
+
+    from jarvis.benchmark import benchmark_tool, run_tool_suite, generate_report
+
+    if args.tool:
+        import json as _json
+        tool_args = _json.loads(args.tool_args) if args.tool_args else {}
+        result = benchmark_tool(registry, args.tool, tool_args, iterations=args.iterations)
+        print(result)
+    else:
+        results = run_tool_suite(registry, iterations=args.iterations)
+        print(generate_report(results))
+
+
 def cmd_new_plugin(args) -> None:
     """Scaffold a new plugin from a template."""
     name = args.name.lower().replace("-", "_")
@@ -308,6 +325,13 @@ def main() -> None:
     # check-config
     config_parser = subparsers.add_parser("check-config", help="Validate configuration")
     config_parser.set_defaults(func=cmd_check_config)
+
+    # benchmark
+    bench_parser = subparsers.add_parser("benchmark", help="Run performance benchmarks")
+    bench_parser.add_argument("--tool", "-t", help="Benchmark a specific tool")
+    bench_parser.add_argument("--args", dest="tool_args", help="JSON args for the tool")
+    bench_parser.add_argument("--iterations", "-n", type=int, default=5, help="Number of iterations")
+    bench_parser.set_defaults(func=cmd_benchmark)
 
     # new-plugin
     plugin_parser = subparsers.add_parser("new-plugin", help="Scaffold a new plugin")
