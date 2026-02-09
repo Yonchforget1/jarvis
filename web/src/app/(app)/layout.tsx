@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette } from "@/components/command-palette";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
@@ -123,6 +124,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Command palette */}
       <CommandPalette />
+      {/* Keyboard shortcuts help */}
+      <KeyboardShortcuts />
     </div>
   );
 }
