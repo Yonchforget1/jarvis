@@ -1,4 +1,4 @@
-from . import filesystem, gamedev, shell, web, computer, browser
+from . import filesystem, gamedev, game_engine, shell, web, computer, browser
 
 __all__ = ["register_all"]
 
@@ -9,6 +9,7 @@ def register_all(registry, config=None):
     shell.register(registry)
     web.register(registry)
     gamedev.register(registry)
+    game_engine.register(registry)
     if config:
         computer.register(registry, config)
         browser.register(registry, config)
