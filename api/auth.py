@@ -8,7 +8,14 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 from jose import JWTError, jwt
 
-JWT_SECRET = os.getenv("JWT_SECRET", "jarvis-dev-secret-change-in-production")
+_DEFAULT_SECRET = "jarvis-dev-secret-change-in-production"
+JWT_SECRET = os.getenv("JWT_SECRET", _DEFAULT_SECRET)
+if JWT_SECRET == _DEFAULT_SECRET:
+    import logging
+    logging.getLogger("jarvis").warning(
+        "JWT_SECRET not set — using insecure default. "
+        "Set JWT_SECRET in your .env file for production use."
+    )
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
