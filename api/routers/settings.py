@@ -77,6 +77,22 @@ def _set_user_settings(user_id: str, settings: dict):
 
 # --- Request/Response models ---
 
+class PreferencesUpdate(BaseModel):
+    theme: str | None = None  # "light", "dark", "auto"
+    language: str | None = None  # ISO 639-1 code
+    notifications: bool | None = None
+    default_session_name: str | None = None
+    show_tool_calls: bool | None = None
+
+
+class PreferencesResponse(BaseModel):
+    theme: str
+    language: str
+    notifications: bool
+    default_session_name: str
+    show_tool_calls: bool
+
+
 class SettingsUpdate(BaseModel):
     backend: str | None = None
     model: str | None = None
@@ -159,6 +175,52 @@ async def get_available_models(user: UserInfo = Depends(get_current_user)):
         backends=AVAILABLE_BACKENDS,
         models=AVAILABLE_MODELS,
     )
+
+
+_DEFAULT_PREFS = {
+    "theme": "auto",
+    "language": "en",
+    "notifications": True,
+    "default_session_name": "New Chat",
+    "show_tool_calls": True,
+}
+
+
+@router.get("/settings/preferences", response_model=PreferencesResponse)
+async def get_preferences(user: UserInfo = Depends(get_current_user)):
+    """Get user UI preferences."""
+    user_settings = _get_user_settings(user.id)
+    prefs = user_settings.get("preferences", {})
+    return PreferencesResponse(**{**_DEFAULT_PREFS, **prefs})
+
+
+@router.put("/settings/preferences", response_model=PreferencesResponse)
+async def update_preferences(
+    update: PreferencesUpdate,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Update user UI preferences."""
+    user_settings = _get_user_settings(user.id)
+    prefs = user_settings.get("preferences", dict(_DEFAULT_PREFS))
+
+    if update.theme is not None:
+        if update.theme not in ("light", "dark", "auto"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "theme must be light, dark, or auto")
+        prefs["theme"] = update.theme
+    if update.language is not None:
+        if len(update.language) != 2:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "language must be 2-letter ISO 639-1 code")
+        prefs["language"] = update.language
+    if update.notifications is not None:
+        prefs["notifications"] = update.notifications
+    if update.default_session_name is not None:
+        prefs["default_session_name"] = update.default_session_name[:50]
+    if update.show_tool_calls is not None:
+        prefs["show_tool_calls"] = update.show_tool_calls
+
+    user_settings["preferences"] = prefs
+    _set_user_settings(user.id, user_settings)
+    return PreferencesResponse(**{**_DEFAULT_PREFS, **prefs})
 
 
 @router.get("/settings/templates")
