@@ -412,6 +412,7 @@ export function ChatContainer({
               const currentDate = getDateLabel(msg.timestamp);
               const prevDate = prevMsg ? getDateLabel(prevMsg.timestamp) : null;
               const showDateSeparator = currentDate !== prevDate;
+              const isGrouped = !showDateSeparator && prevMsg?.role === msg.role;
 
               return (
                 <div key={msg.id}>
@@ -430,6 +431,7 @@ export function ChatContainer({
                     onStop={msg.isStreaming ? onStop : undefined}
                     searchQuery={searchOpen ? searchQuery : ""}
                     isActiveMatch={msg.id === activeMatchMsgId}
+                    isGrouped={isGrouped}
                   />
                 </div>
               );
@@ -466,7 +468,18 @@ export function ChatContainer({
       )}
 
       {/* Input */}
-      <ChatInput onSend={onSend} disabled={isLoading} />
+      <ChatInput
+        onSend={onSend}
+        disabled={isLoading}
+        onSlashCommand={(action) => {
+          if (action === "clear") setClearConfirmOpen(true);
+          else if (action === "export") exportChat();
+          else if (action === "new") onSend("/new");
+          else if (action === "help") {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", ctrlKey: true }));
+          }
+        }}
+      />
 
       {/* Clear confirmation */}
       <ConfirmDialog

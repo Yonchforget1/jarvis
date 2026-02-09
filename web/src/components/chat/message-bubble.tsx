@@ -160,12 +160,14 @@ export function MessageBubble({
   onStop,
   searchQuery = "",
   isActiveMatch = false,
+  isGrouped = false,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
   onStop?: () => void;
   searchQuery?: string;
   isActiveMatch?: boolean;
+  isGrouped?: boolean;
 }) {
   const isUser = message.role === "user";
   const isError = message.isError;
@@ -182,11 +184,16 @@ export function MessageBubble({
       data-message-id={message.id}
       role="article"
       aria-label={`${isUser ? "Your" : "JARVIS"} message`}
-      className={`flex gap-3 px-4 py-3 animate-fade-in-up transition-colors duration-300 ${
+      className={`flex gap-3 px-4 animate-fade-in-up transition-colors duration-300 ${
+        isGrouped ? "py-0.5" : "py-3"
+      } ${
         isUser ? "flex-row-reverse" : ""
       } ${isActiveMatch ? "bg-primary/5 rounded-xl" : ""}`}
     >
       {/* Avatar */}
+      {isGrouped ? (
+        <div className="w-8 shrink-0" />
+      ) : (
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
           isUser
@@ -208,6 +215,7 @@ export function MessageBubble({
           <Bot className="h-4 w-4 text-primary" />
         )}
       </div>
+      )}
 
       {/* Message content */}
       <div
