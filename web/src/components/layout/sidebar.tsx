@@ -281,7 +281,13 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                         className="w-full text-xs bg-transparent outline-none border-b border-primary/40 pb-0.5"
                       />
                     ) : (
-                      <p className="text-xs truncate">
+                      <p
+                        className="text-xs truncate"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          startRename(session.session_id, session.customName || session.autoTitle || session.preview || "");
+                        }}
+                      >
                         {session.customName || session.autoTitle || session.preview || "New conversation"}
                       </p>
                     )}
