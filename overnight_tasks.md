@@ -67,19 +67,19 @@
 - [ ] 1. Add task planner: decompose complex requests into sub-tasks
 - [ ] 2. Add tool chaining: let agent compose tool outputs as inputs
 - [ ] 3. Add parallel tool execution (async tool calls)
-- [ ] 4. Add conversation branching (save/restore conversation checkpoints)
-- [ ] 5. Add auto-retry failed tool calls with adjusted parameters
+- [x] 4. Add conversation branching (save/restore conversation checkpoints)
+- [x] 5. Add auto-retry failed tool calls with adjusted parameters
 - [ ] 6. Add context window management (smart message summarization)
 - [ ] 7. Add streaming responses from backend to API (SSE for partial results)
-- [ ] 8. Add conversation templates (pre-built system prompts for common tasks)
+- [x] 8. Add conversation templates (pre-built system prompts for common tasks)
 
 ### Tier 2: API & Web UI Enhancements (9-18)
 - [ ] 9. Add WebSocket support for real-time chat
-- [ ] 10. Add file upload endpoint (accept files for processing)
-- [ ] 11. Add conversation export (download as JSON/Markdown)
+- [x] 10. Add file upload endpoint (accept files for processing)
+- [x] 11. Add conversation export (download as JSON/Markdown)
 - [ ] 12. Add conversation search (full-text search across history)
 - [ ] 13. Add user preferences endpoint (theme, default model, etc.)
-- [ ] 14. Add API versioning (v1 prefix, version header)
+- [x] 14. Add API versioning (v1 prefix, version header)
 - [ ] 15. Add OpenAPI documentation improvements (examples, tags)
 - [ ] 16. Add webhook notifications (POST to URL on task completion)
 - [ ] 17. Add batch chat endpoint (process multiple messages)
@@ -89,38 +89,38 @@
 - [ ] 19. Add API key authentication (alternative to JWT for programmatic access)
 - [ ] 20. Add role-based access control (admin, user, viewer roles)
 - [ ] 21. Add request signing/HMAC for sensitive operations
-- [ ] 22. Add audit logging (who did what, when)
-- [ ] 23. Add input sanitization middleware (strip dangerous HTML/scripts)
+- [x] 22. Add audit logging (who did what, when)
+- [x] 23. Add input sanitization middleware (strip dangerous HTML/scripts)
 - [ ] 24. Add tool permission system (restrict which tools users can access)
 - [ ] 25. Add secrets management (encrypted storage for API keys)
-- [ ] 26. Add CORS configuration from env vars (not hardcoded)
+- [x] 26. Add CORS configuration from env vars (not hardcoded)
 
 ### Tier 4: Monitoring & Reliability (27-34)
 - [ ] 27. Add Prometheus metrics endpoint (/metrics)
-- [ ] 28. Add structured JSON logging option (for log aggregation)
+- [x] 28. Add structured JSON logging option (for log aggregation)
 - [ ] 29. Add circuit breaker for backend API calls
 - [ ] 30. Add dead letter queue for failed tool executions
 - [ ] 31. Add health check dashboard endpoint (HTML page)
 - [ ] 32. Add error rate tracking and alerting thresholds
-- [ ] 33. Add request tracing (correlation IDs across logs)
+- [x] 33. Add request tracing (correlation IDs across logs)
 - [ ] 34. Add memory usage monitoring and alerts
 
 ### Tier 5: Developer Experience (35-42)
-- [ ] 35. Add CLI command: `jarvis tools` (list all available tools)
+- [x] 35. Add CLI command: `jarvis tools` (list all available tools)
 - [ ] 36. Add CLI command: `jarvis test-tool <name>` (test a specific tool)
 - [ ] 37. Add plugin scaffolding command: `jarvis new-plugin <name>`
 - [ ] 38. Add hot-reload for plugins (watch filesystem for changes)
-- [ ] 39. Add tool documentation generator (auto-generate from ToolDef)
-- [ ] 40. Add configuration validation CLI: `jarvis check-config`
+- [x] 39. Add tool documentation generator (auto-generate from ToolDef)
+- [x] 40. Add configuration validation CLI: `jarvis check-config`
 - [ ] 41. Add benchmarking suite (measure tool and backend performance)
-- [ ] 42. Add development mode with verbose logging and debug info
+- [x] 42. Add development mode with verbose logging and debug info
 
 ### Tier 6: Advanced Features (43-50)
 - [ ] 43. Add cron-style scheduled tasks (run tools on a schedule)
-- [ ] 44. Add tool result caching (cache expensive tool outputs with TTL)
+- [x] 44. Add tool result caching (cache expensive tool outputs with TTL)
 - [ ] 45. Add multi-model routing (use different models for different tasks)
-- [ ] 46. Add conversation summarization (compress long conversations)
+- [x] 46. Add conversation summarization (compress long conversations)
 - [ ] 47. Add tool dependency declaration (tool A requires tool B's output)
-- [ ] 48. Add plugin marketplace manifest (version, author, dependencies)
+- [x] 48. Add plugin marketplace manifest (version, author, dependencies)
 - [ ] 49. Add A/B testing framework for prompts and models
-- [ ] 50. Add cost tracking and budget limits per user/session
+- [x] 50. Add cost tracking and budget limits per user/session
