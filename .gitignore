@@ -5,3 +5,6 @@ __pycache__/
 .idea/
 .vscode/
 memory/
+test_games/
+SpaceBlaster/
+_test_state.pkl
