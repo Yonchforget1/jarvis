@@ -202,7 +202,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               <button
                 key={session.session_id}
                 onClick={() => handleSessionClick(session.session_id)}
-                title={session.preview || "New conversation"}
+                title={session.customName || session.autoTitle || session.preview || "New conversation"}
                 className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
                   activeSessionId === session.session_id
                     ? "bg-primary/10 text-primary"
@@ -250,7 +250,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       />
                     ) : (
                       <p className="text-xs truncate">
-                        {session.customName || session.preview || "New conversation"}
+                        {session.customName || session.autoTitle || session.preview || "New conversation"}
                       </p>
                     )}
                     <p className="text-[10px] text-muted-foreground/40">

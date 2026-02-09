@@ -11,6 +11,16 @@ interface SessionEntry {
   preview: string;
 }
 
+// Generate a short title from a message preview
+function generateTitle(preview: string): string {
+  if (!preview) return "New conversation";
+  // Truncate to first sentence or ~40 chars
+  const clean = preview.replace(/\s+/g, " ").trim();
+  const sentence = clean.match(/^[^.!?\n]+[.!?]?/)?.[0] || clean;
+  if (sentence.length <= 40) return sentence;
+  return sentence.slice(0, 37).trimEnd() + "...";
+}
+
 // Client-side session names stored in localStorage
 function getSessionNames(): Record<string, string> {
   try {
@@ -85,10 +95,11 @@ export function useSessions() {
     [],
   );
 
-  // Merge custom names into sessions
+  // Merge custom names into sessions, auto-generate titles from preview
   const sessionsWithNames = sessions.map((s) => ({
     ...s,
     customName: sessionNames[s.session_id] || undefined,
+    autoTitle: generateTitle(s.preview),
   }));
 
   return { sessions: sessionsWithNames, loading, fetchSessions, deleteSession, renameSession };
