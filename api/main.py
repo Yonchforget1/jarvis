@@ -1,7 +1,9 @@
 """Jarvis AI Agent API Server."""
 
+import logging
 import sys
 import os
+import time
 
 # Ensure project root is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,6 +16,8 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+
+log = logging.getLogger("jarvis.api")
 
 from api.session_manager import SessionManager
 from api.routers import auth, chat, tools, stats, learnings, conversation, settings
@@ -54,6 +58,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """Log all HTTP requests with method, path, status, and duration."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    # Skip noisy health checks at INFO level
+    path = request.url.path
+    if path == "/api/health" and response.status_code == 200:
+        log.debug("%s %s %d %.0fms", request.method, path, response.status_code, duration_ms)
+    else:
+        log.info("%s %s %d %.0fms", request.method, path, response.status_code, duration_ms)
+    return response
+
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])

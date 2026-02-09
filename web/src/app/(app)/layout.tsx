@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { SessionProvider, useSessionContext } from "@/lib/session-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ErrorBoundary } from "@/components/error-boundary";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { selectedSessionId, selectSession } = useSessionContext();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -18,7 +20,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Close sidebar on route change (handled by sidebar onClose)
   // Close sidebar on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -54,7 +55,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <div className="hidden lg:block shrink-0">
-        <Sidebar />
+        <Sidebar
+          onSessionSelect={selectSession}
+          activeSessionId={selectedSessionId}
+        />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -72,7 +76,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <Sidebar onClose={() => setSidebarOpen(false)} />
+          <Sidebar
+            onClose={() => setSidebarOpen(false)}
+            onSessionSelect={selectSession}
+            activeSessionId={selectedSessionId}
+          />
         </div>
       </div>
 
@@ -84,5 +92,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </SessionProvider>
   );
 }

@@ -139,3 +139,41 @@ class WebConversation(Conversation):
         calls = self._pending_tool_calls
         self._pending_tool_calls = []
         return calls
+
+    def get_display_messages(self) -> list[dict]:
+        """Extract user/assistant text messages for display in the UI."""
+        result = []
+        for msg in self.messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "user":
+                if isinstance(content, str):
+                    result.append({"role": "user", "content": content})
+                # Skip tool_result messages (content is a list)
+            elif role == "assistant":
+                text = self._extract_text(content)
+                if text:
+                    result.append({"role": "assistant", "content": text})
+        return result
+
+    @staticmethod
+    def _extract_text(content) -> str:
+        """Extract text from various content formats."""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if hasattr(block, "text"):
+                    parts.append(block.text)
+                elif isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+            return "\n".join(parts)
+        return ""
+
+    def get_first_user_message(self) -> str:
+        """Get the first user message for session preview."""
+        for msg in self.messages:
+            if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                return msg["content"][:100]
+        return ""

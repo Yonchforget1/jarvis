@@ -6,10 +6,12 @@ import type { ChatMessage, ToolCallDetail } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export function useChat() {
+export function useChat(initialSessionId?: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(
+    initialSessionId || null,
+  );
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -244,6 +246,49 @@ export function useChat() {
     }
   }, []);
 
+  const loadSession = useCallback(async (sid: string) => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("jarvis_token")
+          : null;
+
+      const res = await fetch(
+        `${API_URL}/api/sessions/${sid}/messages`,
+        {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      );
+
+      if (!res.ok) throw new Error("Failed to load session");
+
+      const data = await res.json();
+      const loaded: ChatMessage[] = data.messages.map(
+        (m: { role: string; content: string }, i: number) => ({
+          id: `loaded-${i}`,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      setMessages(loaded);
+      setSessionId(sid);
+    } catch {
+      setError("Failed to load conversation history");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -253,5 +298,6 @@ export function useChat() {
     clearChat,
     retryLast,
     stopStreaming,
+    loadSession,
   };
 }

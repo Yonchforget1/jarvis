@@ -125,6 +125,15 @@ class SessionManager:
             return True
         return False
 
+    def remove_session(self, session_id: str, user_id: str) -> bool:
+        """Remove a session entirely."""
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session and session.user_id == user_id:
+                del self._sessions[session_id]
+                return True
+        return False
+
     def get_user_sessions(self, user_id: str) -> list[JarvisSession]:
         """Get all sessions for a user."""
         with self._lock:
