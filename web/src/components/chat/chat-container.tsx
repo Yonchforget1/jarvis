@@ -14,6 +14,7 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowDown,
+  Download,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -164,6 +165,53 @@ export function ChatContainer({
     }
   }, []);
 
+  const exportChat = useCallback(() => {
+    if (messages.length === 0) return;
+    const lines: string[] = [
+      "# JARVIS Chat Export",
+      `> Exported on ${new Date().toLocaleString()}`,
+      `> ${messages.length} messages`,
+      "",
+    ];
+    for (const msg of messages) {
+      const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      if (msg.role === "user") {
+        lines.push(`## User (${time})`, "", msg.content, "");
+      } else {
+        lines.push(`## JARVIS (${time})`, "");
+        if (msg.tool_calls?.length) {
+          for (const tc of msg.tool_calls) {
+            lines.push(
+              `<details><summary>Tool: ${tc.name}</summary>`,
+              "",
+              "```json",
+              JSON.stringify(tc.args, null, 2),
+              "```",
+              "",
+              "Result:",
+              "```",
+              tc.result.slice(0, 500),
+              "```",
+              "</details>",
+              ""
+            );
+          }
+        }
+        lines.push(msg.content, "");
+      }
+      lines.push("---", "");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages]);
+
   // Determine which message is the active match
   const activeMatchMsgId =
     matchingIndices.length > 0
@@ -227,6 +275,20 @@ export function ChatContainer({
           </button>
         </div>
       </div>
+
+      {/* Chat actions bar */}
+      {messages.length > 0 && !searchOpen && (
+        <div className="flex items-center justify-end px-4 py-1.5 border-b border-border/30">
+          <button
+            onClick={exportChat}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
+            title="Export chat as Markdown"
+          >
+            <Download className="h-3 w-3" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </div>
+      )}
 
       {/* Message area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-smooth">
