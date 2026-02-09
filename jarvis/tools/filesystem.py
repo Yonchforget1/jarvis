@@ -2,6 +2,12 @@ import datetime
 import glob as glob_module
 import os
 import shutil
+import logging
+
+log = logging.getLogger("jarvis")
+
+# Minimum free disk space (bytes) required before allowing writes
+_MIN_FREE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 from jarvis.tool_registry import ToolDef
 
@@ -51,6 +57,10 @@ def write_file(path: str, content: str) -> str:
     try:
         path = os.path.expanduser(path)
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        # Disk space check
+        free = shutil.disk_usage(os.path.dirname(os.path.abspath(path)) or ".").free
+        if free < _MIN_FREE_BYTES:
+            return f"Error: low disk space ({free // (1024*1024)} MB free, need {_MIN_FREE_BYTES // (1024*1024)} MB)."
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         return f"Successfully wrote {len(content)} chars to {path}"
