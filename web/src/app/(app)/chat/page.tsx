@@ -46,6 +46,7 @@ export default function ChatPage() {
       onSend={sendMessage}
       onRetry={retryLast}
       onStop={stopStreaming}
+      onClear={clearChat}
     />
   );
 }

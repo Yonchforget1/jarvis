@@ -15,11 +15,13 @@ import {
   ChevronDown,
   ArrowDown,
   Download,
+  Trash2,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatInput } from "./chat-input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ChatContainerProps {
   messages: ChatMessage[];
@@ -27,6 +29,7 @@ interface ChatContainerProps {
   onSend: (message: string) => void;
   onRetry?: () => void;
   onStop?: () => void;
+  onClear?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -62,6 +65,7 @@ export function ChatContainer({
   onSend,
   onRetry,
   onStop,
+  onClear,
 }: ChatContainerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -70,6 +74,7 @@ export function ChatContainer({
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const prevMessageCountRef = useRef(messages.length);
 
   // Find matching message indices
@@ -278,7 +283,7 @@ export function ChatContainer({
 
       {/* Chat actions bar */}
       {messages.length > 0 && !searchOpen && (
-        <div className="flex items-center justify-end px-4 py-1.5 border-b border-border/30">
+        <div className="flex items-center justify-end gap-1 px-4 py-1.5 border-b border-border/30">
           <button
             onClick={exportChat}
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
@@ -287,6 +292,16 @@ export function ChatContainer({
             <Download className="h-3 w-3" />
             <span className="hidden sm:inline">Export</span>
           </button>
+          {onClear && (
+            <button
+              onClick={() => setClearConfirmOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              title="Clear chat"
+            >
+              <Trash2 className="h-3 w-3" />
+              <span className="hidden sm:inline">Clear</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -385,6 +400,17 @@ export function ChatContainer({
 
       {/* Input */}
       <ChatInput onSend={onSend} disabled={isLoading} />
+
+      {/* Clear confirmation */}
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={() => onClear?.()}
+        title="Clear conversation?"
+        description="This will remove all messages from this chat. This action cannot be undone."
+        confirmLabel="Clear Chat"
+        variant="danger"
+      />
     </div>
   );
 }
