@@ -30,6 +30,7 @@ import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -74,6 +75,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const { sessions, deleteSession, renameSession } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -299,7 +301,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteSession(session.session_id);
+                        setDeletingSessionId(session.session_id);
                       }}
                       className="p-1 rounded-md hover:bg-red-400/10 hover:text-red-400"
                     >
@@ -387,6 +389,21 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           )}
         </div>
       </div>
+
+      {/* Delete session confirmation */}
+      <ConfirmDialog
+        open={!!deletingSessionId}
+        onClose={() => setDeletingSessionId(null)}
+        onConfirm={() => {
+          if (deletingSessionId) {
+            deleteSession(deletingSessionId);
+          }
+        }}
+        title="Delete conversation?"
+        description="This will permanently delete this chat session and all its messages."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </nav>
   );
 }
