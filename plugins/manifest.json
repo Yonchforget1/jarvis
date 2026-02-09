@@ -1,0 +1,85 @@
+{
+  "version": "1.0",
+  "plugins": [
+    {
+      "name": "archive",
+      "file": "archive.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Create, extract, and list zip archives.",
+      "tools": ["create_archive", "extract_archive", "list_archive"],
+      "dependencies": [],
+      "category": "filesystem"
+    },
+    {
+      "name": "clipboard",
+      "file": "clipboard.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Read and write system clipboard contents.",
+      "tools": ["clipboard_read", "clipboard_write"],
+      "dependencies": [],
+      "category": "system"
+    },
+    {
+      "name": "download_file",
+      "file": "download_file.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Download files from URLs to local paths.",
+      "tools": ["download_file"],
+      "dependencies": ["httpx"],
+      "category": "web"
+    },
+    {
+      "name": "env_vars",
+      "file": "env_vars.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Read and list environment variables with sensitive value redaction.",
+      "tools": ["get_env", "list_env"],
+      "dependencies": [],
+      "category": "system"
+    },
+    {
+      "name": "file_search",
+      "file": "file_search.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Grep-like content search across files.",
+      "tools": ["file_search"],
+      "dependencies": [],
+      "category": "filesystem"
+    },
+    {
+      "name": "http_request",
+      "file": "http_request.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Make custom HTTP requests with headers and body.",
+      "tools": ["http_request"],
+      "dependencies": ["httpx"],
+      "category": "web"
+    },
+    {
+      "name": "process_manager",
+      "file": "process_manager.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "List and manage running processes.",
+      "tools": ["list_processes", "kill_process"],
+      "dependencies": [],
+      "category": "system"
+    },
+    {
+      "name": "system_info",
+      "file": "system_info.py",
+      "version": "1.0.0",
+      "author": "Jarvis Team",
+      "description": "Get system information: CPU, RAM, disk, OS, Python version.",
+      "tools": ["system_info"],
+      "dependencies": [],
+      "category": "system"
+    }
+  ]
+}
