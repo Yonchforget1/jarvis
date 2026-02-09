@@ -5,8 +5,8 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 JWT_SECRET = os.getenv("JWT_SECRET", "jarvis-dev-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
@@ -14,8 +14,6 @@ JWT_EXPIRY_HOURS = 24
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _load_users() -> list[dict]:
@@ -40,7 +38,7 @@ def create_user(username: str, password: str, email: str = "") -> dict | None:
         "id": str(uuid.uuid4()),
         "username": username,
         "email": email,
-        "password_hash": pwd_context.hash(password),
+        "password_hash": bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     users.append(user)
@@ -52,7 +50,7 @@ def authenticate_user(username: str, password: str) -> dict | None:
     """Verify credentials. Returns user dict or None."""
     users = _load_users()
     for user in users:
-        if user["username"] == username and pwd_context.verify(password, user["password_hash"]):
+        if user["username"] == username and bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
             return user
     return None
 

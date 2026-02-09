@@ -15,7 +15,14 @@ class Memory:
         """Load learnings from disk."""
         if os.path.exists(self.path):
             with open(self.path, "r", encoding="utf-8") as f:
-                self._learnings = json.load(f)
+                data = json.load(f)
+            # Handle both formats: plain list or {"learnings": [...]}
+            if isinstance(data, dict):
+                self._learnings = data.get("learnings", [])
+            elif isinstance(data, list):
+                self._learnings = data
+            else:
+                self._learnings = []
         else:
             self._learnings = []
 
@@ -51,9 +58,12 @@ class Memory:
         recent = self._learnings[-max_entries:]
         lines = []
         for entry in recent:
-            line = f"- [{entry['category']}] {entry['insight']}"
-            if entry.get("context"):
-                line += f" (context: {entry['context']})"
+            category = entry.get("category", entry.get("task", "general"))
+            insight = entry.get("insight", entry.get("lesson", str(entry)))
+            line = f"- [{category}] {insight}"
+            context = entry.get("context", "")
+            if context:
+                line += f" (context: {context})"
             lines.append(line)
         return "\n".join(lines)
 
