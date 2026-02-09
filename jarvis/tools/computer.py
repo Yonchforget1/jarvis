@@ -61,6 +61,19 @@ except ImportError:
     log.warning("pytesseract not available, OCR disabled")
 
 
+def _escape_send_keys(text):
+    """Escape special pywinauto send_keys characters so text is typed literally."""
+    # pywinauto interprets: + ^ % ~ { } ( ) as special
+    escaped = text.replace("{", "{{}")
+    escaped = escaped.replace("}", "{}}")
+    # Now fix the double-escape: {{} -> {{}  and {}} -> {}}
+    # Actually pywinauto uses {x} for literal x, so:
+    escaped = text
+    for ch in ["{", "}", "(", ")", "+", "^", "%", "~"]:
+        escaped = escaped.replace(ch, "{" + ch + "}")
+    return escaped
+
+
 def _capture_screen(region=None):
     """Capture screen to PIL Image. region=(x, y, w, h) or None for full screen."""
     with mss.mss() as sct:
@@ -345,7 +358,8 @@ def register(registry, config):
             if clear_first:
                 pwa_keyboard.send_keys("^a")
                 time.sleep(0.05)
-            pwa_keyboard.send_keys(text, with_spaces=True)
+            # Use pyautogui.write for reliable literal text input
+            pyautogui.write(text, interval=0.02)
             return f"Typed into [{ctrl.friendly_class_name()}]: '{text}'"
         except Exception as e:
             return f"Error typing into control: {e}"
@@ -769,28 +783,53 @@ def register(registry, config):
         if not _HAS_PYWINAUTO:
             return "Error: pywinauto not available"
         try:
-            app = Application(backend="uia").connect(title_re=f".*{re.escape(window_title)}.*", timeout=10)
-            dlg = app.top_window()
-
-            # If directory specified, set it in the address/path bar
             if directory:
-                # Try the filename edit box first, put full path
                 full_path = os.path.join(directory, filename)
             else:
                 full_path = filename
 
-            # Find the filename edit box - try multiple strategies
+            # Strategy 1: Try standalone Save dialog window
+            dlg = None
+            try:
+                save_app = Application(backend="uia").connect(
+                    title_re=f".*{re.escape(window_title)}.*", timeout=3)
+                dlg = save_app.top_window()
+            except Exception:
+                pass
+
+            # Strategy 2: Search all windows for one containing a filename edit with auto_id 1001
+            if dlg is None:
+                desktop = Desktop(backend="uia")
+                for w in desktop.windows():
+                    try:
+                        # Modern apps (Win11 Notepad) embed Save As inside their window
+                        app_try = Application(backend="uia").connect(
+                            handle=w.handle, timeout=2)
+                        win_try = app_try.top_window()
+                        test_edit = win_try.child_window(auto_id="1001", control_type="Edit")
+                        if test_edit.exists(timeout=1):
+                            dlg = win_try
+                            break
+                    except Exception:
+                        continue
+
+            if dlg is None:
+                return "Error: could not find save dialog"
+
+            # Find the filename edit box
             edit = None
-            for auto_id in ["FileNameControlHost", "1001"]:
+            for auto_id in ["1001", "FileNameControlHost"]:
                 try:
+                    edit = dlg.child_window(auto_id=auto_id, control_type="Edit")
+                    if edit.exists(timeout=2):
+                        break
                     edit = dlg.child_window(auto_id=auto_id)
-                    if edit.exists():
+                    if edit.exists(timeout=2):
                         break
                 except Exception:
                     continue
 
             if edit is None or not edit.exists():
-                # Fallback: find by control type
                 try:
                     edit = dlg.child_window(control_type="ComboBox", found_index=0)
                 except Exception:
@@ -800,17 +839,26 @@ def register(registry, config):
             time.sleep(0.1)
             pwa_keyboard.send_keys("^a")
             time.sleep(0.05)
-            pwa_keyboard.send_keys(full_path, with_spaces=True)
-            time.sleep(0.2)
+            pyautogui.write(full_path, interval=0.02)
+            time.sleep(0.3)
 
-            # Click Save button
-            save_btn = dlg.child_window(title="Save", control_type="Button")
+            # Click Save button - try auto_id first (more reliable), then title
+            save_btn = None
+            try:
+                save_btn = dlg.child_window(auto_id="1", control_type="Button")
+                if not save_btn.exists(timeout=1):
+                    save_btn = None
+            except Exception:
+                pass
+            if save_btn is None:
+                save_btn = dlg.child_window(title="Save", control_type="Button")
+
             save_btn.click_input()
-            time.sleep(0.5)
+            time.sleep(1)
 
             # Check for overwrite confirmation
             try:
-                confirm = Application(backend="uia").connect(title="Confirm Save As", timeout=2)
+                confirm = Application(backend="uia").connect(title="Confirm Save As", timeout=3)
                 confirm_dlg = confirm.top_window()
                 yes_btn = confirm_dlg.child_window(title="Yes", control_type="Button")
                 yes_btn.click_input()
@@ -854,7 +902,7 @@ def register(registry, config):
             time.sleep(0.1)
             pwa_keyboard.send_keys("^a")
             time.sleep(0.05)
-            pwa_keyboard.send_keys(filename, with_spaces=True)
+            pyautogui.write(filename, interval=0.02)
             time.sleep(0.2)
 
             open_btn = dlg.child_window(title="Open", control_type="Button")
