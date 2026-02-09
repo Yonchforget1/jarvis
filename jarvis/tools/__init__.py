@@ -1,4 +1,5 @@
 from . import filesystem, gamedev, game_engine, planner_tools, shell, web
+from jarvis import tool_chain
 
 __all__ = ["register_all"]
 
@@ -11,6 +12,7 @@ def register_all(registry, config=None):
     gamedev.register(registry)
     game_engine.register(registry)
     planner_tools.register(registry)
+    tool_chain.register(registry)
     if config:
         # Lazy-load heavy computer vision modules only when needed
         from . import computer, browser
