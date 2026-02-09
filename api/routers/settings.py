@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from api.deps import get_current_user
 from api.models import UserInfo
+from jarvis.templates import list_templates
 
 router = APIRouter()
 
@@ -158,3 +159,9 @@ async def get_available_models(user: UserInfo = Depends(get_current_user)):
         backends=AVAILABLE_BACKENDS,
         models=AVAILABLE_MODELS,
     )
+
+
+@router.get("/settings/templates")
+async def get_templates(user: UserInfo = Depends(get_current_user)):
+    """Return available conversation templates."""
+    return {"templates": list_templates()}
