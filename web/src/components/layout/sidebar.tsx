@@ -24,6 +24,8 @@ import {
   Pencil,
   Check,
   Clock,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
@@ -89,7 +91,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unreadCount } = useSessionContext();
-  const { sessions, loading: sessionsLoading, deleteSession, renameSession } = useSessions();
+  const { sessions, loading: sessionsLoading, deleteSession, renameSession, togglePin } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
@@ -336,7 +338,21 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                  <div className={`flex items-center gap-0.5 transition-all ${session.pinned ? "opacity-60 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(session.session_id);
+                      }}
+                      className={`p-1 rounded-md transition-colors ${
+                        session.pinned
+                          ? "text-primary/70 hover:bg-primary/10 hover:text-primary"
+                          : "hover:bg-primary/10 hover:text-primary"
+                      }`}
+                      title={session.pinned ? "Unpin" : "Pin"}
+                    >
+                      {session.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                    </button>
                     {editingSessionId === session.session_id ? (
                       <button
                         onClick={(e) => {

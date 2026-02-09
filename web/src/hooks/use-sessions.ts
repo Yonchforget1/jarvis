@@ -35,14 +35,29 @@ function saveSessionNames(names: Record<string, string>) {
   localStorage.setItem("jarvis-session-names", JSON.stringify(names));
 }
 
+function getPinnedSessions(): Set<string> {
+  try {
+    const stored = localStorage.getItem("jarvis-pinned-sessions");
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function savePinnedSessions(pinned: Set<string>) {
+  localStorage.setItem("jarvis-pinned-sessions", JSON.stringify([...pinned]));
+}
+
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionNames, setSessionNames] = useState<Record<string, string>>({});
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
 
-  // Load custom names from localStorage
+  // Load custom names and pinned from localStorage
   useEffect(() => {
     setSessionNames(getSessionNames());
+    setPinnedIds(getPinnedSessions());
   }, []);
 
   const fetchSessions = useCallback(async () => {
@@ -95,12 +110,36 @@ export function useSessions() {
     [],
   );
 
-  // Merge custom names into sessions, auto-generate titles from preview
-  const sessionsWithNames = sessions.map((s) => ({
-    ...s,
-    customName: sessionNames[s.session_id] || undefined,
-    autoTitle: generateTitle(s.preview),
-  }));
+  const togglePin = useCallback(
+    (sessionId: string) => {
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(sessionId)) {
+          next.delete(sessionId);
+        } else {
+          next.add(sessionId);
+        }
+        savePinnedSessions(next);
+        return next;
+      });
+    },
+    [],
+  );
 
-  return { sessions: sessionsWithNames, loading, fetchSessions, deleteSession, renameSession };
+  // Merge custom names into sessions, auto-generate titles from preview
+  const sessionsWithNames = sessions
+    .map((s) => ({
+      ...s,
+      customName: sessionNames[s.session_id] || undefined,
+      autoTitle: generateTitle(s.preview),
+      pinned: pinnedIds.has(s.session_id),
+    }))
+    .sort((a, b) => {
+      // Pinned sessions first, then by last_active
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return new Date(b.last_active).getTime() - new Date(a.last_active).getTime();
+    });
+
+  return { sessions: sessionsWithNames, loading, fetchSessions, deleteSession, renameSession, togglePin };
 }
