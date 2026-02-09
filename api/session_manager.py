@@ -1,10 +1,15 @@
-"""Manages per-user Jarvis sessions with thread-safe memory access."""
+"""Manages per-user Jarvis sessions with thread-safe memory access and TTL cleanup."""
 
+import logging
 import os
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+log = logging.getLogger("jarvis")
+
+SESSION_TTL_HOURS = 24  # Sessions expire after this many hours of inactivity
 
 from jarvis.config import Config
 from jarvis.backends import create_backend
@@ -93,7 +98,9 @@ class SessionManager:
         return session
 
     def get_or_create(self, session_id: str | None, user_id: str) -> JarvisSession:
-        """Get existing session or create new one."""
+        """Get existing session or create new one. Triggers cleanup of expired sessions."""
+        # Periodic cleanup on access
+        self.cleanup_expired()
         if session_id:
             with self._lock:
                 session = self._sessions.get(session_id)
@@ -122,6 +129,20 @@ class SessionManager:
         """Get all sessions for a user."""
         with self._lock:
             return [s for s in self._sessions.values() if s.user_id == user_id]
+
+    def cleanup_expired(self) -> int:
+        """Remove sessions that have been inactive longer than SESSION_TTL_HOURS."""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=SESSION_TTL_HOURS)
+        with self._lock:
+            expired = [
+                sid for sid, s in self._sessions.items()
+                if s.last_active < cutoff
+            ]
+            for sid in expired:
+                del self._sessions[sid]
+        if expired:
+            log.info("Cleaned up %d expired session(s)", len(expired))
+        return len(expired)
 
     def shutdown(self):
         """Clean up all sessions."""
