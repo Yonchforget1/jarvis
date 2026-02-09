@@ -94,8 +94,39 @@ EVOLUTION_SYSTEM_PROMPT = textwrap.dedent("""\
     - Prefer NEW files over modifying existing ones (safer, easier to review)
     - Maximum 3 improvements per cycle
     - Each file must be under 500 lines
-    - All new tools MUST follow the existing ToolDef registration pattern
+    - All new tools MUST follow the exact ToolDef pattern shown below
     - Code must be production-quality with proper error handling
+    - ONLY use imports that exist. The jarvis.tool_registry module exports ONLY: ToolDef, ToolRegistry
+
+    EXACT TOOL FILE PATTERN (you MUST follow this):
+    ```
+    from jarvis.tool_registry import ToolDef
+
+    def my_function(param1: str, param2: int = 5) -> str:
+        # implementation
+        return "result string"
+
+    def register(registry):
+        registry.register(ToolDef(
+            name="my_tool",
+            description="What this tool does.",
+            parameters={
+                "properties": {
+                    "param1": {"type": "string", "description": "..."},
+                    "param2": {"type": "integer", "description": "...", "default": 5},
+                },
+                "required": ["param1"],
+            },
+            func=my_function,
+        ))
+    ```
+
+    TEST CODE REQUIREMENTS:
+    - Tests run as standalone scripts via `python test_file.py`
+    - Exit code 0 = pass, non-zero = fail
+    - Import the module directly: `from jarvis.tools.my_module import my_function`
+    - Test the actual functions, not just imports
+    - Use try/except with sys.exit(1) on failure
 
     OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no commentary) matching:
     {
