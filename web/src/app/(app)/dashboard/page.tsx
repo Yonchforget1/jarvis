@@ -1,6 +1,7 @@
 "use client";
 
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash } from "lucide-react";
+import Link from "next/link";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, Download, ArrowRight } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -115,6 +116,31 @@ export default function DashboardPage() {
           iconColor="text-orange-400"
           bgColor="bg-orange-400/10"
         />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { href: "/chat", label: "New Chat", icon: MessageSquare, color: "text-primary", bg: "bg-primary/10 border-primary/20 hover:bg-primary/15" },
+            { href: "/tools", label: "View Tools", icon: Wrench, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20 hover:bg-blue-400/15" },
+            { href: "/learnings", label: "Learnings", icon: Brain, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20 hover:bg-purple-400/15" },
+            { href: "/settings", label: "Settings", icon: Settings, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20 hover:bg-orange-400/15" },
+          ].map((action) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className={`group flex items-center gap-2.5 rounded-xl border p-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${action.bg}`}
+            >
+              <action.icon className={`h-4 w-4 ${action.color} shrink-0`} />
+              <span className="text-xs font-medium text-foreground">{action.label}</span>
+              <ArrowRight className="ml-auto h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-all group-hover:translate-x-0.5" />
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Two-column layout */}
