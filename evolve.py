@@ -565,12 +565,17 @@ class SafeExecutor:
             with open(test_file, "w", encoding="utf-8") as f:
                 f.write(test_code)
 
+            # Set PYTHONPATH so `import jarvis` works from the project root
+            env = os.environ.copy()
+            env["PYTHONPATH"] = self.root + os.pathsep + env.get("PYTHONPATH", "")
+
             r = subprocess.run(
                 [sys.executable, test_file],
                 cwd=self.root,
                 capture_output=True,
                 text=True,
                 timeout=60,
+                env=env,
             )
 
             if r.returncode == 0:
