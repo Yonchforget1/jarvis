@@ -1,4 +1,5 @@
 from jarvis.backends.base import Backend
+from jarvis.logger import log
 from jarvis.tool_registry import ToolRegistry
 
 
@@ -14,6 +15,8 @@ class Conversation:
         self.system = system
         self.max_tokens = max_tokens
         self.messages: list = []
+        self.total_tool_calls: int = 0
+        self.total_turns: int = 0
 
     def _trim_history(self):
         """Trim old messages to stay within MAX_MESSAGES, keeping recent context."""
@@ -44,7 +47,7 @@ class Conversation:
                 self.messages.append(self.backend.format_assistant_message(response))
                 results = []
                 for tc in response.tool_calls:
-                    print(f"  [tool: {tc.name}]")
+                    log.info("tool call: %s", tc.name)
                     result = self.registry.handle_call(tc.name, tc.args)
                     results.append((tc.id, result))
 

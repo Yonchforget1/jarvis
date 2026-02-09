@@ -13,6 +13,8 @@ class Config:
     max_tokens: int = 4096
     system_prompt: str = "You are Jarvis, a helpful AI assistant."
     api_key: str = ""
+    tool_timeout: int = 30  # Default timeout for tool execution in seconds
+    max_tool_turns: int = 25  # Max tool calls per conversation turn
 
     @classmethod
     def load(cls, config_path: str = "config.yaml") -> "Config":
@@ -27,6 +29,8 @@ class Config:
             api_key_env=data.get("api_key_env", cls.api_key_env),
             max_tokens=data.get("max_tokens", cls.max_tokens),
             system_prompt=data.get("system_prompt", cls.system_prompt),
+            tool_timeout=data.get("tool_timeout", cls.tool_timeout),
+            max_tool_turns=data.get("max_tool_turns", cls.max_tool_turns),
         )
         config.api_key = os.getenv(config.api_key_env, "")
         if not config.api_key:

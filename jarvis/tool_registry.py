@@ -1,7 +1,10 @@
 import importlib.util
+import logging
 import os
 from dataclasses import dataclass
 from typing import Callable
+
+log = logging.getLogger("jarvis.tools")
 
 
 @dataclass
@@ -72,9 +75,15 @@ class ToolRegistry:
         tool = self._tools.get(name)
         if tool is None:
             return f"Unknown tool: {name}"
+        # Validate required parameters
+        required = tool.parameters.get("required", [])
+        missing = [r for r in required if r not in args]
+        if missing:
+            return f"Tool error ({name}): missing required parameters: {', '.join(missing)}"
         try:
             return tool.execute(args)
         except Exception as e:
+            log.exception("Tool %s failed with args %s", name, args)
             return f"Tool error ({name}): {e}"
 
     def load_builtin_tools(self):
@@ -98,6 +107,6 @@ class ToolRegistry:
                 if hasattr(module, "register"):
                     module.register(self)
                 else:
-                    print(f"Warning: plugin {filename} has no register() function, skipping.")
+                    log.warning("Plugin %s has no register() function, skipping.", filename)
             except Exception as e:
-                print(f"Warning: failed to load plugin {filename}: {e}")
+                log.warning("Failed to load plugin %s: %s", filename, e)
