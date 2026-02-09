@@ -236,55 +236,72 @@ def handle_tool_call(name: str, args: dict) -> str:
     return f"Unknown tool: {name}"
 
 
-def run_agent(user_input: str) -> str:
-    """Run the agent loop: send message, handle tool calls, return final answer."""
-    messages = [
-        {"role": "user", "content": user_input},
-    ]
+class Conversation:
+    """Manages conversation history for multi-turn memory."""
 
-    while True:
-        response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=tools,
-            messages=messages,
-        )
+    def __init__(self):
+        self.messages: list[dict] = []
 
-        if response.stop_reason == "tool_use":
-            # Append assistant response, then handle each tool call
-            messages.append({"role": "assistant", "content": response.content})
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
-                    result = handle_tool_call(block.name, block.input)
-                    tool_results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result,
-                        }
-                    )
-            messages.append({"role": "user", "content": tool_results})
-        else:
-            # Extract final text response
-            for block in response.content:
-                if hasattr(block, "text"):
-                    return block.text
-            return ""
+    def send(self, user_input: str) -> str:
+        """Send a message and run the agent loop, preserving history."""
+        self.messages.append({"role": "user", "content": user_input})
+
+        while True:
+            response = client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                tools=tools,
+                messages=self.messages,
+            )
+
+            if response.stop_reason == "tool_use":
+                self.messages.append(
+                    {"role": "assistant", "content": response.content}
+                )
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        result = handle_tool_call(block.name, block.input)
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": result,
+                            }
+                        )
+                self.messages.append({"role": "user", "content": tool_results})
+            else:
+                self.messages.append(
+                    {"role": "assistant", "content": response.content}
+                )
+                for block in response.content:
+                    if hasattr(block, "text"):
+                        return block.text
+                return ""
+
+    def clear(self):
+        """Reset conversation history."""
+        self.messages.clear()
 
 
 def main():
-    print("Jarvis AI Agent (type 'quit' to exit)")
-    print("-" * 40)
+    print("Jarvis AI Agent")
+    print("Commands: 'quit' to exit, '/clear' to reset conversation")
+    print("-" * 50)
+    convo = Conversation()
     while True:
         user_input = input("\nYou: ").strip()
         if user_input.lower() in ("quit", "exit"):
             print("Goodbye!")
             break
+        if user_input.lower() == "/clear":
+            convo.clear()
+            print("(conversation cleared)")
+            continue
         if not user_input:
             continue
-        response = run_agent(user_input)
+        response = convo.send(user_input)
         print(f"\nJarvis: {response}")
 
 
