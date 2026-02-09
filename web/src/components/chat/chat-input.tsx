@@ -269,13 +269,19 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+/</kbd> focus
             </span>
           </div>
-          {isNearLimit && (
+          {charCount > 0 && (
             <span
-              className={`text-[10px] font-mono ${
-                isOverLimit ? "text-red-400" : "text-yellow-400/60"
+              className={`text-[10px] font-mono transition-colors ${
+                isOverLimit
+                  ? "text-red-400"
+                  : isNearLimit
+                  ? "text-yellow-400/60"
+                  : "text-muted-foreground/30"
               }`}
             >
-              {charCount.toLocaleString()}/{MAX_LENGTH.toLocaleString()}
+              {isNearLimit
+                ? `${charCount.toLocaleString()}/${MAX_LENGTH.toLocaleString()}`
+                : `${charCount.toLocaleString()} chars`}
             </span>
           )}
         </div>
