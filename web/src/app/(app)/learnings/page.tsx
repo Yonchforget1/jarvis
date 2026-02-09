@@ -5,7 +5,7 @@ import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Brain } from "lucide-react";
+import { Search, Brain, Download } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -75,8 +75,33 @@ export default function LearningsPage() {
             {filtered.length} of {learnings.length} insights from past tasks
           </p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-400/10">
-          <Brain className="h-5 w-5 text-purple-400" />
+        <div className="flex items-center gap-2">
+          {learnings.length > 0 && (
+            <button
+              onClick={() => {
+                const markdown = filtered
+                  .map(
+                    (l) =>
+                      `### ${l.category}\n> ${l.insight}\n\n${l.context ? `_Context:_ ${l.context}\n` : ""}${l.task_description ? `_Task:_ ${l.task_description}\n` : ""}\n_${new Date(l.timestamp).toLocaleString()}_\n\n---`,
+                  )
+                  .join("\n\n");
+                const blob = new Blob([`# JARVIS Learnings Export\n\n${markdown}`], { type: "text/markdown" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+          )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-400/10">
+            <Brain className="h-5 w-5 text-purple-400" />
+          </div>
         </div>
       </div>
 
