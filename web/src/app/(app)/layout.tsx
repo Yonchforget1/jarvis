@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { TopLoader } from "@/components/top-loader";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
@@ -80,6 +81,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <TopLoader />
       {/* Desktop sidebar */}
       <div className="hidden lg:block shrink-0">
         <Sidebar
