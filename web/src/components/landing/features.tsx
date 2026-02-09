@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { Folder, Terminal, Globe, Gamepad2, Brain, Cpu } from "lucide-react";
 
 const FEATURES = [
@@ -39,6 +42,46 @@ const FEATURES = [
   },
 ];
 
+function FeatureCard({ feature, delay }: { feature: typeof FEATURES[number]; delay: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setVisible(true), delay);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [delay]);
+
+  return (
+    <div
+      ref={ref}
+      className={`group rounded-2xl border border-white/5 bg-white/[0.02] p-6 backdrop-blur-sm hover:border-primary/20 hover:bg-white/[0.04] transition-all duration-500 ${
+        visible
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-6"
+      }`}
+    >
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+        <feature.icon className="h-5 w-5 text-primary" />
+      </div>
+      <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        {feature.description}
+      </p>
+    </div>
+  );
+}
+
 export function Features() {
   return (
     <section id="features" className="px-4 py-24">
@@ -54,19 +97,8 @@ export function Features() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.title}
-              className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 backdrop-blur-sm hover:border-primary/20 hover:bg-white/[0.04] transition-all duration-300"
-            >
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <feature.icon className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
+          {FEATURES.map((feature, i) => (
+            <FeatureCard key={feature.title} feature={feature} delay={i * 100} />
           ))}
         </div>
       </div>
