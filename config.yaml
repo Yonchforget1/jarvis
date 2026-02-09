@@ -1,0 +1,14 @@
+# Jarvis AI Agent Configuration
+#
+# To switch backends, update these three fields:
+#   Claude:  backend: claude,  model: claude-sonnet-4-5-20250929,  api_key_env: ANTHROPIC_API_KEY
+#   OpenAI:  backend: openai,  model: gpt-4o,                     api_key_env: OPENAI_API_KEY
+#   Gemini:  backend: gemini,  model: gemini-2.0-flash,            api_key_env: GOOGLE_API_KEY
+
+backend: claude
+model: claude-sonnet-4-5-20250929
+api_key_env: ANTHROPIC_API_KEY
+max_tokens: 4096
+system_prompt: >
+  You are Jarvis, a helpful AI assistant. You can use the provided tools to
+  answer questions and accomplish tasks. Think step by step before responding.
