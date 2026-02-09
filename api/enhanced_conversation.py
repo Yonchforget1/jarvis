@@ -24,7 +24,7 @@ class WebConversation(Conversation):
         """Send a message, run the tool loop, capture tool calls, return text."""
         self._pending_tool_calls = []
         self.messages.append(self.backend.format_user_message(user_input))
-        tools = self.registry.all_tools()
+        tools = self._resolve_tools(user_input)
         turns = 0
 
         while True:
@@ -76,7 +76,7 @@ class WebConversation(Conversation):
         """
         self._pending_tool_calls = []
         self.messages.append(self.backend.format_user_message(user_input))
-        tools = self.registry.all_tools()
+        tools = self._resolve_tools(user_input)
         turns = 0
 
         event_queue.put({"event": "thinking", "data": {"status": "Processing your request..."}})

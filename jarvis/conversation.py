@@ -6,6 +6,7 @@ from jarvis.context_manager import estimate_tokens, summarize_messages
 from jarvis.logger import log
 from jarvis.parallel import execute_tools_parallel
 from jarvis.tool_registry import ToolRegistry
+from jarvis.tool_router import select_tools
 
 
 class Conversation:
@@ -15,11 +16,13 @@ class Conversation:
     MAX_MESSAGES = 100  # Keep conversation manageable
     CONTEXT_TOKEN_THRESHOLD = 30000  # Trigger summarization when estimated tokens exceed this
 
-    def __init__(self, backend: Backend, registry: ToolRegistry, system: str, max_tokens: int = 4096):
+    def __init__(self, backend: Backend, registry: ToolRegistry, system: str,
+                 max_tokens: int = 4096, use_tool_router: bool = False):
         self.backend = backend
         self.registry = registry
         self.system = system
         self.max_tokens = max_tokens
+        self.use_tool_router = use_tool_router
         self.messages: list = []
         self.total_tool_calls: int = 0
         self.total_turns: int = 0
@@ -57,10 +60,23 @@ class Conversation:
             max_tokens=self.max_tokens,
         )
 
+    def _resolve_tools(self, user_input: str) -> list:
+        """Return the tool list to send to the backend.
+
+        When *use_tool_router* is enabled (typically for local models), picks
+        the ~8 most relevant tools.  Otherwise sends the full registry.
+        """
+        if self.use_tool_router:
+            routed = select_tools(user_input, self.registry)
+            log.info("Tool router selected %d tools: %s",
+                     len(routed), [t.name for t in routed])
+            return routed
+        return self.registry.all_tools()
+
     def send(self, user_input: str) -> str:
         """Send a message, run the tool loop, return the final text response."""
         self.messages.append(self.backend.format_user_message(user_input))
-        tools = self.registry.all_tools()
+        tools = self._resolve_tools(user_input)
         turns = 0
 
         while True:
@@ -107,7 +123,7 @@ class Conversation:
             done      - {}
         """
         self.messages.append(self.backend.format_user_message(user_input))
-        tools = self.registry.all_tools()
+        tools = self._resolve_tools(user_input)
         turns = 0
 
         event_queue.put({"event": "thinking", "data": {"status": "Processing your request..."}})

@@ -102,7 +102,8 @@ def cmd_chat(args) -> None:
     print("Commands: 'quit' to exit, '/clear' to reset conversation")
     print("-" * 50)
 
-    convo = Conversation(backend, registry, system_prompt, config.max_tokens)
+    convo = Conversation(backend, registry, system_prompt, config.max_tokens,
+                         use_tool_router=(config.backend == "ollama"))
     while True:
         try:
             user_input = input("\nYou: ").strip()

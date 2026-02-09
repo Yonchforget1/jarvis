@@ -89,7 +89,8 @@ class SessionManager:
         if self._config.backend != "ollama":
             registry.load_plugins(os.path.join(project_root, "plugins"))
 
-        convo = WebConversation(backend, registry, system_prompt, self._config.max_tokens)
+        convo = WebConversation(backend, registry, system_prompt, self._config.max_tokens,
+                               use_tool_router=(self._config.backend == "ollama"))
 
         session = JarvisSession(
             session_id=str(uuid.uuid4()),
