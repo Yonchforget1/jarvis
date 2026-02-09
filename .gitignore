@@ -8,3 +8,7 @@ memory/
 test_games/
 SpaceBlaster/
 _test_state.pkl
+web/node_modules/
+web/.next/
+web/.env.local
+api/data/
