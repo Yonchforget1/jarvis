@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -17,6 +17,7 @@ import {
   XCircle,
   Monitor,
   FileText,
+  Clock,
 } from "lucide-react";
 import type { ToolCallDetail } from "@/lib/types";
 
@@ -57,8 +58,34 @@ function getResultPreview(result: string): { preview: string; isError: boolean }
 export function ToolCallCard({ call }: { call: ToolCallDetail }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startTimeRef = useRef(Date.now());
+  const frozenTimeRef = useRef<number | null>(null);
   const meta = TOOL_META[call.name] || DEFAULT_META;
   const Icon = meta.icon;
+
+  // Timer: tick every 100ms while running, freeze when result arrives
+  useEffect(() => {
+    if (call.result) {
+      if (frozenTimeRef.current === null) {
+        frozenTimeRef.current = Date.now() - startTimeRef.current;
+        setElapsed(frozenTimeRef.current);
+      }
+      return;
+    }
+    const timer = setInterval(() => {
+      setElapsed(Date.now() - startTimeRef.current);
+    }, 100);
+    return () => clearInterval(timer);
+  }, [call.result]);
+
+  const elapsedLabel = frozenTimeRef.current !== null
+    ? frozenTimeRef.current < 1000
+      ? `${frozenTimeRef.current}ms`
+      : `${(frozenTimeRef.current / 1000).toFixed(1)}s`
+    : elapsed < 1000
+      ? `${elapsed}ms`
+      : `${(elapsed / 1000).toFixed(1)}s`;
 
   const handleCopyResult = () => {
     navigator.clipboard.writeText(call.result);
@@ -125,13 +152,18 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
             </p>
           )}
         </div>
-        {isRunning ? (
-          <Loader2 className="ml-auto h-3.5 w-3.5 text-primary/60 shrink-0 animate-spin" />
-        ) : isResultError ? (
-          <XCircle className="ml-auto h-3.5 w-3.5 text-red-400/60 shrink-0" />
-        ) : (
-          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500/60 shrink-0" />
-        )}
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <span className={`text-[10px] font-mono ${isRunning ? "text-primary/50 animate-pulse" : "text-muted-foreground/40"}`}>
+            {elapsedLabel}
+          </span>
+          {isRunning ? (
+            <Loader2 className="h-3.5 w-3.5 text-primary/60 animate-spin" />
+          ) : isResultError ? (
+            <XCircle className="h-3.5 w-3.5 text-red-400/60" />
+          ) : (
+            <CheckCircle2 className="h-3.5 w-3.5 text-green-500/60" />
+          )}
+        </div>
       </button>
 
       {expanded && (
