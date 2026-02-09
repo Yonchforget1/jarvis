@@ -596,9 +596,10 @@ class SafeExecutor:
             with open(test_file, "w", encoding="utf-8") as f:
                 f.write(test_code)
 
-            # Set PYTHONPATH so `import jarvis` works from the project root
+            # Set PYTHONPATH so `import jarvis` works, and UTF-8 for Windows
             env = os.environ.copy()
             env["PYTHONPATH"] = self.root + os.pathsep + env.get("PYTHONPATH", "")
+            env["PYTHONIOENCODING"] = "utf-8"
 
             r = subprocess.run(
                 [sys.executable, test_file],
