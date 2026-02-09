@@ -165,6 +165,72 @@ def cmd_docs(args) -> None:
     print(f"\n---\nGenerated from {len(tools)} tools")
 
 
+def cmd_test_tool(args) -> None:
+    """Test a specific tool interactively."""
+    import json as _json
+    config = Config.load()
+    registry = _build_registry(config)
+    tool = registry.get(args.name)
+    if not tool:
+        print(f"Error: Tool '{args.name}' not found.", file=sys.stderr)
+        print(f"Available: {', '.join(t.name for t in registry.all_tools())}")
+        sys.exit(1)
+
+    print(f"Testing tool: {tool.name}")
+    print(f"Description: {tool.description}")
+    print(f"Category: {tool.category}")
+
+    props = tool.parameters.get("properties", {})
+    required = set(tool.parameters.get("required", []))
+
+    if args.args_json:
+        try:
+            tool_args = _json.loads(args.args_json)
+        except _json.JSONDecodeError as e:
+            print(f"Error parsing JSON args: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Interactive: prompt for each parameter
+        tool_args = {}
+        for pname, pinfo in props.items():
+            req = " (required)" if pname in required else ""
+            ptype = pinfo.get("type", "string")
+            desc = pinfo.get("description", "")
+            default = pinfo.get("default")
+
+            prompt_str = f"  {pname} ({ptype}){req}"
+            if desc:
+                prompt_str += f" - {desc}"
+            if default is not None:
+                prompt_str += f" [{default}]"
+            prompt_str += ": "
+
+            try:
+                value = input(prompt_str).strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\nCancelled.")
+                return
+
+            if not value and default is not None:
+                value = str(default)
+            if not value and pname not in required:
+                continue
+            if ptype == "integer":
+                value = int(value)
+            elif ptype == "number":
+                value = float(value)
+            elif ptype == "boolean":
+                value = value.lower() in ("true", "1", "yes")
+            tool_args[pname] = value
+
+    print(f"\nRunning {tool.name}({tool_args})...")
+    print("-" * 50)
+    result = registry.handle_call(tool.name, tool_args)
+    print(result)
+    print("-" * 50)
+    print(f"Result length: {len(result)} chars")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Jarvis AI Agent")
     subparsers = parser.add_subparsers(dest="command")
@@ -181,6 +247,12 @@ def main() -> None:
     # check-config
     config_parser = subparsers.add_parser("check-config", help="Validate configuration")
     config_parser.set_defaults(func=cmd_check_config)
+
+    # test-tool
+    test_parser = subparsers.add_parser("test-tool", help="Test a specific tool interactively")
+    test_parser.add_argument("name", help="Tool name to test")
+    test_parser.add_argument("--args", "-a", dest="args_json", help="JSON object of arguments")
+    test_parser.set_defaults(func=cmd_test_tool)
 
     # docs
     docs_parser = subparsers.add_parser("docs", help="Generate tool documentation")
