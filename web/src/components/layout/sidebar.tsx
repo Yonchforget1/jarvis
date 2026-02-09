@@ -86,6 +86,21 @@ function sessionDuration(createdAt: string, lastActive: string): string {
   return `${days}d`;
 }
 
+function sessionDateGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  if (date >= today) return "Today";
+  if (date >= yesterday) return "Yesterday";
+  if (date >= weekAgo) return "This Week";
+  return "Older";
+}
+
 function usernameHue(name: string): number {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -278,9 +293,6 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           </div>
         ) : (
           <>
-            <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
-              Recent Chats
-            </p>
             {sessionsLoading ? (
               <div className="space-y-1.5 px-1">
                 {[1, 2, 3].map((i) => (
@@ -298,9 +310,18 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 No conversations yet
               </p>
             ) : (
-              sessions.slice(0, 10).map((session) => (
+              sessions.slice(0, 15).map((session, idx, arr) => {
+                const group = sessionDateGroup(session.last_active);
+                const prevGroup = idx > 0 ? sessionDateGroup(arr[idx - 1].last_active) : null;
+                const showGroupHeader = group !== prevGroup;
+                return (
+                <div key={session.session_id}>
+                  {showGroupHeader && (
+                    <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                      {group}
+                    </p>
+                  )}
                 <div
-                  key={session.session_id}
                   className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"
@@ -394,7 +415,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     </button>
                   </div>
                 </div>
-              ))
+                </div>
+                );
+              })
             )}
 
             <Separator className="!my-3 bg-muted" />
