@@ -41,3 +41,20 @@ class Backend(ABC):
 
     @abstractmethod
     def format_tool_results(self, results: list[tuple[str, str]]) -> dict | list[dict]: ...
+
+    def ping(self) -> bool:
+        """Check backend connectivity with a minimal API call.
+
+        Returns True if the backend is reachable and authenticated.
+        Subclasses should override for efficient implementation.
+        """
+        try:
+            self.send(
+                messages=[self.format_user_message("ping")],
+                system="Respond with 'pong'.",
+                tools=[],
+                max_tokens=5,
+            )
+            return True
+        except Exception:
+            return False

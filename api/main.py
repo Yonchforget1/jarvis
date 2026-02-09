@@ -65,5 +65,30 @@ app.include_router(settings.router, prefix="/api", tags=["settings"])
 
 
 @app.get("/api/health")
-async def health():
-    return {"status": "ok", "service": "jarvis-api"}
+async def health(deep: bool = False):
+    """Health check endpoint.
+
+    Pass ?deep=true to verify backend API connectivity (slower).
+    """
+    result = {
+        "status": "ok",
+        "service": "jarvis-api",
+        "uptime_seconds": round(session_manager.uptime_seconds, 1),
+        "active_sessions": session_manager.active_session_count,
+    }
+    if deep:
+        try:
+            from jarvis.backends import create_backend
+
+            backend = create_backend(session_manager.config)
+            backend_ok = backend.ping()
+        except Exception:
+            backend_ok = False
+        result["backend"] = {
+            "name": session_manager.config.backend,
+            "model": session_manager.config.model,
+            "connected": backend_ok,
+        }
+        if not backend_ok:
+            result["status"] = "degraded"
+    return result
