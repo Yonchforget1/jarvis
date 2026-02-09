@@ -127,62 +127,6 @@ export function ChatContainer({
     setActiveMatchIndex(0);
   }, []);
 
-  // Ctrl+F to open search, Escape to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f" && messages.length > 0) {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      }
-      if (e.key === "Escape" && searchOpen) {
-        closeSearch();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [searchOpen, closeSearch, messages.length]);
-
-  // Track scroll position to show/hide scroll-to-bottom button
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setShowScrollButton(distanceFromBottom > 200);
-      // Reset new message count when scrolled to bottom
-      if (distanceFromBottom < 100) {
-        setNewMessageCount(0);
-      }
-    };
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Auto-scroll to bottom on new messages (only if already near bottom)
-  useEffect(() => {
-    if (!scrollRef.current || searchOpen) return;
-    const el = scrollRef.current;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const isNearBottom = distanceFromBottom < 200;
-
-    if (isNearBottom) {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-      setNewMessageCount(0);
-    } else if (messages.length > prevMessageCountRef.current) {
-      // User is scrolled up and new messages arrived
-      setNewMessageCount((prev) => prev + (messages.length - prevMessageCountRef.current));
-    }
-    prevMessageCountRef.current = messages.length;
-  }, [messages, isLoading, searchOpen]);
-
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-      setNewMessageCount(0);
-    }
-  }, []);
-
   const exportChat = useCallback(() => {
     if (messages.length === 0) return;
     const lines: string[] = [
@@ -254,6 +198,66 @@ export function ChatContainer({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [messages]);
+
+  // Ctrl+F to open search, Ctrl+Shift+E to export, Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f" && messages.length > 0) {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "E" && messages.length > 0) {
+        e.preventDefault();
+        exportChat();
+      }
+      if (e.key === "Escape" && searchOpen) {
+        closeSearch();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [searchOpen, closeSearch, messages.length, exportChat]);
+
+  // Track scroll position to show/hide scroll-to-bottom button
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollButton(distanceFromBottom > 200);
+      // Reset new message count when scrolled to bottom
+      if (distanceFromBottom < 100) {
+        setNewMessageCount(0);
+      }
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Auto-scroll to bottom on new messages (only if already near bottom)
+  useEffect(() => {
+    if (!scrollRef.current || searchOpen) return;
+    const el = scrollRef.current;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNearBottom = distanceFromBottom < 200;
+
+    if (isNearBottom) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      setNewMessageCount(0);
+    } else if (messages.length > prevMessageCountRef.current) {
+      // User is scrolled up and new messages arrived
+      setNewMessageCount((prev) => prev + (messages.length - prevMessageCountRef.current));
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages, isLoading, searchOpen]);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      setNewMessageCount(0);
+    }
+  }, []);
 
   // Determine which message is the active match
   const activeMatchMsgId =
