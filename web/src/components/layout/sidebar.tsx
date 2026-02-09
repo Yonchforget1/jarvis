@@ -31,6 +31,7 @@ import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -72,7 +73,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unreadCount } = useSessionContext();
-  const { sessions, deleteSession, renameSession } = useSessions();
+  const { sessions, loading: sessionsLoading, deleteSession, renameSession } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
@@ -237,7 +238,19 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
             <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
               Recent Chats
             </p>
-            {sessions.length === 0 ? (
+            {sessionsLoading ? (
+              <div className="space-y-1.5 px-1">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-xl px-2 py-2">
+                    <Skeleton className="h-3.5 w-3.5 rounded shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-3 w-3/4 rounded" />
+                      <Skeleton className="h-2 w-1/2 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sessions.length === 0 ? (
               <p className="px-3 py-2 text-xs text-muted-foreground/40">
                 No conversations yet
               </p>
