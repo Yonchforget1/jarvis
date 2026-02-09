@@ -4,6 +4,7 @@ __pycache__/
 .env
 .idea/
 .vscode/
+.claude/
 memory/
 test_games/
 SpaceBlaster/
