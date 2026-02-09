@@ -66,6 +66,16 @@ export default function SettingsPage() {
     setHasChanges(changed);
   }, [backend, model, maxTokens, apiKey, settings]);
 
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    if (!hasChanges) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasChanges]);
+
   const handleBackendChange = (newBackend: string) => {
     setBackend(newBackend);
     const models = modelsData?.models[newBackend];
@@ -427,7 +437,16 @@ export default function SettingsPage() {
         </Card>
 
         {/* Save Button */}
-        <div className="sticky bottom-0 bg-background/80 backdrop-blur-xl py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 border-t border-border/50">
+        <div className={`sticky bottom-0 backdrop-blur-xl py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 border-t transition-colors duration-200 ${
+          hasChanges
+            ? "bg-primary/5 border-primary/20"
+            : "bg-background/80 border-border/50"
+        }`}>
+          {hasChanges && (
+            <p className="text-[10px] text-primary/70 text-center mb-2 animate-fade-in">
+              You have unsaved changes
+            </p>
+          )}
           <Button
             onClick={handleSave}
             disabled={!hasChanges || saving}
