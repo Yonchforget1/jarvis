@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Plus, Wifi, WifiOff, Loader2, Sun, Moon } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
 
@@ -16,10 +16,9 @@ const PAGE_TITLES: Record<string, string> = {
 
 interface HeaderProps {
   onMenuClick: () => void;
-  onNewChat?: () => void;
 }
 
-export function Header({ onMenuClick, onNewChat }: HeaderProps) {
+export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const title = PAGE_TITLES[pathname] || "Jarvis";
   const { status, latency } = useConnection();
@@ -84,17 +83,19 @@ export function Header({ onMenuClick, onNewChat }: HeaderProps) {
           <span className="sr-only">Toggle theme</span>
         </Button>
 
-        {pathname === "/chat" && onNewChat && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onNewChat}
-            className="h-8 gap-1.5 text-xs rounded-lg border-border/50"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">New Chat</span>
-          </Button>
-        )}
+        {/* Command palette trigger */}
+        <button
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+          }}
+          className="hidden sm:flex items-center gap-2 h-8 rounded-lg border border-border/50 bg-muted/50 px-3 text-xs text-muted-foreground hover:bg-muted transition-colors"
+        >
+          <Search className="h-3 w-3" />
+          <span>Search</span>
+          <kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono border border-border/50">
+            Ctrl+K
+          </kbd>
+        </button>
       </div>
     </header>
   );

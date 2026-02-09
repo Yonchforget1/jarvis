@@ -7,6 +7,7 @@ import { SessionProvider, useSessionContext } from "@/lib/session-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { CommandPalette } from "@/components/command-palette";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
@@ -21,25 +22,16 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Global keyboard shortcuts
+  // Escape closes sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape: close sidebar
       if (e.key === "Escape") {
         setSidebarOpen(false);
-        return;
-      }
-      // Ctrl+K: new chat
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        selectSession("");
-        router.push("/chat");
-        return;
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [router, selectSession]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -104,6 +96,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         </main>
         <MobileNav />
       </div>
+
+      {/* Command palette */}
+      <CommandPalette />
     </div>
   );
 }
