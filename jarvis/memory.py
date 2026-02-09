@@ -13,7 +13,7 @@ class Memory:
         self._summary_cache_count: int = 0
         self.load()
 
-    def load(self):
+    def load(self) -> None:
         """Load learnings from disk."""
         if os.path.exists(self.path):
             with open(self.path, "r", encoding="utf-8") as f:

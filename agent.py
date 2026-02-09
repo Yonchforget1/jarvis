@@ -14,7 +14,7 @@ from jarvis.core import build_system_prompt
 from jarvis.memory import Memory
 
 
-def main():
+def main() -> None:
     project_root = os.path.dirname(os.path.abspath(__file__))
     try:
         config = Config.load()

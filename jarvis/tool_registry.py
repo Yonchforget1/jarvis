@@ -78,7 +78,7 @@ class ToolRegistry:
         self._tools: dict[str, ToolDef] = {}
         self._stats: dict[str, ToolStats] = {}
 
-    def register(self, tool: ToolDef):
+    def register(self, tool: ToolDef) -> None:
         self._tools[tool.name] = tool
 
     def get(self, name: str) -> ToolDef | None:
@@ -143,12 +143,12 @@ class ToolRegistry:
             reverse=True,
         )
 
-    def load_builtin_tools(self):
+    def load_builtin_tools(self) -> None:
         from jarvis.tools import register_all
 
         register_all(self)
 
-    def load_plugins(self, plugins_dir: str):
+    def load_plugins(self, plugins_dir: str) -> None:
         """Load .py files from plugins_dir. Each must define register(registry)."""
         if not os.path.isdir(plugins_dir):
             return

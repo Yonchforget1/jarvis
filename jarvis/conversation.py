@@ -70,6 +70,6 @@ class Conversation:
                 self._trim_history()
                 return response.text or ""
 
-    def clear(self):
+    def clear(self) -> None:
         """Reset conversation history."""
         self.messages.clear()
