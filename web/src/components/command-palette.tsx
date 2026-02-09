@@ -13,6 +13,10 @@ import {
   Moon,
   Sun,
   LogOut,
+  Maximize,
+  Keyboard,
+  Download,
+  Monitor,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
@@ -99,6 +103,36 @@ export function CommandPalette() {
       description: "Toggle appearance",
       icon: theme === "dark" ? Sun : Moon,
       action: () => { setTheme(theme === "dark" ? "light" : "dark"); close(); },
+      category: "Actions",
+    },
+    {
+      id: "focus-mode",
+      label: "Toggle Focus Mode",
+      description: "Hide sidebar and nav for distraction-free chat",
+      icon: Maximize,
+      action: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "F", ctrlKey: true, shiftKey: true }));
+        close();
+      },
+      category: "Actions",
+    },
+    {
+      id: "shortcuts",
+      label: "Keyboard Shortcuts",
+      description: "View all keyboard shortcuts",
+      icon: Keyboard,
+      action: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", ctrlKey: true }));
+        close();
+      },
+      category: "Actions",
+    },
+    {
+      id: "system-theme",
+      label: "Use System Theme",
+      description: "Match your OS appearance",
+      icon: Monitor,
+      action: () => { setTheme("system"); close(); },
       category: "Actions",
     },
     {
