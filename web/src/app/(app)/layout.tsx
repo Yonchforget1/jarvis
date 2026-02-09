@@ -11,6 +11,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { TopLoader } from "@/components/top-loader";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { PageTransition } from "@/components/page-transition";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -131,7 +132,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {!focusMode && <Header onMenuClick={() => setSidebarOpen(true)} />}
         <main className={`flex-1 overflow-hidden ${focusMode ? "pb-0" : "pb-14 lg:pb-0"}`}>
-          <ErrorBoundary>{children}</ErrorBoundary>
+          <ErrorBoundary>
+            <PageTransition>{children}</PageTransition>
+          </ErrorBoundary>
         </main>
         {!focusMode && <MobileNav />}
       </div>
