@@ -16,8 +16,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Left: Feature panel (desktop only) */}
       <div className="hidden lg:flex lg:w-[45%] items-center justify-center relative">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent" />
-        <div className="absolute top-1/4 -left-32 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-1/3 right-0 h-48 w-48 rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute top-1/4 -left-32 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-glow-pulse" />
+        <div className="absolute bottom-1/3 right-0 h-48 w-48 rounded-full bg-purple-500/10 blur-3xl animate-glow-pulse" style={{ animationDelay: "1.5s" }} />
+        <div className="absolute top-2/3 left-1/3 h-32 w-32 rounded-full bg-cyan-500/5 blur-3xl animate-glow-pulse" style={{ animationDelay: "3s" }} />
 
         <div className="relative z-10 max-w-md px-12 py-16">
           {/* Logo */}
@@ -59,7 +60,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Right: Auth form */}
       <div className="flex flex-1 items-center justify-center p-4 relative">
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/5 lg:hidden" />
-        <div className="absolute top-1/4 -right-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl lg:hidden" />
+        <div className="absolute top-1/4 -right-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl lg:hidden animate-glow-pulse" />
 
         <div className="relative z-10 w-full animate-fade-in-up">{children}</div>
       </div>
