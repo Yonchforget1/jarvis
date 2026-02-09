@@ -139,6 +139,11 @@ class SessionManager:
         with self._lock:
             return [s for s in self._sessions.values() if s.user_id == user_id]
 
+    def get_all_sessions(self) -> list[JarvisSession]:
+        """Get all sessions across all users (admin use)."""
+        with self._lock:
+            return list(self._sessions.values())
+
     def cleanup_expired(self) -> int:
         """Remove sessions that have been inactive longer than SESSION_TTL_HOURS."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=SESSION_TTL_HOURS)

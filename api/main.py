@@ -22,7 +22,7 @@ from slowapi.util import get_remote_address
 log = logging.getLogger("jarvis.api")
 
 from api.session_manager import SessionManager
-from api.routers import auth, chat, tools, stats, learnings, conversation, settings, files, websocket, webhook_routes
+from api.routers import admin, auth, chat, tools, stats, learnings, conversation, settings, files, websocket, webhook_routes
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
     conversation.set_session_manager(session_manager)
     settings.set_session_manager(session_manager)
     websocket.set_session_manager(session_manager)
+    admin.set_session_manager(session_manager)
 
     log.info("Jarvis API ready (backend=%s, model=%s)",
              session_manager.config.backend, session_manager.config.model)
@@ -140,6 +141,7 @@ app.include_router(settings.router, prefix="/api", tags=["settings"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 app.include_router(webhook_routes.router, prefix="/api", tags=["webhooks"])
+app.include_router(admin.router, prefix="/api", tags=["admin"])
 
 
 @app.get("/api/health")
