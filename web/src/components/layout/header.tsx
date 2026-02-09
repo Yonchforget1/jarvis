@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Menu, Plus, Activity, Wifi } from "lucide-react";
+import { Menu, Plus, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConnection } from "@/hooks/use-connection";
 
 const PAGE_TITLES: Record<string, string> = {
   "/chat": "Chat",
@@ -20,6 +21,7 @@ interface HeaderProps {
 export function Header({ onMenuClick, onNewChat }: HeaderProps) {
   const pathname = usePathname();
   const title = PAGE_TITLES[pathname] || "Jarvis";
+  const { status, latency } = useConnection();
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-white/5 bg-background/80 backdrop-blur-xl px-4">
@@ -35,14 +37,39 @@ export function Header({ onMenuClick, onNewChat }: HeaderProps) {
         <h2 className="text-sm font-semibold">{title}</h2>
       </div>
       <div className="flex items-center gap-2">
-        {/* Online indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-green-500/10 border border-green-500/20 px-2.5 py-1">
-          <Wifi className="h-3 w-3 text-green-500" />
-          <span className="text-[10px] font-medium text-green-500">Connected</span>
-        </div>
+        {/* Connection status */}
+        {status === "connected" ? (
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-green-500/10 border border-green-500/20 px-2.5 py-1 transition-all">
+            <Wifi className="h-3 w-3 text-green-500" />
+            <span className="text-[10px] font-medium text-green-500">
+              Connected{latency !== null && ` (${latency}ms)`}
+            </span>
+          </div>
+        ) : status === "disconnected" ? (
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-1 animate-pulse">
+            <WifiOff className="h-3 w-3 text-red-400" />
+            <span className="text-[10px] font-medium text-red-400">Disconnected</span>
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1">
+            <Loader2 className="h-3 w-3 text-yellow-500 animate-spin" />
+            <span className="text-[10px] font-medium text-yellow-500">Connecting</span>
+          </div>
+        )}
+
+        {/* Mobile connection dot */}
         <div className="flex sm:hidden items-center">
-          <Activity className="h-3.5 w-3.5 text-green-500" />
+          <div
+            className={`h-2 w-2 rounded-full ${
+              status === "connected"
+                ? "bg-green-500"
+                : status === "disconnected"
+                ? "bg-red-500 animate-pulse"
+                : "bg-yellow-500 animate-pulse"
+            }`}
+          />
         </div>
+
         {pathname === "/chat" && onNewChat && (
           <Button
             variant="outline"
