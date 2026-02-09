@@ -98,6 +98,9 @@ class LearningEntry(BaseModel):
 class LearningsResponse(BaseModel):
     learnings: list[LearningEntry]
     count: int
+    total: int
+    page: int
+    page_size: int
 
 
 # --- Conversation ---

@@ -20,14 +20,25 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Close sidebar on Escape key
+  // Global keyboard shortcuts
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSidebarOpen(false);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape: close sidebar
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+        return;
+      }
+      // Ctrl+K: new chat
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        selectSession("");
+        router.push("/chat");
+        return;
+      }
     };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [router, selectSession]);
 
   if (isLoading) {
     return (

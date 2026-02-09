@@ -18,6 +18,8 @@ def set_session_manager(sm):
 @router.get("/learnings", response_model=LearningsResponse)
 async def get_learnings(
     topic: str | None = Query(None),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
     user: UserInfo = Depends(get_current_user),
 ):
     memory = _session_manager.memory
@@ -27,6 +29,11 @@ async def get_learnings(
     else:
         raw = memory.all_learnings
 
+    total = len(raw)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = raw[start:end]
+
     entries = [
         LearningEntry(
             timestamp=e.get("timestamp", ""),
@@ -35,7 +42,13 @@ async def get_learnings(
             context=e.get("context", ""),
             task_description=e.get("task_description", ""),
         )
-        for e in raw
+        for e in page_items
     ]
 
-    return LearningsResponse(learnings=entries, count=len(entries))
+    return LearningsResponse(
+        learnings=entries,
+        count=len(entries),
+        total=total,
+        page=page,
+        page_size=page_size,
+    )

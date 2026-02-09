@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Send, Loader2, Keyboard } from "lucide-react";
+
+const MAX_LENGTH = 50_000;
+const WARN_THRESHOLD = 45_000;
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -20,23 +23,34 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   }, [value]);
 
-  // Auto-focus on mount
+  // Auto-focus on mount and when not disabled
   useEffect(() => {
     if (!disabled) {
       textareaRef.current?.focus();
     }
   }, [disabled]);
 
-  const handleSubmit = () => {
+  // Global Ctrl+/ to focus input
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleGlobalKey);
+    return () => document.removeEventListener("keydown", handleGlobalKey);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed || disabled) return;
+    if (!trimmed || disabled || trimmed.length > MAX_LENGTH) return;
     onSend(trimmed);
     setValue("");
-    // Reset height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  };
+  }, [value, disabled, onSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -45,7 +59,10 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   };
 
-  const canSend = value.trim().length > 0 && !disabled;
+  const charCount = value.length;
+  const isNearLimit = charCount > WARN_THRESHOLD;
+  const isOverLimit = charCount > MAX_LENGTH;
+  const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
 
   return (
     <div className="border-t border-white/5 bg-background/80 backdrop-blur-xl">
@@ -57,10 +74,18 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={disabled ? "Jarvis is working..." : "Ask Jarvis anything..."}
+              placeholder={
+                disabled
+                  ? "Jarvis is working..."
+                  : "Ask Jarvis anything..."
+              }
               disabled={disabled}
               rows={1}
-              className="w-full resize-none rounded-2xl border border-white/10 bg-secondary/50 px-4 py-3 pr-4 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+              className={`w-full resize-none rounded-2xl border bg-secondary/50 px-4 py-3 pr-4 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 ${
+                isOverLimit
+                  ? "border-red-500/50 focus:border-red-500/50"
+                  : "border-white/10 focus:border-primary/40"
+              }`}
             />
           </div>
           <button
@@ -68,7 +93,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             disabled={!canSend}
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-200 ${
               canSend
-                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 active:scale-95"
                 : "bg-secondary text-muted-foreground/30 cursor-not-allowed"
             }`}
           >
@@ -79,9 +104,27 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             )}
           </button>
         </div>
-        <p className="mt-1.5 text-center text-[10px] text-muted-foreground/40">
-          Enter to send &middot; Shift+Enter for new line
-        </p>
+        <div className="mt-1.5 flex items-center justify-between px-1">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
+            <span className="flex items-center gap-1">
+              <Keyboard className="h-2.5 w-2.5" />
+              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Enter</kbd> send
+              <span className="mx-1">&middot;</span>
+              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Shift+Enter</kbd> new line
+              <span className="mx-1">&middot;</span>
+              <kbd className="rounded bg-white/5 px-1 py-0.5 font-mono text-[9px]">Ctrl+/</kbd> focus
+            </span>
+          </div>
+          {isNearLimit && (
+            <span
+              className={`text-[10px] font-mono ${
+                isOverLimit ? "text-red-400" : "text-yellow-400/60"
+              }`}
+            >
+              {charCount.toLocaleString()}/{MAX_LENGTH.toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
