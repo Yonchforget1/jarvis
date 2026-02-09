@@ -1,0 +1,5 @@
+2026-02-09 06:10:27 | INFO | Test info message
+2026-02-09 06:10:27 | WARNING | Test with context | Context: {"user": "test", "count": 42}
+2026-02-09 06:10:27 | DEBUG | Debug test
+2026-02-09 06:10:27 | ERROR | Error test
+2026-02-09 06:10:27 | CRITICAL | Critical test
