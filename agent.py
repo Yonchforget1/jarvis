@@ -1,6 +1,9 @@
 """Jarvis AI Agent -- entry point."""
 import os
 import sys
+import time
+
+_start_time = time.perf_counter()
 
 # Ensure project root is on the path so the jarvis package is importable
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -48,7 +51,8 @@ def main() -> None:
 
     registry.load_plugins(os.path.join(project_root, "plugins"))
 
-    log.info("Jarvis AI Agent (%s/%s)", config.backend, config.model)
+    startup_ms = (time.perf_counter() - _start_time) * 1000
+    log.info("Jarvis AI Agent (%s/%s) — started in %.0fms", config.backend, config.model, startup_ms)
     log.info("Tools loaded: %d", len(registry.all_tools()))
     if memory.count:
         log.info("Learnings loaded: %d", memory.count)
