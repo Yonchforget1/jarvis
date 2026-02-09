@@ -14,7 +14,24 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { selectedSessionId, selectSession } = useSessionContext();
+
+  // Load collapsed state from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("jarvis-sidebar-collapsed");
+    if (stored === "true") {
+      setSidebarCollapsed(true);
+    }
+  }, []);
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("jarvis-sidebar-collapsed", String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -22,11 +39,16 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Escape closes sidebar
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSidebarOpen(false);
+      }
+      // Ctrl+B toggles sidebar collapse on desktop
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault();
+        toggleSidebarCollapse();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -62,6 +84,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         <Sidebar
           onSessionSelect={selectSession}
           activeSessionId={selectedSessionId}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapse}
         />
       </div>
 

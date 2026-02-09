@@ -1,6 +1,7 @@
 """Jarvis AI Agent API Server."""
 
 import logging
+import platform
 import sys
 import os
 import time
@@ -21,7 +22,7 @@ from slowapi.util import get_remote_address
 log = logging.getLogger("jarvis.api")
 
 from api.session_manager import SessionManager
-from api.routers import auth, chat, tools, stats, learnings, conversation, settings
+from api.routers import auth, chat, tools, stats, learnings, conversation, settings, files
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
@@ -109,6 +110,7 @@ app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(learnings.router, prefix="/api", tags=["learnings"])
 app.include_router(conversation.router, prefix="/api/conversation", tags=["conversation"])
 app.include_router(settings.router, prefix="/api", tags=["settings"])
+app.include_router(files.router, prefix="/api/files", tags=["files"])
 
 
 @app.get("/api/health")
@@ -120,9 +122,30 @@ async def health(deep: bool = False):
     result = {
         "status": "ok",
         "service": "jarvis-api",
+        "version": app.version,
         "uptime_seconds": round(session_manager.uptime_seconds, 1),
         "active_sessions": session_manager.active_session_count,
+        "system": {
+            "python_version": platform.python_version(),
+            "platform": platform.system(),
+            "architecture": platform.machine(),
+        },
+        "config": {
+            "backend": session_manager.config.backend,
+            "model": session_manager.config.model,
+        },
     }
+
+    # Add memory info if psutil is available
+    try:
+        import psutil
+        process = psutil.Process()
+        mem_info = process.memory_info()
+        result["system"]["memory_mb"] = round(mem_info.rss / 1024 / 1024, 1)
+        result["system"]["cpu_percent"] = process.cpu_percent(interval=None)
+    except ImportError:
+        pass
+
     if deep:
         try:
             from jarvis.backends import create_backend

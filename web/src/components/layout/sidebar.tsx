@@ -19,6 +19,8 @@ import {
   Plus,
   Trash2,
   MessageCircle,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useSessions } from "@/hooks/use-sessions";
@@ -45,6 +47,8 @@ interface SidebarProps {
   onClose?: () => void;
   onSessionSelect?: (sessionId: string) => void;
   activeSessionId?: string | null;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 function timeAgo(dateStr: string): string {
@@ -58,7 +62,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export function Sidebar({ onClose, onSessionSelect, activeSessionId }: SidebarProps) {
+export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -81,22 +85,28 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId }: SidebarPr
   };
 
   return (
-    <div className="flex h-full w-[280px] flex-col border-r border-border/50 bg-sidebar">
+    <div
+      className={`flex h-full flex-col border-r border-border/50 bg-sidebar transition-all duration-300 ease-in-out ${
+        collapsed ? "w-[68px]" : "w-[280px]"
+      }`}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="relative">
+      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} p-4`}>
+        <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
+          <div className="relative shrink-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 border border-primary/10">
               <span className="text-sm font-bold text-primary">J</span>
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar" />
           </div>
-          <div>
-            <h1 className="text-sm font-semibold tracking-wide">JARVIS</h1>
-            <p className="text-[10px] text-muted-foreground/60">AI Agent Platform</p>
-          </div>
+          {!collapsed && (
+            <div className="overflow-hidden">
+              <h1 className="text-sm font-semibold tracking-wide">JARVIS</h1>
+              <p className="text-[10px] text-muted-foreground/60">AI Agent Platform</p>
+            </div>
+          )}
         </div>
-        {onClose && (
+        {onClose && !collapsed && (
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 lg:hidden">
             <X className="h-4 w-4" />
           </Button>
@@ -106,18 +116,23 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId }: SidebarPr
       <Separator className="bg-muted" />
 
       {/* New Chat Button */}
-      <div className="px-3 pt-3 pb-1">
+      <div className={`${collapsed ? "px-2" : "px-3"} pt-3 pb-1`}>
         <button
           onClick={handleNewChat}
-          className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
+          className={`flex items-center rounded-xl border border-dashed border-border/50 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground ${
+            collapsed
+              ? "w-full justify-center p-2.5"
+              : "w-full gap-2.5 px-3 py-2.5"
+          }`}
+          title={collapsed ? "New Chat" : undefined}
         >
-          <Plus className="h-4 w-4" />
-          New Chat
+          <Plus className="h-4 w-4 shrink-0" />
+          {!collapsed && "New Chat"}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="space-y-0.5 px-3 pt-2">
+      <nav className={`space-y-0.5 ${collapsed ? "px-2" : "px-3"} pt-2`}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -125,108 +140,170 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId }: SidebarPr
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center rounded-xl text-sm transition-all duration-200 ${
+                collapsed
+                  ? "justify-center p-2.5"
+                  : "gap-3 px-3 py-2.5"
+              } ${
                 isActive
                   ? "bg-primary/10 text-primary shadow-sm shadow-primary/5"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-              {item.label === "Chat" && (
-                <Sparkles className="ml-auto h-3 w-3 text-primary/50" />
+              <item.icon className="h-4 w-4 shrink-0" />
+              {!collapsed && (
+                <>
+                  {item.label}
+                  {item.label === "Chat" && (
+                    <Sparkles className="ml-auto h-3 w-3 text-primary/50" />
+                  )}
+                </>
               )}
             </Link>
           );
         })}
       </nav>
 
-      <Separator className="mx-3 !my-3 bg-muted" />
+      <Separator className={`${collapsed ? "mx-2" : "mx-3"} !my-3 bg-muted`} />
 
-      {/* Chat History */}
-      <div className="flex-1 overflow-y-auto px-3 space-y-1">
-        <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
-          Recent Chats
-        </p>
-        {sessions.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground/40">
-            No conversations yet
-          </p>
-        ) : (
-          sessions.slice(0, 10).map((session) => (
-            <div
-              key={session.session_id}
-              className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 ${
-                activeSessionId === session.session_id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-              }`}
-              onClick={() => handleSessionClick(session.session_id)}
-            >
-              <MessageCircle className="h-3.5 w-3.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs truncate">
-                  {session.preview || "New conversation"}
-                </p>
-                <p className="text-[10px] text-muted-foreground/40">
-                  {timeAgo(session.last_active)} &middot; {session.message_count} msgs
-                </p>
-              </div>
+      {/* Chat History - hidden when collapsed */}
+      <div className={`flex-1 overflow-y-auto ${collapsed ? "px-2" : "px-3"} space-y-1`}>
+        {collapsed ? (
+          /* Collapsed: show recent chat dots */
+          <div className="space-y-1">
+            {sessions.slice(0, 5).map((session) => (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteSession(session.session_id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-400/10 hover:text-red-400 transition-all"
+                key={session.session_id}
+                onClick={() => handleSessionClick(session.session_id)}
+                title={session.preview || "New conversation"}
+                className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
+                  activeSessionId === session.session_id
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                }`}
               >
-                <Trash2 className="h-3 w-3" />
+                <MessageCircle className="h-3.5 w-3.5" />
               </button>
-            </div>
-          ))
-        )}
-
-        <Separator className="!my-3 bg-muted" />
-
-        {/* Tool groups */}
-        <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
-          Tool Groups
-        </p>
-        {TOOL_GROUPS.map((group) => (
-          <div
-            key={group.label}
-            className="flex items-center justify-between rounded-xl px-3 py-2 text-xs text-muted-foreground/70"
-          >
-            <div className="flex items-center gap-2.5">
-              <group.icon className={`h-3.5 w-3.5 ${group.color}`} />
-              <span>{group.label}</span>
-            </div>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono">
-              {group.count}
-            </span>
+            ))}
           </div>
-        ))}
+        ) : (
+          <>
+            <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Recent Chats
+            </p>
+            {sessions.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-muted-foreground/40">
+                No conversations yet
+              </p>
+            ) : (
+              sessions.slice(0, 10).map((session) => (
+                <div
+                  key={session.session_id}
+                  className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 ${
+                    activeSessionId === session.session_id
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  }`}
+                  onClick={() => handleSessionClick(session.session_id)}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs truncate">
+                      {session.preview || "New conversation"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/40">
+                      {timeAgo(session.last_active)} &middot; {session.message_count} msgs
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSession(session.session_id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-400/10 hover:text-red-400 transition-all"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))
+            )}
+
+            <Separator className="!my-3 bg-muted" />
+
+            {/* Tool groups */}
+            <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Tool Groups
+            </p>
+            {TOOL_GROUPS.map((group) => (
+              <div
+                key={group.label}
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs text-muted-foreground/70"
+              >
+                <div className="flex items-center gap-2.5">
+                  <group.icon className={`h-3.5 w-3.5 ${group.color}`} />
+                  <span>{group.label}</span>
+                </div>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono">
+                  {group.count}
+                </span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
+
+      {/* Collapse toggle (desktop only) */}
+      {onToggleCollapse && (
+        <div className={`${collapsed ? "px-2" : "px-3"} pb-1`}>
+          <button
+            onClick={onToggleCollapse}
+            className={`flex items-center rounded-xl text-xs text-muted-foreground/50 transition-all duration-200 hover:bg-muted hover:text-foreground ${
+              collapsed
+                ? "w-full justify-center p-2.5"
+                : "w-full gap-2.5 px-3 py-2"
+            }`}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4 shrink-0" />
+            ) : (
+              <>
+                <ChevronsLeft className="h-4 w-4 shrink-0" />
+                <span>Collapse</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* User */}
       <div className="border-t border-border/50 p-3">
-        <div className="flex items-center justify-between rounded-xl px-2 py-1.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20">
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} rounded-xl px-2 py-1.5`}>
+          <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-semibold text-primary border border-primary/20 shrink-0"
+              title={collapsed ? (user?.username || "User") : undefined}
+            >
               {user?.username?.[0]?.toUpperCase() || "U"}
             </div>
-            <div>
-              <span className="text-sm font-medium">{user?.username || "User"}</span>
-              <p className="text-[10px] text-muted-foreground/50">Free Plan</p>
-            </div>
+            {!collapsed && (
+              <div className="overflow-hidden">
+                <span className="text-sm font-medium">{user?.username || "User"}</span>
+                <p className="text-[10px] text-muted-foreground/50">Free Plan</p>
+              </div>
+            )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={logout}
-            className="h-8 w-8 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          {!collapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              className="h-8 w-8 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
