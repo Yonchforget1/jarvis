@@ -22,6 +22,7 @@ import {
   Lock,
   Loader2,
   Timer,
+  Download,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -208,6 +209,42 @@ export default function AdminPage() {
       setReloading(false);
     }
   };
+
+  const exportSessionsCSV = useCallback(() => {
+    if (sessions.length === 0) return;
+    const headers = "Session ID,User ID,Messages,Created,Last Active,Status";
+    const rows = sessions.map((s) =>
+      `${s.session_id},${s.user_id},${s.message_count},${s.created_at},${s.last_active},${s.archived ? "Archived" : "Active"}`
+    );
+    const csv = [headers, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-sessions-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [sessions]);
+
+  const exportAuditCSV = useCallback(() => {
+    if (auditLogs.length === 0) return;
+    const headers = "Timestamp,Username,User ID,Action,Detail,IP";
+    const rows = auditLogs.map((e) =>
+      `"${e.timestamp}","${e.username}","${e.user_id}","${e.action}","${(e.detail || "").replace(/"/g, '""')}","${e.ip || ""}"`
+    );
+    const csv = [headers, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-audit-log-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [auditLogs]);
 
   if (loading) {
     return (
@@ -459,6 +496,15 @@ export default function AdminPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground/60">{sessionsTotal} total sessions across all users</p>
+                {sessions.length > 0 && (
+                  <button
+                    onClick={exportSessionsCSV}
+                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    Export CSV
+                  </button>
+                )}
               </div>
               <div className="rounded-xl border border-border/50 overflow-hidden">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2 px-4 py-2 bg-muted/30 border-b border-border/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
@@ -540,7 +586,18 @@ export default function AdminPage() {
           {/* Audit Log Tab */}
           {activeTab === "audit" && (
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground/60">{auditLogs.length} recent audit entries</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground/60">{auditLogs.length} recent audit entries</p>
+                {auditLogs.length > 0 && (
+                  <button
+                    onClick={exportAuditCSV}
+                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    Export CSV
+                  </button>
+                )}
+              </div>
               <div className="space-y-1">
                 {auditLogs.length === 0 ? (
                   <div className="rounded-xl border border-border/50 px-4 py-8 text-center text-xs text-muted-foreground/40">No audit logs</div>
