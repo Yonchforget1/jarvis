@@ -101,6 +101,13 @@ export function useSessions() {
         saveSessionNames(next);
         return next;
       });
+      setPinnedIds((prev) => {
+        if (!prev.has(sessionId)) return prev;
+        const next = new Set(prev);
+        next.delete(sessionId);
+        savePinnedSessions(next);
+        return next;
+      });
       try {
         await api.delete(`/api/sessions/${sessionId}`);
       } catch {
