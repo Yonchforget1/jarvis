@@ -260,15 +260,25 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
                 break;
               }
 
-              case "done":
+              case "done": {
+                const doneData = data as unknown as Record<string, unknown>;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
                   isStreaming: false,
                   streamStatus: undefined,
                   timestamp: new Date().toISOString(),
                 }));
+                // Propagate auto-generated title so sidebar can update
+                if (doneData.auto_title) {
+                  window.dispatchEvent(
+                    new CustomEvent("session-title-updated", {
+                      detail: { sessionId: sessionId, autoTitle: doneData.auto_title },
+                    }),
+                  );
+                }
                 optionsRef.current?.onAssistantMessage?.();
                 break;
+              }
             }
           }
         }
@@ -408,7 +418,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
           : null;
 
       const res = await fetch(
-        `${API_URL}/api/sessions/${sid}/messages`,
+        `${API_URL}/api/conversation/sessions/${sid}/messages`,
         {
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),

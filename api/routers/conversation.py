@@ -15,7 +15,8 @@ from api.models import BulkDeleteRequest, ClearRequest, SessionInfo, UserInfo
 
 
 class SessionRenameRequest(BaseModel):
-    name: str = Field(max_length=100)
+    name: str = Field(default="", max_length=100)
+    auto_title: str = Field(default="", max_length=100)
 
 
 _SESSION_NAME_RE = re.compile(r"^[\w\s\-.,!?()'\"\u00C0-\u024F\u0400-\u04FF]*$")
@@ -118,10 +119,17 @@ async def rename_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     name = body.name.strip()
+    auto_title = body.auto_title.strip()[:100]
     if name and not _SESSION_NAME_RE.match(name):
         raise HTTPException(status_code=400, detail="Session name contains invalid characters")
-    session.custom_name = name
-    return {"status": "renamed", "session_id": session_id, "name": name}
+    if name:
+        session.custom_name = name
+    if auto_title:
+        session.auto_title = auto_title
+    if not name and not auto_title:
+        # Explicit clear of custom name
+        session.custom_name = ""
+    return {"status": "renamed", "session_id": session_id, "name": session.custom_name, "auto_title": session.auto_title}
 
 
 @router.patch("/sessions/{session_id}/archive")

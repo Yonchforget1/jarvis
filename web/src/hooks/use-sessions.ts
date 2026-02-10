@@ -83,9 +83,24 @@ export function useSessions() {
     return () => window.removeEventListener("session-deleted", handler);
   }, []);
 
+  // Listen for auto-title updates from chat stream
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { sessionId, autoTitle } = (e as CustomEvent<{ sessionId: string; autoTitle: string }>).detail;
+      if (!sessionId || !autoTitle) return;
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.session_id === sessionId ? { ...s, auto_title: autoTitle } : s,
+        ),
+      );
+    };
+    window.addEventListener("session-title-updated", handler);
+    return () => window.removeEventListener("session-title-updated", handler);
+  }, []);
+
   const fetchSessions = useCallback(async () => {
     try {
-      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/sessions?limit=200");
+      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200");
       // Handle both paginated response and legacy array format
       const list = Array.isArray(data) ? data : data.sessions;
       setSessions(list);
@@ -151,7 +166,7 @@ export function useSessions() {
         return next;
       });
       try {
-        await api.delete(`/api/sessions/${sessionId}`);
+        await api.delete(`/api/conversation/sessions/${sessionId}`);
       } catch {
         // Rollback on error
         setSessions(previousSessions);
@@ -164,8 +179,11 @@ export function useSessions() {
   const renameSession = useCallback(
     (sessionId: string, name: string) => {
       const trimmed = name.trim().slice(0, 100);
+      // Capture previous name for rollback
+      let previousName: string | undefined;
       // Optimistic local update
       setSessionNames((prev) => {
+        previousName = prev[sessionId];
         const next = { ...prev };
         if (trimmed) {
           next[sessionId] = trimmed;
@@ -181,7 +199,18 @@ export function useSessions() {
       }
       // Debounce server sync (500ms)
       renameTimersRef.current[sessionId] = setTimeout(() => {
-        api.patch(`/api/sessions/${sessionId}`, { name: trimmed }).catch(() => {
+        api.patch(`/api/conversation/sessions/${sessionId}`, { name: trimmed }).catch(() => {
+          // Rollback to previous name on error
+          setSessionNames((prev) => {
+            const next = { ...prev };
+            if (previousName) {
+              next[sessionId] = previousName;
+            } else {
+              delete next[sessionId];
+            }
+            saveSessionNames(next);
+            return next;
+          });
           _onDeleteError?.("Failed to save session name. Please try again.");
         });
         delete renameTimersRef.current[sessionId];

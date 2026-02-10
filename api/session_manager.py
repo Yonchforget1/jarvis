@@ -162,6 +162,10 @@ class SessionManager:
             evict = user_sessions[0]
             log.info("User %s hit session cap (%d), evicting oldest session %s",
                      user_id, MAX_SESSIONS_PER_USER, evict.session_id)
+            try:
+                evict.save_to_disk()
+            except Exception as e:
+                log.warning("Failed to persist evicted session %s: %s", evict.session_id, e)
             with self._lock:
                 self._sessions.pop(evict.session_id, None)
         return self._create_session(user_id)

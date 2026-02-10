@@ -142,6 +142,10 @@ async def chat_stream(
                 event = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: event_queue.get(timeout=30)
                 )
+                # Enrich "done" event with session metadata for frontend
+                if event["event"] == "done":
+                    event["data"]["auto_title"] = session.auto_title or ""
+
                 yield _sse(event["event"], event["data"])
 
                 if event["event"] in ("done", "error"):
