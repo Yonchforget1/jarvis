@@ -170,6 +170,22 @@ class TestToolChain:
         assert result.total_duration_ms > 0
 
 
+class TestIsErrorResult:
+    """Test the ToolRegistry.is_error_result helper."""
+
+    def test_unknown_tool_is_error(self):
+        assert ToolRegistry.is_error_result("Unknown tool: foo") is True
+
+    def test_tool_error_is_error(self):
+        assert ToolRegistry.is_error_result("Tool error (foo): something broke") is True
+
+    def test_normal_output_not_error(self):
+        assert ToolRegistry.is_error_result("File contents: hello world") is False
+
+    def test_empty_string_not_error(self):
+        assert ToolRegistry.is_error_result("") is False
+
+
 class TestRunChain:
     """Test the run_chain function used as a tool."""
 

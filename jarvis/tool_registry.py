@@ -75,8 +75,17 @@ class ToolStats:
 class ToolRegistry:
     """Collects tools and handles dispatch."""
 
+    # Error prefix constants — used by ToolChain for success detection
+    ERR_UNKNOWN_TOOL = "Unknown tool:"
+    ERR_TOOL_ERROR = "Tool error"
+
     # Tools whose results are safe to cache (read-only, deterministic for a window)
     CACHEABLE_TOOLS: set[str] = {"search_web", "fetch_url", "file_search", "system_info"}
+
+    @staticmethod
+    def is_error_result(output: str) -> bool:
+        """Check if a tool output represents an error from handle_call."""
+        return output.startswith(ToolRegistry.ERR_UNKNOWN_TOOL) or output.startswith(ToolRegistry.ERR_TOOL_ERROR)
 
     def __init__(self):
         self._tools: dict[str, ToolDef] = {}

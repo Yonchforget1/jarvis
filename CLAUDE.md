@@ -29,15 +29,16 @@ If a tool produces low-quality output, Jarvis must iterate until it meets profes
 
 ## 4. Capabilities Roadmap
 
-1. **Done** - 18 tools including filesystem, web scraping, code execution, shell commands, game dev, memory.
-2. **Done** - Computer vision and GUI control (pywinauto/pyautogui/OCR) - 31 tools.
+1. **Done** - 50+ tools: filesystem, web, shell, game dev, planning, tool chaining, memory.
+2. **Done** - Computer vision and GUI control (pywinauto/pyautogui/OCR) - 31 desktop tools.
 3. **Done** - Web UI at localhost:3000 (FastAPI + dark-theme chat UI).
 4. **Done** - Desktop app via Electron (system tray, auto-start, auto-update, Windows/Mac/Linux installers).
 5. **Done** - WhatsApp chatbot via whatsapp-web.js bridge.
-6. **Done** - Smart tool router: picks 8 most relevant tools per message for local models.
-7. **Next** - Background automation so Jarvis runs 24/7 without human supervision.
-8. **Then** - Voice control.
-9. **Then** - White-label system for reselling.
+6. **Done** - Smart tool router: TF-IDF scored, picks 8 most relevant tools per message.
+7. **Done** - 229 automated tests across 16 test modules (planner, tool chain, game engine, API, etc.).
+8. **Next** - Background automation so Jarvis runs 24/7 without human supervision.
+9. **Then** - Voice control.
+10. **Then** - White-label system for reselling.
 
 ## 4a. Architecture Overview
 

@@ -10,7 +10,12 @@ import re
 import time
 from dataclasses import dataclass, field
 
+from jarvis.tool_registry import ToolRegistry
+
 log = logging.getLogger("jarvis.tool_chain")
+
+# Default timeout per chain step (seconds). 0 means no timeout.
+DEFAULT_STEP_TIMEOUT = 120
 
 
 @dataclass
@@ -65,12 +70,16 @@ class ToolChain:
                 resolved[key] = value
         return resolved
 
-    def execute(self, steps: list[dict]) -> ChainResult:
+    def execute(self, steps: list[dict], step_timeout: float = DEFAULT_STEP_TIMEOUT) -> ChainResult:
         """Execute a chain of tool calls.
 
         Each step dict has:
             - tool: tool name
             - args: dict of arguments (may contain {{step_N}} placeholders)
+
+        Args:
+            steps: List of step definitions.
+            step_timeout: Max seconds per step (0 for unlimited).
 
         Returns a ChainResult with all step outputs.
         """
@@ -88,10 +97,17 @@ class ToolChain:
 
             start = time.perf_counter()
             output = self.registry.handle_call(tool_name, resolved_args)
-            chain_step.duration_ms = (time.perf_counter() - start) * 1000
+            elapsed = time.perf_counter() - start
+            chain_step.duration_ms = elapsed * 1000
 
             chain_step.result = output
-            chain_step.success = not output.startswith("Unknown tool:") and not output.startswith("Tool error")
+            chain_step.success = not ToolRegistry.is_error_result(output)
+
+            # Check step timeout
+            if step_timeout > 0 and elapsed > step_timeout:
+                chain_step.success = False
+                chain_step.result = f"Step timeout ({step_timeout}s exceeded)"
+
             result.steps.append(chain_step)
 
             # Store output for downstream steps
@@ -115,8 +131,6 @@ def run_chain(steps: str) -> str:
         steps: JSON array of step objects. Each: {"tool": "tool_name", "args": {"key": "value"}}.
                Use {{step_N}} in arg values to reference the output of step N.
     """
-    # Lazy import to avoid circular dependency
-    from jarvis.tool_registry import ToolRegistry
     try:
         step_list = json.loads(steps)
     except json.JSONDecodeError as e:
