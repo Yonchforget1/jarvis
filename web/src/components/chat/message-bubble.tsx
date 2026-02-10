@@ -425,19 +425,33 @@ export const MessageBubble = memo(function MessageBubble({
                       const langMatch = cls.match(/language-(\w+)/);
                       if (langMatch) language = langMatch[1];
                     } catch { /* ignore */ }
+                    const lineCount = codeText.split("\n").length;
+                    const showLineNumbers = lineCount > 1;
                     return (
                       <div className="relative group my-2">
                         {language && (
                           <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border/50 bg-slate-200 dark:bg-black/60 px-3 py-1.5">
                             <span className="text-[10px] font-mono text-muted-foreground uppercase">{language}</span>
+                            <span className="text-[9px] font-mono text-muted-foreground/40 tabular-nums">{lineCount} lines</span>
                           </div>
                         )}
-                        <pre
-                          className={`!bg-slate-100 dark:!bg-black/40 !border !border-border/50 overflow-x-auto ${language ? "!rounded-t-none !rounded-b-xl" : "!rounded-xl"}`}
-                          {...props}
-                        >
-                          {children}
-                        </pre>
+                        <div className={`relative flex !border !border-border/50 overflow-hidden ${language ? "rounded-t-none rounded-b-xl" : "rounded-xl"}`}>
+                          {showLineNumbers && (
+                            <div className="shrink-0 select-none bg-slate-200/80 dark:bg-black/60 border-r border-border/30 py-4 pl-2 pr-2 text-right" aria-hidden="true">
+                              {Array.from({ length: lineCount }, (_, i) => (
+                                <div key={i} className="text-[10px] font-mono leading-[1.55rem] text-muted-foreground/30">
+                                  {i + 1}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <pre
+                            className="!bg-slate-100 dark:!bg-black/40 !border-0 !m-0 overflow-x-auto flex-1"
+                            {...props}
+                          >
+                            {children}
+                          </pre>
+                        </div>
                         <CopyButton text={codeText} />
                       </div>
                     );
