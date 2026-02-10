@@ -122,6 +122,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
+  const [sessionLimit, setSessionLimit] = useState(15);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -348,7 +349,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     (s.preview?.toLowerCase().includes(q))
                   );
                 })
-                .slice(0, 15).map((session, idx, arr) => {
+                .slice(0, sessionLimit).map((session, idx, arr) => {
                 const group = sessionDateGroup(session.last_active);
                 const prevGroup = idx > 0 ? sessionDateGroup(arr[idx - 1].last_active) : null;
                 const showGroupHeader = group !== prevGroup;
@@ -465,6 +466,26 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 );
               })
             )}
+            {/* Load more sessions button */}
+            {(() => {
+              const filteredCount = sessions.filter((s) => {
+                if (!sessionSearch.trim()) return true;
+                const q = sessionSearch.toLowerCase();
+                return (
+                  (s.customName?.toLowerCase().includes(q)) ||
+                  (s.autoTitle?.toLowerCase().includes(q)) ||
+                  (s.preview?.toLowerCase().includes(q))
+                );
+              }).length;
+              return filteredCount > sessionLimit ? (
+                <button
+                  onClick={() => setSessionLimit((prev) => prev + 15)}
+                  className="w-full py-2 text-[10px] text-primary/60 hover:text-primary transition-colors"
+                >
+                  Show more ({filteredCount - sessionLimit} remaining)
+                </button>
+              ) : null;
+            })()}
 
             <Separator className="!my-3 bg-muted" />
 

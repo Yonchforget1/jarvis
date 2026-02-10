@@ -6,6 +6,41 @@ import type { ChatMessage, ToolCallDetail } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface SSESessionEvent {
+  session_id: string;
+}
+
+interface SSEThinkingEvent {
+  status: string;
+}
+
+interface SSEToolCallEvent {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+interface SSEToolResultEvent {
+  id: string;
+  result: string;
+}
+
+interface SSETextEvent {
+  content: string;
+}
+
+interface SSEErrorEvent {
+  message: string;
+}
+
+type SSEEventData =
+  | SSESessionEvent
+  | SSEThinkingEvent
+  | SSEToolCallEvent
+  | SSEToolResultEvent
+  | SSETextEvent
+  | SSEErrorEvent;
+
 interface UseChatOptions {
   onAssistantMessage?: () => void;
 }
@@ -119,8 +154,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
             if (!eventType || !eventData) continue;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let data: any;
+            let data: SSEEventData;
             try {
               data = JSON.parse(eventData);
             } catch {
@@ -129,60 +163,72 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
             }
 
             switch (eventType) {
-              case "session":
-                setSessionId(data.session_id);
+              case "session": {
+                const d = data as SSESessionEvent;
+                setSessionId(d.session_id);
                 break;
+              }
 
-              case "thinking":
+              case "thinking": {
+                const d = data as SSEThinkingEvent;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
-                  streamStatus: data.status,
+                  streamStatus: d.status,
                 }));
                 break;
+              }
 
-              case "tool_call":
+              case "tool_call": {
+                const d = data as SSEToolCallEvent;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
-                  streamStatus: `Running ${data.name}...`,
+                  streamStatus: `Running ${d.name}...`,
                   tool_calls: [
                     ...(m.tool_calls || []),
                     {
-                      id: data.id,
-                      name: data.name,
-                      args: data.args,
+                      id: d.id,
+                      name: d.name,
+                      args: d.args,
                       result: "",
                     } as ToolCallDetail,
                   ],
                 }));
                 break;
+              }
 
-              case "tool_result":
+              case "tool_result": {
+                const d = data as SSEToolResultEvent;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
                   tool_calls: (m.tool_calls || []).map((tc) =>
-                    tc.id === data.id ? { ...tc, result: data.result } : tc,
+                    tc.id === d.id ? { ...tc, result: d.result } : tc,
                   ),
                 }));
                 break;
+              }
 
-              case "text":
+              case "text": {
+                const d = data as SSETextEvent;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
-                  content: data.content,
+                  content: d.content,
                   streamStatus: undefined,
                 }));
                 break;
+              }
 
-              case "error":
+              case "error": {
+                const d = data as SSEErrorEvent;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
-                  content: `Error: ${data.message}`,
+                  content: `Error: ${d.message}`,
                   isError: true,
                   isStreaming: false,
                   streamStatus: undefined,
                 }));
-                setError(data.message);
+                setError(d.message);
                 break;
+              }
 
               case "done":
                 updateStreamingMessage(assistantMsgId, (m) => ({
@@ -244,9 +290,12 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   const retryLast = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
-      // Remove only error messages, keep the user message for context
-      setMessages((prev) => prev.filter((m) => !m.isError));
-      sendMessage(lastUserMsg.content);
+      const lastUserIdx = messages.lastIndexOf(lastUserMsg);
+      const content = lastUserMsg.content;
+      // Remove last user message and everything after it (error responses)
+      // sendMessage will re-add the user message
+      setMessages((prev) => prev.slice(0, lastUserIdx));
+      setTimeout(() => sendMessage(content), 50);
     }
   }, [messages, sendMessage]);
 
