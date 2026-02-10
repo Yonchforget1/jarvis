@@ -45,11 +45,12 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 
-import { Shield } from "lucide-react";
+import { Shield, BarChart3 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/learnings", label: "Learnings", icon: Brain },
   { href: "/settings", label: "Settings", icon: Settings },
