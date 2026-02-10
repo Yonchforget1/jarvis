@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -26,6 +26,7 @@ def set_session_manager(sm):
 @_limiter.limit("30/minute")
 async def get_learnings(
     request: Request,
+    response: Response,
     topic: str | None = Query(None, description="Semantic topic search"),
     search: str | None = Query(None, max_length=200, description="Full-text search across insight, context, task"),
     sort: str = Query("newest", pattern="^(newest|oldest|category)$", description="Sort order: newest, oldest, category"),
@@ -34,6 +35,7 @@ async def get_learnings(
     page_size: int = Query(50, ge=1, le=200, description="Items per page"),
     user: UserInfo = Depends(get_current_user),
 ):
+    response.headers["Cache-Control"] = "private, max-age=300"
     try:
         memory = _session_manager.memory
 

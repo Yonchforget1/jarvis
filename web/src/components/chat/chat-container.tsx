@@ -399,10 +399,10 @@ export function ChatContainer({
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />
           {searchQuery && (
-            <span className="text-xs text-muted-foreground/60 shrink-0">
+            <span className={`text-xs shrink-0 tabular-nums ${matchingIndices.length === 0 ? "text-red-400/60" : "text-muted-foreground/60"}`}>
               {matchingIndices.length === 0
                 ? "No matches"
-                : `${activeMatchIndex + 1} of ${matchingIndices.length}`}
+                : `${activeMatchIndex + 1}/${matchingIndices.length}`}
             </span>
           )}
           <div className="flex items-center gap-0.5">

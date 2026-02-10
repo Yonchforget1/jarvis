@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -33,7 +33,8 @@ def _get_cost(input_tokens: int, output_tokens: int) -> float:
 
 @router.get("/stats", response_model=StatsResponse)
 @_limiter.limit("30/minute")
-async def get_stats(request: Request, user: UserInfo = Depends(get_current_user)):
+async def get_stats(request: Request, response: Response, user: UserInfo = Depends(get_current_user)):
+    response.headers["Cache-Control"] = "private, max-age=30"
     try:
         config = _session_manager.config
         memory = _session_manager.memory
