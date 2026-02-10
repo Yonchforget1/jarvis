@@ -158,6 +158,34 @@ export const api = {
   invalidateAll: () => {
     inflightGets.clear();
   },
+  /** Upload a file via multipart form-data. */
+  upload: <T>(path: string, file: File): Promise<T> => {
+    checkTokenExpiry();
+    const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      if (res.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("jarvis_token");
+          localStorage.removeItem("jarvis_user");
+          window.location.href = "/login";
+        }
+        throw new ApiError("Unauthorized", 401);
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new ApiError(body.detail || res.statusText, res.status);
+      }
+      return res.json();
+    });
+  },
 };
 
 /** Reset the token expiry warning flag (call after login/re-auth). */

@@ -1,8 +1,41 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard, Paperclip, Mic, MicOff, Square, Upload, Image, Trash2, Download, HelpCircle, Sparkles, Info } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic, MicOff, Square, Upload, Image, Trash2, Download, HelpCircle, Sparkles, Info, X, FileText } from "lucide-react";
 import { useVoice } from "@/hooks/use-voice";
+import { api } from "@/lib/api";
+
+interface UploadedFile {
+  filename: string;
+  saved_as: string;
+  size: number;
+}
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_EXTENSIONS = new Set([
+  ".txt", ".md", ".py", ".js", ".ts", ".json", ".yaml", ".yml",
+  ".csv", ".xml", ".html", ".css", ".sql", ".sh", ".bat",
+  ".pdf", ".docx", ".xlsx", ".pptx",
+  ".png", ".jpg", ".jpeg", ".gif", ".svg",
+  ".zip", ".tar", ".gz",
+  ".log", ".env", ".cfg", ".ini", ".toml",
+]);
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileExt(name: string): string {
+  const idx = name.lastIndexOf(".");
+  return idx >= 0 ? name.slice(idx).toLowerCase() : "";
+}
+
+function isImageFile(name: string): boolean {
+  const ext = getFileExt(name);
+  return [".png", ".jpg", ".jpeg", ".gif", ".svg"].includes(ext);
+}
 
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
@@ -38,9 +71,12 @@ interface ChatInputProps {
 export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const [pastedImage, setPastedImage] = useState(false);
   const [showSlash, setShowSlash] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
+  const [attachments, setAttachments] = useState<UploadedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isOnline = useOnlineStatus();
 
@@ -53,6 +89,48 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
       textareaRef.current?.focus();
     },
   });
+  const uploadFile = useCallback(async (file: File) => {
+    const ext = getFileExt(file.name);
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      setUploadError(`File type '${ext}' not supported`);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError(`File too large (${formatFileSize(file.size)}, max 10 MB)`);
+      return;
+    }
+    if (attachments.length >= 5) {
+      setUploadError("Maximum 5 attachments per message");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const res = await api.upload<{ filename: string; saved_as: string; size: number }>("/api/upload", file);
+      setAttachments((prev) => [...prev, { filename: res.filename, saved_as: res.saved_as, size: res.size }]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }, [attachments.length]);
+
+  const removeAttachment = useCallback((savedAs: string) => {
+    setAttachments((prev) => prev.filter((a) => a.saved_as !== savedAs));
+    // Delete from server (fire-and-forget)
+    api.delete(`/api/uploads/${encodeURIComponent(savedAs)}`).catch(() => {});
+  }, []);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      uploadFile(file);
+    }
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  }, [uploadFile]);
+
   const dragCountRef = useRef(0);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -130,19 +208,26 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed || disabled || trimmed.length > MAX_LENGTH) return;
-    historyRef.current.push(trimmed);
+    if ((!trimmed && attachments.length === 0) || disabled || trimmed.length > MAX_LENGTH) return;
+    // Build message with attachment references
+    let message = trimmed;
+    if (attachments.length > 0) {
+      const fileList = attachments.map((a) => `[Attached: ${a.filename} (${formatFileSize(a.size)})]`).join("\n");
+      message = message ? `${message}\n\n${fileList}` : fileList;
+    }
+    historyRef.current.push(trimmed || message);
     if (historyRef.current.length > 50) historyRef.current.shift();
     historyIndexRef.current = -1;
     draftRef.current = "";
     try { localStorage.setItem("jarvis_input_history", JSON.stringify(historyRef.current)); } catch { /* ignore */ }
-    onSend(trimmed);
+    onSend(message);
     setValue("");
+    setAttachments([]);
     try { localStorage.removeItem("jarvis_draft"); } catch { /* ignore */ }
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [value, disabled, onSend]);
+  }, [value, disabled, onSend, attachments]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
@@ -214,24 +299,24 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     }
   };
 
-  const pastedImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (pastedImageTimerRef.current) clearTimeout(pastedImageTimerRef.current);
-  }, []);
-
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of Array.from(items)) {
       if (item.type.startsWith("image/")) {
         e.preventDefault();
-        setPastedImage(true);
-        if (pastedImageTimerRef.current) clearTimeout(pastedImageTimerRef.current);
-        pastedImageTimerRef.current = setTimeout(() => setPastedImage(false), 3000);
+        const blob = item.getAsFile();
+        if (blob) {
+          // Create a file with proper name and extension
+          const ext = blob.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+          const name = `pasted-image-${Date.now()}.${ext}`;
+          const file = new File([blob], name, { type: blob.type });
+          uploadFile(file);
+        }
         return;
       }
     }
-  }, []);
+  }, [uploadFile]);
 
   const [showTips, setShowTips] = useState(false);
 
@@ -239,7 +324,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
   const isNearLimit = charCount > WARN_THRESHOLD;
   const isOverLimit = charCount > MAX_LENGTH;
-  const canSend = value.trim().length > 0 && !disabled && !isOverLimit && isOnline;
+  const canSend = (value.trim().length > 0 || attachments.length > 0) && !disabled && !isOverLimit && isOnline;
 
   return (
     <div
@@ -261,6 +346,12 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         e.preventDefault();
         dragCountRef.current = 0;
         setIsDragOver(false);
+        const files = e.dataTransfer?.files;
+        if (files) {
+          for (const file of Array.from(files)) {
+            uploadFile(file);
+          }
+        }
       }}
     >
       {/* Drop zone overlay */}
@@ -268,20 +359,34 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 backdrop-blur-sm animate-fade-in">
           <div className="flex items-center gap-2 text-sm text-primary/70">
             <Upload className="h-5 w-5" />
-            <span>File attachments coming soon</span>
+            <span>Drop files to attach (max 10 MB)</span>
           </div>
         </div>
       )}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFileInput}
+        accept={Array.from(ALLOWED_EXTENSIONS).join(",")}
+      />
       <div className="mx-auto max-w-3xl p-3 sm:p-4">
         <div className="relative flex items-end gap-2">
-          {/* Attachment button (coming soon) */}
+          {/* Attachment button */}
           <div className="hidden sm:flex shrink-0">
             <button
-              disabled
-              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground/30 cursor-not-allowed transition-colors"
-              title="File attachments coming soon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || uploading}
+              className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${
+                disabled || uploading
+                  ? "text-muted-foreground/30 cursor-not-allowed"
+                  : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10"
+              }`}
+              title={uploading ? "Uploading..." : "Attach file (max 10 MB)"}
             >
-              <Paperclip className="h-4 w-4" />
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
             </button>
           </div>
 
@@ -399,6 +504,41 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             )}
           </button>
         </div>
+        {/* Attached files */}
+        {attachments.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2 animate-fade-in">
+            {attachments.map((att) => (
+              <div
+                key={att.saved_as}
+                className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-1.5 text-xs group"
+              >
+                {isImageFile(att.filename) ? (
+                  <Image className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                )}
+                <span className="text-muted-foreground truncate max-w-[150px]" title={att.filename}>{att.filename}</span>
+                <span className="text-muted-foreground/40 text-[10px]">{formatFileSize(att.size)}</span>
+                <button
+                  onClick={() => removeAttachment(att.saved_as)}
+                  className="p-0.5 rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                  title="Remove"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Upload error */}
+        {uploadError && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2 animate-fade-in">
+            <span className="text-xs text-red-400">{uploadError}</span>
+            <button onClick={() => setUploadError(null)} className="ml-auto p-0.5 text-red-400/60 hover:text-red-400">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         {/* Offline indicator */}
         {!isOnline && (
           <div role="status" className="mt-2 flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2 animate-fade-in">
@@ -414,11 +554,11 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             </span>
           </div>
         )}
-        {/* Paste image notification */}
-        {pastedImage && (
-          <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 animate-fade-in">
-            <Image className="h-3.5 w-3.5 text-amber-500" />
-            <span className="text-xs text-amber-500">Image attachments coming soon</span>
+        {/* Uploading indicator */}
+        {uploading && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2 animate-fade-in">
+            <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+            <span className="text-xs text-primary/70">Uploading file...</span>
           </div>
         )}
         {/* Expandable tips panel */}
