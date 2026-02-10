@@ -94,12 +94,14 @@ class SessionManager:
 
     @property
     def config(self) -> Config:
-        assert self._config is not None
+        if self._config is None:
+            raise RuntimeError("SessionManager not initialized. Call initialize() first.")
         return self._config
 
     @property
     def memory(self) -> Memory:
-        assert self._memory is not None
+        if self._memory is None:
+            raise RuntimeError("SessionManager not initialized. Call initialize() first.")
         return self._memory
 
     @property
@@ -152,22 +154,23 @@ class SessionManager:
                 session.last_active = datetime.now(timezone.utc)
                 session.ensure_auto_title()
                 return session
-        # Enforce per-user session limit — evict oldest if at cap
+        # Enforce per-user session limit — evict oldest if at cap (atomic check+evict)
+        evict = None
         with self._lock:
             user_sessions = sorted(
                 [s for s in self._sessions.values() if s.user_id == user_id],
                 key=lambda s: s.last_active,
             )
-        if len(user_sessions) >= MAX_SESSIONS_PER_USER:
-            evict = user_sessions[0]
-            log.info("User %s hit session cap (%d), evicting oldest session %s",
-                     user_id, MAX_SESSIONS_PER_USER, evict.session_id)
+            if len(user_sessions) >= MAX_SESSIONS_PER_USER:
+                evict = user_sessions[0]
+                log.info("User %s hit session cap (%d), evicting oldest session %s",
+                         user_id, MAX_SESSIONS_PER_USER, evict.session_id)
+                self._sessions.pop(evict.session_id, None)
+        if evict:
             try:
                 evict.save_to_disk()
             except Exception as e:
                 log.warning("Failed to persist evicted session %s: %s", evict.session_id, e)
-            with self._lock:
-                self._sessions.pop(evict.session_id, None)
         return self._create_session(user_id)
 
     def get_session(self, session_id: str, user_id: str) -> JarvisSession | None:
