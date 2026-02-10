@@ -55,12 +55,40 @@ export function PWAInstall() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Register service worker
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
+  // Register service worker and detect updates
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").then((registration) => {
+        // Check for updates every 60 seconds
+        const interval = setInterval(() => registration.update(), 60000);
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                setUpdateAvailable(true);
+                setWaitingWorker(newWorker);
+              }
+            });
+          }
+        });
+
+        return () => clearInterval(interval);
+      }).catch(() => {});
     }
   }, []);
+
+  const handleUpdate = useCallback(() => {
+    if (waitingWorker) {
+      waitingWorker.postMessage("skipWaiting");
+      setUpdateAvailable(false);
+      window.location.reload();
+    }
+  }, [waitingWorker]);
 
   const handleInstall = useCallback(async () => {
     if (installPrompt) {
@@ -80,7 +108,37 @@ export function PWAInstall() {
     localStorage.setItem("jarvis-pwa-dismissed", String(Date.now()));
   }, []);
 
-  if (!showBanner) return null;
+  if (!showBanner && !updateAvailable) return null;
+
+  // Show update banner if no install banner
+  if (!showBanner && updateAvailable) {
+    return (
+      <div className="fixed bottom-16 left-4 right-4 z-50 lg:bottom-4 lg:left-auto lg:right-4 lg:w-80 animate-fade-in-up">
+        <div className="rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-xl shadow-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Download className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">Update Available</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                A new version of JARVIS is ready.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3">
+            <button
+              onClick={handleUpdate}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3 py-2 text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Update Now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
