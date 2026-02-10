@@ -21,7 +21,7 @@ const NAV_ITEMS = [
 
 export function MobileNav() {
   const pathname = usePathname();
-  const { unreadCount } = useSessionContext();
+  const { unreadCount, isProcessing } = useSessionContext();
 
   return (
     <nav aria-label="Mobile navigation" className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-border/50 bg-background/80 backdrop-blur-xl">
@@ -46,6 +46,9 @@ export function MobileNav() {
                   <span className="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-bold text-primary-foreground">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
+                )}
+                {item.label === "Chat" && isActive && isProcessing && (
+                  <span className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
                 )}
               </div>
               <span className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}>

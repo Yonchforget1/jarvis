@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { Button } from "./button";
+import { FocusTrap } from "./focus-trap";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,13 +27,20 @@ export function ConfirmDialog({
   variant = "default",
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
-  // Focus confirm button on open
+  // Focus cancel button for danger dialogs (safer default), confirm for others
   useEffect(() => {
     if (open) {
-      setTimeout(() => confirmRef.current?.focus(), 50);
+      setTimeout(() => {
+        if (variant === "danger") {
+          cancelRef.current?.focus();
+        } else {
+          confirmRef.current?.focus();
+        }
+      }, 50);
     }
-  }, [open]);
+  }, [open, variant]);
 
   // Escape to close
   const handleKeyDown = useCallback(
@@ -59,6 +67,7 @@ export function ConfirmDialog({
         onClick={onClose}
       />
       {/* Dialog */}
+      <FocusTrap>
       <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl animate-fade-in-up">
         <button
           onClick={onClose}
@@ -83,6 +92,7 @@ export function ConfirmDialog({
 
         <div className="flex items-center justify-end gap-2">
           <Button
+            ref={cancelRef}
             variant="outline"
             size="sm"
             onClick={onClose}
@@ -107,6 +117,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }
