@@ -136,7 +136,7 @@ export function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                minLength={6}
+                minLength={8}
                 autoComplete="current-password"
                 enterKeyHint="go"
                 aria-describedby={error ? "login-error" : undefined}

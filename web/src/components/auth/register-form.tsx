@@ -14,9 +14,9 @@ function PasswordStrength({ password }: { password: string }) {
   const strength = useMemo(() => {
     if (!password) return 0;
     let score = 0;
-    if (password.length >= 6) score++;
-    if (password.length >= 10) score++;
-    if (/[A-Z]/.test(password)) score++;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
     if (/[^A-Za-z0-9]/.test(password)) score++;
     return Math.min(score, 4);
@@ -89,8 +89,12 @@ export function RegisterForm() {
       setError("Passwords do not match");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (/^\d+$/.test(password) || /^[a-zA-Z]+$/.test(password)) {
+      setError("Password must contain both letters and numbers");
       return;
     }
     setLoading(true);
