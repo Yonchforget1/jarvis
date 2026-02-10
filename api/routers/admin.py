@@ -36,17 +36,21 @@ def set_session_manager(sm):
     _session_manager = sm
 
 
-def _require_admin(user: UserInfo):
+def _require_admin(user: UserInfo, action: str = "admin_access", request: Request | None = None):
+    ip = request.client.host if request and request.client else ""
     if user.username not in ADMIN_USERS:
         log.warning("Non-admin user '%s' attempted admin access", user.username)
+        audit_log(user_id=user.id, username=user.username, action=f"{action}_denied",
+                  detail="Unauthorized admin access attempt", ip=ip)
         raise HTTPException(403, "Admin access required")
+    audit_log(user_id=user.id, username=user.username, action=action, ip=ip)
 
 
 @router.get("/admin/system")
 @limiter.limit("10/minute")
 async def system_info(request: Request, user: UserInfo = Depends(get_current_user)):
     """Get detailed system information (admin only)."""
-    _require_admin(user)
+    _require_admin(user, "admin_system_info", request)
 
     info = {
         "platform": platform.platform(),
@@ -93,7 +97,7 @@ async def list_all_sessions(
     user: UserInfo = Depends(get_current_user),
 ):
     """List all active sessions across all users with pagination (admin only)."""
-    _require_admin(user)
+    _require_admin(user, "admin_list_sessions", request)
 
     sessions = _session_manager.get_all_sessions() if _session_manager else []
     sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)
@@ -121,7 +125,7 @@ async def list_all_sessions(
 @limiter.limit("3/minute")
 async def reload_config(request: Request, body: AdminConfirmRequest, user: UserInfo = Depends(get_current_user)):
     """Reload configuration from disk (admin only). Requires password confirmation."""
-    _require_admin(user)
+    _require_admin(user, "admin_config_reload", request)
 
     # Verify admin password before allowing config change
     if not authenticate_user(user.username, body.password):
@@ -156,7 +160,7 @@ async def reload_config(request: Request, body: AdminConfirmRequest, user: UserI
 @limiter.limit("10/minute")
 async def tool_stats(request: Request, user: UserInfo = Depends(get_current_user)):
     """Get tool usage statistics across all sessions (admin only)."""
-    _require_admin(user)
+    _require_admin(user, "admin_tool_stats", request)
 
     # Aggregate stats from all sessions
     all_stats = {}
@@ -192,7 +196,7 @@ async def view_audit_logs(
     user: UserInfo = Depends(get_current_user),
 ):
     """View recent audit log entries with optional filtering (admin only)."""
-    _require_admin(user)
+    _require_admin(user, "admin_view_audit_logs", request)
 
     entries = get_recent_entries(limit=min(limit * 2, 1000))  # Over-fetch for filtering
     if action:
@@ -210,7 +214,7 @@ async def terminate_session(
     user: UserInfo = Depends(get_current_user),
 ):
     """Force-terminate any session (admin only)."""
-    _require_admin(user)
+    _require_admin(user, "admin_terminate_session", request)
 
     if not _session_manager:
         raise HTTPException(500, "Session manager not available")

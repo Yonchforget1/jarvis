@@ -169,9 +169,11 @@ def _save_users(users: list[dict]):
 
 
 def create_user(username: str, password: str, email: str = "") -> dict | None:
-    """Create a new user. Returns user dict or None if username taken."""
+    """Create a new user. Returns user dict or None if username/email taken."""
     users = _load_users()
     if any(u["username"] == username for u in users):
+        return None
+    if email and any(u.get("email") == email for u in users):
         return None
     user = {
         "id": str(uuid.uuid4()),

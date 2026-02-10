@@ -25,7 +25,7 @@ async def register(request: RegisterRequest, req: Request):
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Username already taken",
+            detail="Username or email already taken",
         )
     token = create_token(user)
     audit_log(
