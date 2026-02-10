@@ -29,6 +29,7 @@ class JarvisSession:
     conversation: WebConversation
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    custom_name: str = ""
 
     @property
     def message_count(self) -> int:

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+interface TrendInfo {
+  direction: "up" | "down" | "stable";
+  label: string;
+}
 
 interface StatsCardProps {
   title: string;
@@ -10,6 +16,7 @@ interface StatsCardProps {
   icon: LucideIcon;
   iconColor?: string;
   bgColor?: string;
+  trend?: TrendInfo;
 }
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -67,6 +74,21 @@ function AnimatedValue({ value }: { value: string | number }) {
   return <>{value}</>;
 }
 
+function TrendBadge({ trend }: { trend: TrendInfo }) {
+  const config = {
+    up: { icon: TrendingUp, color: "text-green-400 bg-green-400/10" },
+    down: { icon: TrendingDown, color: "text-red-400 bg-red-400/10" },
+    stable: { icon: Minus, color: "text-muted-foreground/60 bg-muted" },
+  }[trend.direction];
+  const TIcon = config.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${config.color}`}>
+      <TIcon className="h-2.5 w-2.5" />
+      {trend.label}
+    </span>
+  );
+}
+
 export function StatsCard({
   title,
   value,
@@ -74,6 +96,7 @@ export function StatsCard({
   icon: Icon,
   iconColor = "text-primary",
   bgColor = "bg-muted",
+  trend,
 }: StatsCardProps) {
   return (
     <div role="region" aria-label={`${title} statistics`} className="group rounded-2xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-border hover:bg-card/80 animate-fade-in-up">
@@ -85,9 +108,12 @@ export function StatsCard({
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <p className="text-3xl font-bold tracking-tight tabular-nums">
-        <AnimatedValue value={value} />
-      </p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-3xl font-bold tracking-tight tabular-nums">
+          <AnimatedValue value={value} />
+        </p>
+        {trend && <TrendBadge trend={trend} />}
+      </div>
       <p className="mt-1 text-xs text-muted-foreground/60">{description}</p>
     </div>
   );

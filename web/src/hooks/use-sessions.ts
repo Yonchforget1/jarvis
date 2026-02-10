@@ -9,6 +9,7 @@ interface SessionEntry {
   last_active: string;
   message_count: number;
   preview: string;
+  custom_name?: string | null;
 }
 
 // Generate a short title from a message preview
@@ -166,6 +167,8 @@ export function useSessions() {
         saveSessionNames(next);
         return next;
       });
+      // Sync to server (fire-and-forget)
+      api.patch(`/api/sessions/${sessionId}`, { name: trimmed }).catch(() => {});
     },
     [],
   );
@@ -217,7 +220,7 @@ export function useSessions() {
     sessions
       .map((s) => ({
         ...s,
-        customName: sessionNames[s.session_id] || undefined,
+        customName: sessionNames[s.session_id] || s.custom_name || undefined,
         autoTitle: generateTitle(s.preview),
         pinned: pinnedIds.has(s.session_id),
       }))

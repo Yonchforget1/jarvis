@@ -1,13 +1,22 @@
 """Conversation and session management endpoints."""
 
 import json
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, Field
 
 from api.deps import get_current_user
 from api.models import ClearRequest, SessionInfo, UserInfo
+
+
+class SessionRenameRequest(BaseModel):
+    name: str = Field(max_length=100)
+
+
+_SESSION_NAME_RE = re.compile(r"^[\w\s\-.,!?()'\"\u00C0-\u024F\u0400-\u04FF]*$")
 
 router = APIRouter()
 
@@ -58,6 +67,7 @@ async def list_sessions(
                 "last_active": s.last_active.isoformat(),
                 "message_count": s.message_count,
                 "preview": s.conversation.get_first_user_message(),
+                "custom_name": s.custom_name or None,
             }
             for s in page
         ],
@@ -80,6 +90,23 @@ async def get_session_messages(
         "session_id": session_id,
         "messages": session.conversation.get_display_messages(),
     }
+
+
+@router.patch("/sessions/{session_id}")
+async def rename_session(
+    body: SessionRenameRequest,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Rename a session with a custom name."""
+    session = _session_manager.get_session(session_id, user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    name = body.name.strip()
+    if name and not _SESSION_NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="Session name contains invalid characters")
+    session.custom_name = name
+    return {"status": "renamed", "session_id": session_id, "name": name}
 
 
 @router.delete("/sessions/{session_id}")
@@ -107,12 +134,21 @@ async def export_session(
 
     messages = session.conversation.get_display_messages()
 
+    convo = session.conversation
+    token_stats = {
+        "input_tokens": convo.total_input_tokens,
+        "output_tokens": convo.total_output_tokens,
+        "tool_calls": convo.total_tool_calls,
+    }
+
     if format == "markdown":
         lines = [
             f"# Jarvis Conversation Export",
             f"**Session:** {session_id}",
             f"**Date:** {session.created_at.isoformat()}",
             f"**Messages:** {len(messages)}",
+            f"**Tokens:** {token_stats['input_tokens']} in / {token_stats['output_tokens']} out",
+            f"**Tool Calls:** {token_stats['tool_calls']}",
             "",
             "---",
             "",
@@ -138,6 +174,7 @@ async def export_session(
             "created_at": session.created_at.isoformat(),
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "message_count": len(messages),
+            "token_usage": token_stats,
             "messages": messages,
         }
         return export

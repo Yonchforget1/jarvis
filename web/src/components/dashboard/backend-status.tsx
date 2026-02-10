@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Activity, Cpu, Clock, Zap, HardDrive, Server, MemoryStick } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Activity, Cpu, Clock, Zap, HardDrive, Server, MemoryStick, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { SystemStats } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -46,6 +46,7 @@ function LiveUptime({ initialSeconds }: { initialSeconds: number }) {
 
 export function BackendStatus({ stats }: { stats: SystemStats }) {
   const [health, setHealth] = useState<HealthData | null>(null);
+  const prevMemoryRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,15 +170,28 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
     });
   }
   if (sysInfo?.memory_mb) {
+    const prevMem = prevMemoryRef.current;
+    const memDelta = prevMem !== null ? sysInfo.memory_mb - prevMem : 0;
+    const memTrendIcon = memDelta > 10 ? TrendingUp : memDelta < -10 ? TrendingDown : Minus;
+    const memTrendColor = memDelta > 10 ? "text-red-400" : memDelta < -10 ? "text-green-400" : "text-muted-foreground/40";
+    prevMemoryRef.current = sysInfo.memory_mb;
+
     systemItems.push({
       icon: MemoryStick,
       label: "Memory",
       value: (
-        <span className="text-sm font-mono tabular-nums">
-          {sysInfo.memory_mb >= 1024
-            ? `${(sysInfo.memory_mb / 1024).toFixed(1)} GB`
-            : `${sysInfo.memory_mb} MB`}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-mono tabular-nums">
+            {sysInfo.memory_mb >= 1024
+              ? `${(sysInfo.memory_mb / 1024).toFixed(1)} GB`
+              : `${sysInfo.memory_mb} MB`}
+          </span>
+          {prevMem !== null && memDelta !== 0 && (
+            <span className={`flex items-center gap-0.5 ${memTrendColor}`} title={`${memDelta > 0 ? "+" : ""}${memDelta} MB since last check`}>
+              {(() => { const Icon = memTrendIcon; return <Icon className="h-3 w-3" />; })()}
+            </span>
+          )}
+        </div>
       ),
       color: "text-pink-400",
     });
