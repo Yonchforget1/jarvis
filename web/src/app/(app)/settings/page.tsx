@@ -32,6 +32,8 @@ import {
   ToggleLeft,
   ToggleRight,
   FileArchive,
+  Webhook,
+  Globe,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -252,6 +254,59 @@ export default function SettingsPage() {
   const handleCopyKey = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied", "API key copied to clipboard.");
+  };
+
+  // Webhook management
+  interface WebhookEntry { id: string; url: string; events: string[]; has_secret: boolean; created_at: string }
+  const [webhooks, setWebhooks] = useState<WebhookEntry[]>([]);
+  const [webhooksLoading, setWebhooksLoading] = useState(false);
+  const [newWebhookUrl, setNewWebhookUrl] = useState("");
+  const [newWebhookEvents, setNewWebhookEvents] = useState<Set<string>>(new Set(["*"]));
+  const [newWebhookSecret, setNewWebhookSecret] = useState("");
+  const [creatingWebhook, setCreatingWebhook] = useState(false);
+
+  const WEBHOOK_EVENTS = [
+    { value: "*", label: "All Events" },
+    { value: "chat.complete", label: "Chat Complete" },
+    { value: "tool.complete", label: "Tool Complete" },
+    { value: "tool.error", label: "Tool Error" },
+    { value: "session.created", label: "Session Created" },
+  ];
+
+  const fetchWebhooks = useCallback(async () => {
+    setWebhooksLoading(true);
+    try {
+      const res = await api.get<{ webhooks: WebhookEntry[] }>("/api/webhooks");
+      setWebhooks(res.webhooks || []);
+    } catch { /* ignore */ }
+    finally { setWebhooksLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
+
+  const handleCreateWebhook = async () => {
+    if (creatingWebhook || !newWebhookUrl.trim()) return;
+    setCreatingWebhook(true);
+    try {
+      await api.post("/api/webhooks", { url: newWebhookUrl, events: [...newWebhookEvents], secret: newWebhookSecret });
+      setNewWebhookUrl("");
+      setNewWebhookSecret("");
+      setNewWebhookEvents(new Set(["*"]));
+      fetchWebhooks();
+      toast.success("Webhook created", "Webhook registered successfully.");
+    } catch (err) {
+      toast.error("Failed", err instanceof Error ? err.message : "Could not create webhook.");
+    } finally { setCreatingWebhook(false); }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      await api.delete(`/api/webhooks/${id}`);
+      setWebhooks((prev) => prev.filter((w) => w.id !== id));
+      toast.success("Deleted", "Webhook removed.");
+    } catch {
+      toast.error("Failed", "Could not delete webhook.");
+    }
   };
 
   // Initialize form from settings
@@ -1136,6 +1191,111 @@ export default function SettingsPage() {
               <RotateCcw className="h-4 w-4 text-primary" />
               Replay Welcome Tour
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Webhooks */}
+        <Card className="border-border/50 bg-card/30 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Webhook className="h-4 w-4 text-cyan-400" />
+              Webhooks
+            </CardTitle>
+            <CardDescription>Receive HTTP notifications when events occur</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Existing webhooks */}
+            {webhooksLoading ? (
+              <p className="text-xs text-muted-foreground/40">Loading webhooks...</p>
+            ) : webhooks.length > 0 ? (
+              <div className="space-y-2">
+                {webhooks.map((wh) => (
+                  <div key={wh.id} className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/20 px-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono truncate">{wh.url}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {wh.events.map((ev) => (
+                          <span key={ev} className="text-[9px] rounded-full bg-cyan-400/10 text-cyan-400 px-1.5 py-0.5">{ev}</span>
+                        ))}
+                        {wh.has_secret && <span className="text-[9px] rounded-full bg-green-400/10 text-green-400 px-1.5 py-0.5">HMAC</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteWebhook(wh.id)}
+                      className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0 ml-2"
+                      aria-label="Delete webhook"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground/40">No webhooks configured</p>
+            )}
+
+            {/* Add webhook form */}
+            <Separator className="bg-border/30" />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Webhook URL</Label>
+                <Input
+                  value={newWebhookUrl}
+                  onChange={(e) => setNewWebhookUrl(e.target.value)}
+                  placeholder="https://example.com/webhook"
+                  className="h-10 rounded-xl bg-secondary/50 border-border/50 text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Events</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {WEBHOOK_EVENTS.map((ev) => (
+                    <button
+                      key={ev.value}
+                      onClick={() => {
+                        const next = new Set(newWebhookEvents);
+                        if (ev.value === "*") {
+                          next.clear();
+                          next.add("*");
+                        } else {
+                          next.delete("*");
+                          if (next.has(ev.value)) next.delete(ev.value);
+                          else next.add(ev.value);
+                          if (next.size === 0) next.add("*");
+                        }
+                        setNewWebhookEvents(next);
+                      }}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-medium border transition-colors ${
+                        newWebhookEvents.has(ev.value)
+                          ? "bg-cyan-400/10 text-cyan-400 border-cyan-400/30"
+                          : "bg-muted/50 text-muted-foreground/50 border-border/30 hover:border-border"
+                      }`}
+                    >
+                      {ev.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Secret <span className="text-muted-foreground/40">(optional, for HMAC verification)</span></Label>
+                <Input
+                  value={newWebhookSecret}
+                  onChange={(e) => setNewWebhookSecret(e.target.value)}
+                  placeholder="Optional signing secret"
+                  type="password"
+                  className="h-10 rounded-xl bg-secondary/50 border-border/50 text-xs font-mono"
+                />
+              </div>
+              <Button
+                onClick={handleCreateWebhook}
+                disabled={creatingWebhook || !newWebhookUrl.trim()}
+                variant="outline"
+                className="gap-2 rounded-xl h-10 text-xs"
+              >
+                {creatingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Add Webhook
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
