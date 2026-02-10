@@ -40,10 +40,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
-
       const res = await fetch(`${API_URL}${path}`, {
         ...options,
         headers,
@@ -72,6 +71,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       }
       return res.json();
     } catch (err) {
+      clearTimeout(timeout);
       lastError = err;
       // Don't retry 401s or non-retryable errors
       if (err instanceof ApiError && err.status === 401) throw err;

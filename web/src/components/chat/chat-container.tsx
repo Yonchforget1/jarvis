@@ -137,76 +137,84 @@ export function ChatContainer({
 
   const exportChat = useCallback(() => {
     if (messages.length === 0) return;
-    const lines: string[] = [
-      "# JARVIS Chat Export",
-      `> Exported on ${new Date().toLocaleString()}`,
-      `> ${messages.length} messages`,
-      "",
-    ];
-    for (const msg of messages) {
-      const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      if (msg.role === "user") {
-        lines.push(`## User (${time})`, "", msg.content, "");
-      } else {
-        lines.push(`## JARVIS (${time})`, "");
-        if (msg.tool_calls?.length) {
-          for (const tc of msg.tool_calls) {
-            lines.push(
-              `<details><summary>Tool: ${tc.name}</summary>`,
-              "",
-              "```json",
-              JSON.stringify(tc.args, null, 2),
-              "```",
-              "",
-              "Result:",
-              "```",
-              tc.result.slice(0, 500),
-              "```",
-              "</details>",
-              ""
-            );
+    try {
+      const lines: string[] = [
+        "# JARVIS Chat Export",
+        `> Exported on ${new Date().toLocaleString()}`,
+        `> ${messages.length} messages`,
+        "",
+      ];
+      for (const msg of messages) {
+        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        if (msg.role === "user") {
+          lines.push(`## User (${time})`, "", msg.content, "");
+        } else {
+          lines.push(`## JARVIS (${time})`, "");
+          if (msg.tool_calls?.length) {
+            for (const tc of msg.tool_calls) {
+              lines.push(
+                `<details><summary>Tool: ${tc.name}</summary>`,
+                "",
+                "```json",
+                JSON.stringify(tc.args, null, 2),
+                "```",
+                "",
+                "Result:",
+                "```",
+                tc.result.slice(0, 500),
+                "```",
+                "</details>",
+                ""
+              );
+            }
           }
+          lines.push(msg.content, "");
         }
-        lines.push(msg.content, "");
+        lines.push("---", "");
       }
-      lines.push("---", "");
+      const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Exported", "Chat saved as Markdown");
+    } catch {
+      toast.error("Export failed", "Could not generate Markdown export");
     }
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Exported", "Chat saved as Markdown");
   }, [messages, toast]);
 
   const exportChatJSON = useCallback(() => {
     if (messages.length === 0) return;
-    const data = {
-      exported_at: new Date().toISOString(),
-      message_count: messages.length,
-      messages: messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        ...(msg.tool_calls?.length ? { tool_calls: msg.tool_calls } : {}),
-        ...(msg.isError ? { is_error: true } : {}),
-      })),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Exported", "Chat saved as JSON");
+    try {
+      const data = {
+        exported_at: new Date().toISOString(),
+        message_count: messages.length,
+        messages: messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          ...(msg.tool_calls?.length ? { tool_calls: msg.tool_calls } : {}),
+          ...(msg.isError ? { is_error: true } : {}),
+        })),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jarvis-chat-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Exported", "Chat saved as JSON");
+    } catch {
+      toast.error("Export failed", "Could not generate JSON export");
+    }
   }, [messages, toast]);
 
   // Track messages length in ref so keyboard handler doesn't re-register on every message

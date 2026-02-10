@@ -53,6 +53,8 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   );
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const optionsRef = useRef(options);
   const messagesRef = useRef(messages);
 
@@ -306,7 +308,8 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
       // Remove last user message and everything after it (error responses)
       // sendMessage will re-add the user message
       setMessages((prev) => prev.slice(0, lastUserIdx));
-      setTimeout(() => sendMessage(content), 50);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => sendMessage(content), 50);
     }
   }, [sendMessage]);
 
@@ -320,6 +323,10 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     if (abortRef.current) {
       abortRef.current.abort();
     }
+    if (loadAbortRef.current) {
+      loadAbortRef.current.abort();
+    }
+    loadAbortRef.current = new AbortController();
     setIsLoading(true);
     setError(null);
 
@@ -335,6 +342,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
+          signal: loadAbortRef.current.signal,
         },
       );
 
@@ -361,10 +369,12 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
       setMessages(loaded);
       setSessionId(sid);
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError("Failed to load conversation history");
     } finally {
       setIsLoading(false);
+      loadAbortRef.current = null;
     }
   }, []);
 
