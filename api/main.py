@@ -113,6 +113,21 @@ app.add_middleware(
 )
 
 
+MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+@app.middleware("http")
+async def body_size_limit_middleware(request: Request, call_next):
+    """Reject request bodies larger than MAX_BODY_SIZE."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"Request body too large (max {MAX_BODY_SIZE // (1024 * 1024)} MB)"},
+        )
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     """Add security headers to all responses."""

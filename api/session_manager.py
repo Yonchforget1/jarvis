@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 log = logging.getLogger("jarvis")
 
 SESSION_TTL_HOURS = 24  # Sessions expire after this many hours of inactivity
+MAX_SESSIONS_PER_USER = 20  # Prevent resource exhaustion
 
 from jarvis.config import Config
 from jarvis.backends import create_backend
@@ -111,6 +112,18 @@ class SessionManager:
             if session and session.user_id == user_id:
                 session.last_active = datetime.now(timezone.utc)
                 return session
+        # Enforce per-user session limit — evict oldest if at cap
+        with self._lock:
+            user_sessions = sorted(
+                [s for s in self._sessions.values() if s.user_id == user_id],
+                key=lambda s: s.last_active,
+            )
+        if len(user_sessions) >= MAX_SESSIONS_PER_USER:
+            evict = user_sessions[0]
+            log.info("User %s hit session cap (%d), evicting oldest session %s",
+                     user_id, MAX_SESSIONS_PER_USER, evict.session_id)
+            with self._lock:
+                self._sessions.pop(evict.session_id, None)
         return self._create_session(user_id)
 
     def get_session(self, session_id: str, user_id: str) -> JarvisSession | None:

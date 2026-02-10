@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import queue
 import threading
 from datetime import datetime, timezone
@@ -16,6 +17,8 @@ from starlette.responses import StreamingResponse
 from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import ChatRequest, ChatResponse, ToolCallDetail, UserInfo
+
+log = logging.getLogger("jarvis.api.chat")
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -89,7 +92,8 @@ async def chat_stream(
         try:
             session.conversation.send_stream(body.message, event_queue)
         except Exception as e:
-            event_queue.put({"event": "error", "data": {"message": str(e)}})
+            log.error("Stream error for user=%s session=%s: %s", user.id, session.session_id, e)
+            event_queue.put({"event": "error", "data": {"message": "An error occurred processing your request."}})
             event_queue.put({"event": "done", "data": {}})
 
     thread = threading.Thread(target=run_conversation, daemon=True)
@@ -100,9 +104,14 @@ async def chat_stream(
         yield _sse("session", {"session_id": session.session_id})
 
         while True:
+            # Check if client disconnected
+            if await request.is_disconnected():
+                log.info("Client disconnected from stream session=%s", session.session_id)
+                break
+
             try:
                 event = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: event_queue.get(timeout=120)
+                    None, lambda: event_queue.get(timeout=30)
                 )
                 yield _sse(event["event"], event["data"])
 
@@ -167,13 +176,14 @@ async def chat_batch(
                 "status": "success",
             })
         except Exception as e:
+            log.error("Batch chat error for user=%s session=%s: %s", user.id, session.session_id, e)
             results.append({
                 "session_id": session.session_id,
                 "response": "",
                 "tool_calls": [],
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "status": "error",
-                "error": str(e),
+                "error": "An error occurred processing this message.",
             })
 
     audit_log(
