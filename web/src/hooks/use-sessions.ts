@@ -174,6 +174,32 @@ export function useSessions() {
     [],
   );
 
+  // Clean up stale session names/pins that reference deleted sessions
+  useEffect(() => {
+    if (sessions.length === 0 || loading) return;
+    const ids = new Set(sessions.map((s) => s.session_id));
+    // Clean names
+    const names = getSessionNames();
+    let namesDirty = false;
+    for (const key of Object.keys(names)) {
+      if (!ids.has(key)) { delete names[key]; namesDirty = true; }
+    }
+    if (namesDirty) {
+      saveSessionNames(names);
+      setSessionNames(names);
+    }
+    // Clean pins
+    let pinsDirty = false;
+    const pins = getPinnedSessions();
+    for (const id of pins) {
+      if (!ids.has(id)) { pins.delete(id); pinsDirty = true; }
+    }
+    if (pinsDirty) {
+      savePinnedSessions(pins);
+      setPinnedIds(pins);
+    }
+  }, [sessions, loading]);
+
   // Merge custom names into sessions, auto-generate titles from preview
   const sessionsWithNames = useMemo(() =>
     sessions

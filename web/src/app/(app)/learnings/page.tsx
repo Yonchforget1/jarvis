@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,15 @@ function getCatStyle(cat: string) {
 export default function LearningsPage() {
   const { learnings, loading, error, refetch } = useLearnings();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search]);
 
   const categories = useMemo(
     () => [...new Set(learnings.map((l) => l.category))].sort(),
@@ -35,13 +43,13 @@ export default function LearningsPage() {
 
   const filtered = useMemo(() => learnings.filter((l) => {
     const matchesSearch =
-      !search ||
-      l.insight.toLowerCase().includes(search.toLowerCase()) ||
-      l.context.toLowerCase().includes(search.toLowerCase()) ||
-      l.task_description.toLowerCase().includes(search.toLowerCase());
+      !debouncedSearch ||
+      l.insight.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      l.context.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      l.task_description.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesCategory = !categoryFilter || l.category === categoryFilter;
     return matchesSearch && matchesCategory;
-  }), [learnings, search, categoryFilter]);
+  }), [learnings, debouncedSearch, categoryFilter]);
 
   const handleExport = useCallback(() => {
     const markdown = filtered

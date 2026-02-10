@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Folder,
   Terminal,
@@ -167,18 +167,26 @@ function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boo
 export default function ToolsPage() {
   const { tools, loading, error, refetch } = useTools();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [allExpanded, setAllExpanded] = useState<boolean | undefined>(undefined);
 
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search]);
+
   const filtered = useMemo(() => tools.filter((t) => {
     const matchesSearch =
-      !search ||
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.description.toLowerCase().includes(search.toLowerCase());
+      !debouncedSearch ||
+      t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      t.description.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesCategory =
       !activeCategory || (t.category || "other") === activeCategory;
     return matchesSearch && matchesCategory;
-  }), [tools, search, activeCategory]);
+  }), [tools, debouncedSearch, activeCategory]);
 
   // Get unique categories from actual tools
   const categories = useMemo(
