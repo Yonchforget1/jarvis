@@ -17,6 +17,10 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  RotateCw,
+  X,
+  Lock,
+  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -105,6 +109,12 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "tools" | "audit">("overview");
   const [refreshing, setRefreshing] = useState(false);
   const [auditExpanded, setAuditExpanded] = useState<Set<number>>(new Set());
+  const [terminatingId, setTerminatingId] = useState<string | null>(null);
+  const [showReloadDialog, setShowReloadDialog] = useState(false);
+  const [reloadPassword, setReloadPassword] = useState("");
+  const [reloading, setReloading] = useState(false);
+  const [reloadError, setReloadError] = useState<string | null>(null);
+  const [reloadSuccess, setReloadSuccess] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -145,6 +155,40 @@ export default function AdminPage() {
     setRefreshing(true);
     await fetchAll();
     setRefreshing(false);
+  };
+
+  const terminateSession = async (sessionId: string) => {
+    setTerminatingId(sessionId);
+    try {
+      await api.delete(`/api/admin/sessions/${sessionId}`);
+      setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+      setSessionsTotal((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      // Silently fail — could show toast in future
+    } finally {
+      setTerminatingId(null);
+    }
+  };
+
+  const handleReloadConfig = async () => {
+    setReloading(true);
+    setReloadError(null);
+    try {
+      const res = await api.post<{ status: string; config: SystemInfo["config"] }>("/api/admin/config/reload", { password: reloadPassword });
+      if (system && res.config) {
+        setSystem({ ...system, config: res.config });
+      }
+      setReloadSuccess(true);
+      setReloadPassword("");
+      setTimeout(() => {
+        setShowReloadDialog(false);
+        setReloadSuccess(false);
+      }, 1500);
+    } catch (err) {
+      setReloadError(err instanceof Error ? err.message : "Reload failed");
+    } finally {
+      setReloading(false);
+    }
   };
 
   if (loading) {
@@ -325,7 +369,16 @@ export default function AdminPage() {
 
               {/* System info */}
               <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                <h3 className="text-xs font-medium mb-3">System Information</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-medium">System Information</h3>
+                  <button
+                    onClick={() => { setShowReloadDialog(true); setReloadError(null); setReloadSuccess(false); }}
+                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <RotateCw className="h-3 w-3" />
+                    Reload Config
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   <div>
                     <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Platform</p>
@@ -355,18 +408,19 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground/60">{sessionsTotal} total sessions across all users</p>
               </div>
               <div className="rounded-xl border border-border/50 overflow-hidden">
-                <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 px-4 py-2 bg-muted/30 border-b border-border/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2 px-4 py-2 bg-muted/30 border-b border-border/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
                   <span>Session</span>
                   <span>User</span>
                   <span>Messages</span>
                   <span>Last Active</span>
                   <span>Status</span>
+                  <span className="w-10"></span>
                 </div>
                 {sessions.length === 0 ? (
                   <div className="px-4 py-8 text-center text-xs text-muted-foreground/40">No sessions found</div>
                 ) : (
                   sessions.map((s) => (
-                    <div key={s.session_id} className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-b border-border/20 hover:bg-muted/20 transition-colors text-xs">
+                    <div key={s.session_id} className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-b border-border/20 hover:bg-muted/20 transition-colors text-xs group">
                       <span className="font-mono text-[10px] text-muted-foreground truncate" title={s.session_id}>
                         {s.session_id.slice(0, 8)}...
                       </span>
@@ -377,6 +431,22 @@ export default function AdminPage() {
                         s.archived ? "bg-muted text-muted-foreground/50" : "bg-green-400/10 text-green-400"
                       }`}>
                         {s.archived ? "Archived" : "Active"}
+                      </span>
+                      <span className="w-10 flex justify-center">
+                        {!s.archived && (
+                          <button
+                            onClick={() => terminateSession(s.session_id)}
+                            disabled={terminatingId === s.session_id}
+                            title="Terminate session"
+                            className="p-1 rounded-md text-muted-foreground/30 hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                          >
+                            {terminatingId === s.session_id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
                       </span>
                     </div>
                   ))
@@ -463,6 +533,80 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {/* Config Reload Dialog */}
+        {showReloadDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowReloadDialog(false)}>
+            <div className="relative w-full max-w-sm mx-4 rounded-xl border border-border/50 bg-background p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setShowReloadDialog(false)}
+                className="absolute top-3 right-3 p-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {reloadSuccess ? (
+                <div className="text-center py-4 space-y-2">
+                  <div className="flex justify-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-400/10">
+                      <RotateCw className="h-5 w-5 text-green-400" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-green-400">Config Reloaded</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Lock className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Reload Configuration</h3>
+                      <p className="text-[10px] text-muted-foreground/50">Confirm your password to reload config.yaml</p>
+                    </div>
+                  </div>
+
+                  {reloadError && (
+                    <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+                      {reloadError}
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleReloadConfig(); }}
+                    className="space-y-3"
+                  >
+                    <input
+                      type="password"
+                      value={reloadPassword}
+                      onChange={(e) => setReloadPassword(e.target.value)}
+                      placeholder="Admin password"
+                      autoFocus
+                      className="w-full rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowReloadDialog(false)}
+                        className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!reloadPassword || reloading}
+                        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {reloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCw className="h-3 w-3" />}
+                        Reload
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   );
