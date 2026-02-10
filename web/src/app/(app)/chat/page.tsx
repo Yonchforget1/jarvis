@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X } from "lucide-react";
+import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X, Link2, Check } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
@@ -172,6 +172,20 @@ export default function ChatPage() {
     loadSession,
   } = useChat(selectedSessionId, chatOptions);
 
+  // Copy session link
+  const [linkCopied, setLinkCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copySessionLink = useCallback(() => {
+    if (!sessionId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("session", sessionId);
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setLinkCopied(true);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(() => {});
+  }, [sessionId]);
+
   // Auto-send prompt from ?prompt= query parameter (e.g., dashboard "Try These")
   const promptHandled = useRef(false);
   useEffect(() => {
@@ -280,6 +294,20 @@ export default function ChatPage() {
                 <span className="text-[10px] text-muted-foreground/30 tabular-nums hidden sm:inline">
                   {messages.length} msg{messages.length !== 1 ? "s" : ""}
                 </span>
+              )}
+              {sessionId && messages.length > 0 && (
+                <button
+                  onClick={copySessionLink}
+                  className={`flex items-center gap-1 rounded-full border border-border/30 px-2 py-0.5 text-[10px] transition-colors ${
+                    linkCopied
+                      ? "bg-green-500/10 text-green-400 border-green-500/30"
+                      : "bg-muted/50 text-muted-foreground/50 hover:text-foreground hover:bg-muted"
+                  }`}
+                  title="Copy session link"
+                >
+                  {linkCopied ? <Check className="h-2.5 w-2.5" /> : <Link2 className="h-2.5 w-2.5" />}
+                  <span className="hidden sm:inline">{linkCopied ? "Copied" : "Link"}</span>
+                </button>
               )}
               {sessionId && messages.length > 0 && (
                 <button
