@@ -2,12 +2,38 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Cpu } from "lucide-react";
+import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { api } from "@/lib/api";
+
+interface SessionAnalytics {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cost_estimate_usd: number;
+  message_count: number;
+  tool_calls: number;
+  unique_tools_used: number;
+  tool_breakdown: Record<string, { calls: number; errors: number; duration_ms: number }>;
+  duration_seconds: number;
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return String(n);
+}
+
+function formatDuration(secs: number): string {
+  if (secs < 60) return `${Math.floor(secs)}s`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ${mins % 60}m`;
+}
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -27,6 +53,29 @@ export default function ChatPage() {
       })
       .catch(() => {});
   }, [modelLabel]);
+
+  // Session analytics popover
+  const [analytics, setAnalytics] = useState<SessionAnalytics | null>(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const fetchAnalytics = useCallback(async (sid: string) => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await api.get<SessionAnalytics>(`/api/conversation/sessions/${sid}/analytics`);
+      setAnalytics(res);
+    } catch {
+      setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  // Reset analytics when session changes
+  useEffect(() => {
+    setAnalytics(null);
+    setAnalyticsOpen(false);
+  }, [selectedSessionId]);
 
   // Deep-link: load session from ?session=<id> query parameter
   const deepLinkHandled = useRef(false);
@@ -232,6 +281,19 @@ export default function ChatPage() {
                   {messages.length} msg{messages.length !== 1 ? "s" : ""}
                 </span>
               )}
+              {sessionId && messages.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (!analyticsOpen) fetchAnalytics(sessionId);
+                    setAnalyticsOpen(!analyticsOpen);
+                  }}
+                  className="flex items-center gap-1 rounded-full bg-muted/50 border border-border/30 px-2 py-0.5 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
+                  title="Session analytics"
+                >
+                  <BarChart3 className="h-2.5 w-2.5" />
+                  <span className="hidden sm:inline">Stats</span>
+                </button>
+              )}
               {modelLabel && (
                 <span className="flex items-center gap-1 rounded-full bg-muted/50 border border-border/30 px-2 py-0.5 text-[10px] font-mono text-muted-foreground/50">
                   <Cpu className="h-2.5 w-2.5" />
@@ -241,6 +303,72 @@ export default function ChatPage() {
             </span>
           </div>
         )}
+        {/* Session analytics panel */}
+        {analyticsOpen && (
+          <div className="border-b border-border/30 bg-card/60 backdrop-blur-sm px-4 py-3 animate-fade-in">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <BarChart3 className="h-3 w-3 text-primary" />
+                Session Analytics
+              </span>
+              <button onClick={() => setAnalyticsOpen(false)} className="p-0.5 rounded hover:bg-muted transition-colors">
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+            {analyticsLoading ? (
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
+                <span className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                Loading...
+              </div>
+            ) : analytics ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5">
+                    <Zap className="h-3 w-3 text-yellow-400 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/50">Tokens</p>
+                      <p className="text-xs font-medium tabular-nums">{formatTokens(analytics.total_tokens)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5">
+                    <DollarSign className="h-3 w-3 text-green-400 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/50">Cost</p>
+                      <p className="text-xs font-medium tabular-nums">${analytics.cost_estimate_usd.toFixed(4)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5">
+                    <Hash className="h-3 w-3 text-cyan-400 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/50">Tool Calls</p>
+                      <p className="text-xs font-medium tabular-nums">{analytics.tool_calls} ({analytics.unique_tools_used} tools)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5">
+                    <Clock className="h-3 w-3 text-orange-400 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/50">Duration</p>
+                      <p className="text-xs font-medium tabular-nums">{formatDuration(analytics.duration_seconds)}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Token breakdown */}
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
+                  <span>In: {formatTokens(analytics.input_tokens)}</span>
+                  <span>Out: {formatTokens(analytics.output_tokens)}</span>
+                  {analytics.tool_calls > 0 && Object.keys(analytics.tool_breakdown).length > 0 && (
+                    <span className="ml-auto">
+                      Top tools: {Object.entries(analytics.tool_breakdown).sort(([, a], [, b]) => b.calls - a.calls).slice(0, 3).map(([name, s]) => `${name}(${s.calls})`).join(", ")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[10px] text-muted-foreground/40">No analytics available</p>
+            )}
+          </div>
+        )}
+
         <div className="flex-1 min-h-0">
           <ChatContainer
             messages={messages}
