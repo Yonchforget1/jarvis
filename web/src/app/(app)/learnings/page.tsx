@@ -85,7 +85,10 @@ export default function LearningsPage() {
                       `### ${l.category}\n> ${l.insight}\n\n${l.context ? `_Context:_ ${l.context}\n` : ""}${l.task_description ? `_Task:_ ${l.task_description}\n` : ""}\n_${new Date(l.timestamp).toLocaleString()}_\n\n---`,
                   )
                   .join("\n\n");
-                const blob = new Blob([`# JARVIS Learnings Export\n\n${markdown}`], { type: "text/markdown" });
+                const filterNote = (search || categoryFilter)
+                  ? `\n> Filtered: ${filtered.length} of ${learnings.length} learnings${categoryFilter ? ` (category: ${categoryFilter})` : ""}${search ? ` (search: "${search}")` : ""}\n`
+                  : `\n> ${learnings.length} total learnings\n`;
+                const blob = new Blob([`# JARVIS Learnings Export\n${filterNote}\n${markdown}`], { type: "text/markdown" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
