@@ -107,6 +107,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       if (res.status === 204 || res.headers.get("content-length") === "0") {
         return undefined as T;
       }
+      // Guard against non-JSON responses (e.g., HTML error pages from reverse proxy)
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const text = await res.text();
+        throw new ApiError(
+          text.slice(0, 200) || `Unexpected content-type: ${contentType}`,
+          res.status,
+        );
+      }
       return res.json();
     } catch (err) {
       clearTimeout(timeout);

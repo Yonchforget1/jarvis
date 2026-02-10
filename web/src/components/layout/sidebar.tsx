@@ -104,6 +104,7 @@ function sessionDuration(createdAt: string, lastActive: string): string {
 
 function sessionDateGroup(dateStr: string): string {
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Older";
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
