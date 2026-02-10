@@ -199,7 +199,8 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         }
       }
     }
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Send on Enter (without Shift) or Cmd/Ctrl+Enter
+    if (e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
     }
@@ -409,7 +410,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               <span className="mx-1">&middot;</span>
               <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Shift+Enter</kbd> new line
               <span className="mx-1">&middot;</span>
-              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+/</kbd> focus
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> focus
             </span>
           </div>
           {charCount > 0 && (

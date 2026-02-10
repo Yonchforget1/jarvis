@@ -82,8 +82,10 @@ export function useSessions() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const data = await api.get<SessionEntry[]>("/api/sessions");
-      setSessions(data);
+      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/sessions?limit=200");
+      // Handle both paginated response and legacy array format
+      const list = Array.isArray(data) ? data : data.sessions;
+      setSessions(list);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sessions");

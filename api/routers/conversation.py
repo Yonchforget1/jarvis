@@ -30,20 +30,41 @@ async def clear_conversation(
     return {"status": "cleared", "session_id": request.session_id}
 
 
-@router.get("/sessions", response_model=list[dict])
-async def list_sessions(user: UserInfo = Depends(get_current_user)):
-    """List all sessions for the current user with preview text."""
+@router.get("/sessions")
+async def list_sessions(
+    user: UserInfo = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=200, description="Max sessions to return"),
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    sort_by: str = Query(default="last_active", pattern="^(last_active|created_at|message_count)$"),
+):
+    """List sessions for the current user with pagination and sorting."""
     sessions = _session_manager.get_user_sessions(user.id)
-    return [
-        {
-            "session_id": s.session_id,
-            "created_at": s.created_at.isoformat(),
-            "last_active": s.last_active.isoformat(),
-            "message_count": s.message_count,
-            "preview": s.conversation.get_first_user_message(),
-        }
-        for s in sorted(sessions, key=lambda s: s.last_active, reverse=True)
-    ]
+    reverse = True
+    if sort_by == "message_count":
+        sessions = sorted(sessions, key=lambda s: s.message_count, reverse=reverse)
+    elif sort_by == "created_at":
+        sessions = sorted(sessions, key=lambda s: s.created_at, reverse=reverse)
+    else:
+        sessions = sorted(sessions, key=lambda s: s.last_active, reverse=reverse)
+
+    total = len(sessions)
+    page = sessions[offset:offset + limit]
+
+    return {
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "created_at": s.created_at.isoformat(),
+                "last_active": s.last_active.isoformat(),
+                "message_count": s.message_count,
+                "preview": s.conversation.get_first_user_message(),
+            }
+            for s in page
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/sessions/{session_id}/messages")
