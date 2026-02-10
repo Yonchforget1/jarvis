@@ -13,6 +13,7 @@ export interface ChatMessage {
   timestamp: string;
   isError?: boolean;
   isStreaming?: boolean;
+  isIncomplete?: boolean;
   streamStatus?: string;
 }
 

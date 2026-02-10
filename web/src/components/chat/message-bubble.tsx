@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, RefreshCw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, RefreshCw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X, WifiOff } from "lucide-react";
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -516,6 +516,23 @@ export const MessageBubble = memo(function MessageBubble({
             </div>
           )}
         </div>
+
+        {/* Incomplete stream indicator */}
+        {message.isIncomplete && !isStreaming && !isError && (
+          <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1.5 text-[11px] text-yellow-400 animate-fade-in">
+            <WifiOff className="h-3 w-3 shrink-0" />
+            <span>Response interrupted</span>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-1 rounded-md bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-300 hover:bg-yellow-500/25 transition-colors ml-1"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+                Retry
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Footer: timestamp + actions */}
         <div className="flex items-center gap-2 px-1">

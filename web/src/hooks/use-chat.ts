@@ -158,6 +158,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
         const decoder = new TextDecoder();
         let buffer = "";
         let streamSessionId: string | null = null;
+        let receivedDone = false;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -264,6 +265,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
               }
 
               case "done": {
+                receivedDone = true;
                 const doneData = data as unknown as Record<string, unknown>;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
@@ -287,18 +289,21 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
         }
 
         // Ensure streaming flag is cleared when reader finishes
+        // If we never received a "done" event, the stream was interrupted
         updateStreamingMessage(assistantMsgId, (m) => ({
           ...m,
           isStreaming: false,
+          isIncomplete: !receivedDone && !m.isError,
           streamStatus: undefined,
         }));
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
-          // User cancelled - just clean up
+          // User cancelled - just clean up (not incomplete, user intentionally stopped)
           updateStreamingMessage(assistantMsgId, (m) => ({
             ...m,
             content: m.content || "Request cancelled.",
             isStreaming: false,
+            isIncomplete: false,
             streamStatus: undefined,
           }));
         } else {

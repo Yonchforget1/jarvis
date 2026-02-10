@@ -707,7 +707,7 @@ export function ChatContainer({
                   )}
                   <MessageBubble
                     message={msg}
-                    onRetry={msg.isError ? onRetry : undefined}
+                    onRetry={msg.isError || msg.isIncomplete ? onRetry : undefined}
                     onRegenerate={
                       !isLoading && msg.role === "assistant" && !msg.isStreaming && idx === visibleMessages.length - 1
                         ? onRegenerate
