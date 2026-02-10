@@ -96,6 +96,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
+          signal: AbortSignal.timeout(30000),
         });
 
         if (!response.ok) {
@@ -179,6 +180,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         setError("Recording failed");
         setState("error");
         cleanup();
+        recoveryTimerRef.current = setTimeout(() => {
+          setState("idle");
+          setError(null);
+        }, 3000);
       };
 
       recorder.start(250); // collect data every 250ms

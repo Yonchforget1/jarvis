@@ -69,7 +69,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const selectSession = useCallback((id: string, name?: string) => {
     const sid = id || null;
-    const sname = name || null;
+    const sname = name !== undefined ? name : null;
     setSelectedSessionId(sid);
     setSelectedSessionName(sname);
     persistSession(sid, sname);
@@ -83,6 +83,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const setSessionName = useCallback((name: string) => {
     setSelectedSessionName(name);
+    setSelectedSessionId((id) => {
+      if (id) persistSession(id, name);
+      return id;
+    });
   }, []);
 
   const incrementUnread = useCallback(() => {
