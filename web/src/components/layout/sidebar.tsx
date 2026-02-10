@@ -32,7 +32,7 @@ import {
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
-import { useSessions } from "@/hooks/use-sessions";
+import { useSessions, onSessionDeleteError } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -132,6 +132,11 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [sortMode, setSortMode] = useState<"recent" | "name" | "messages">("recent");
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Register delete error callback once
+  useEffect(() => {
+    onSessionDeleteError((msg) => toast.error("Delete failed", msg));
+  }, [toast]);
 
   // Debounce session search
   useEffect(() => {

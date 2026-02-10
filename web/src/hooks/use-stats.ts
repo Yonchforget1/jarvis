@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import type { SystemStats } from "@/lib/types";
 
@@ -10,6 +10,7 @@ export function useStats(pollInterval: number = 15000) {
   const [refetching, setRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const consecutiveFailures = useRef(0);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -17,7 +18,9 @@ export function useStats(pollInterval: number = 15000) {
       setStats(data);
       setError(null);
       setLastUpdated(new Date());
+      consecutiveFailures.current = 0;
     } catch (err) {
+      consecutiveFailures.current++;
       setError(err instanceof Error ? err.message : "Failed to fetch stats");
     } finally {
       setLoading(false);
@@ -26,27 +29,38 @@ export function useStats(pollInterval: number = 15000) {
   }, []);
 
   const refetch = useCallback(() => {
+    consecutiveFailures.current = 0;
     setRefetching(true);
     return fetchStats();
   }, [fetchStats]);
 
-  // Visibility-aware polling: pause when tab is hidden to save bandwidth
+  // Visibility-aware polling with exponential backoff on errors
   useEffect(() => {
     fetchStats();
-    let interval = setInterval(fetchStats, pollInterval);
+
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNext = () => {
+      // Exponential backoff: double interval per failure, cap at 2 minutes
+      const backoff = consecutiveFailures.current > 0
+        ? Math.min(pollInterval * Math.pow(2, consecutiveFailures.current), 120000)
+        : pollInterval;
+      timer = setTimeout(() => {
+        fetchStats().then(scheduleNext);
+      }, backoff);
+    };
+    fetchStats().then(scheduleNext);
 
     const handleVisibility = () => {
       if (document.hidden) {
-        clearInterval(interval);
+        clearTimeout(timer);
       } else {
-        fetchStats(); // Refresh immediately when returning
-        interval = setInterval(fetchStats, pollInterval);
+        fetchStats().then(scheduleNext);
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
-      clearInterval(interval);
+      clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [fetchStats, pollInterval]);

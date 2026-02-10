@@ -48,6 +48,15 @@ function savePinnedSessions(pinned: Set<string>) {
   localStorage.setItem("jarvis-pinned-sessions", JSON.stringify([...pinned]));
 }
 
+type ErrorCallback = (message: string) => void;
+
+let _onDeleteError: ErrorCallback | null = null;
+
+/** Register a callback for delete errors (call from component with toast access). */
+export function onSessionDeleteError(cb: ErrorCallback) {
+  _onDeleteError = cb;
+}
+
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,6 +145,7 @@ export function useSessions() {
       } catch {
         // Rollback on error
         setSessions(previousSessions);
+        _onDeleteError?.("Failed to delete conversation. Please try again.");
       }
     },
     [],

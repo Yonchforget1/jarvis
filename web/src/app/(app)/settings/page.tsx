@@ -412,6 +412,8 @@ export default function SettingsPage() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="Enter your API key to override server default"
+                  maxLength={256}
+                  autoComplete="off"
                   className="pr-10 bg-secondary/50 border-border/50"
                 />
                 <button
