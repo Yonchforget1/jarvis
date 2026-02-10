@@ -34,6 +34,7 @@ import {
   FileArchive,
   Webhook,
   Zap,
+  Keyboard,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -142,6 +143,21 @@ export default function SettingsPage() {
       const current = JSON.parse(localStorage.getItem("jarvis_notifications") || "{}");
       localStorage.setItem("jarvis_notifications", JSON.stringify({ ...current, sound }));
     } catch { /* ignore */ }
+  };
+
+  // Ctrl+Enter to send preference
+  const [ctrlEnterSend, setCtrlEnterSend] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("jarvis_ctrl_enter_send") === "true"; } catch { return false; }
+  });
+
+  const handleToggleCtrlEnter = (enabled: boolean) => {
+    setCtrlEnterSend(enabled);
+    try {
+      localStorage.setItem("jarvis_ctrl_enter_send", enabled ? "true" : "false");
+    } catch { /* ignore */ }
+    // Notify chat-input in the same tab (storage event only fires cross-tab)
+    window.dispatchEvent(new Event("ctrl-enter-pref-changed"));
   };
 
   // Tool groups and individual tools (fetched dynamically)
@@ -740,6 +756,41 @@ export default function SettingsPage() {
                 Browser notifications are blocked. Please allow them in your browser settings.
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Chat Input */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Keyboard className="h-4 w-4 text-primary" />
+              Chat Input
+            </CardTitle>
+            <CardDescription>Customize how the message input behaves</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <button
+              onClick={() => handleToggleCtrlEnter(!ctrlEnterSend)}
+              className={`flex w-full items-center justify-between rounded-xl border p-3 transition-all duration-200 ${
+                ctrlEnterSend
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border/50 bg-muted/30 hover:border-border"
+              }`}
+            >
+              <div className="text-left">
+                <p className={`text-sm font-medium ${ctrlEnterSend ? "text-primary" : ""}`}>
+                  Ctrl+Enter to Send
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {ctrlEnterSend
+                    ? "Press Ctrl+Enter to send, Enter for new line"
+                    : "Press Enter to send, Shift+Enter for new line"}
+                </p>
+              </div>
+              <div className={`relative h-6 w-11 rounded-full transition-colors ${ctrlEnterSend ? "bg-primary" : "bg-muted"}`}>
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${ctrlEnterSend ? "translate-x-5" : "translate-x-0.5"}`} />
+              </div>
+            </button>
           </CardContent>
         </Card>
 

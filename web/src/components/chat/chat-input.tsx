@@ -80,6 +80,23 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isOnline = useOnlineStatus();
 
+  // Ctrl+Enter to send preference
+  const [ctrlEnterSend, setCtrlEnterSend] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("jarvis_ctrl_enter_send") === "true"; } catch { return false; }
+  });
+  useEffect(() => {
+    const handler = () => {
+      try { setCtrlEnterSend(localStorage.getItem("jarvis_ctrl_enter_send") === "true"); } catch { /* ignore */ }
+    };
+    window.addEventListener("storage", handler);
+    window.addEventListener("ctrl-enter-pref-changed", handler);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("ctrl-enter-pref-changed", handler);
+    };
+  }, []);
+
   const voice = useVoice({
     onTranscript: (text) => {
       setValue((prev) => {
@@ -292,10 +309,22 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         }
       }
     }
-    // Send on Enter (without Shift) or Cmd/Ctrl+Enter
-    if (e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSubmit();
+    // Send behavior depends on user preference
+    if (e.key === "Enter") {
+      if (ctrlEnterSend) {
+        // Ctrl+Enter mode: only Ctrl/Cmd+Enter sends
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleSubmit();
+        }
+        // Plain Enter / Shift+Enter -> new line (default textarea behavior)
+      } else {
+        // Enter mode: Enter sends (unless Shift held), Ctrl/Cmd+Enter also sends
+        if (!e.shiftKey || e.metaKey || e.ctrlKey) {
+          e.preventDefault();
+          handleSubmit();
+        }
+      }
     }
   };
 
@@ -584,8 +613,8 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         {/* Expandable tips panel */}
         {showTips && (
           <div role="note" aria-label="Keyboard shortcuts" className="mt-2 rounded-xl border border-border/30 bg-muted/30 p-3 animate-fade-in text-[11px] text-muted-foreground/60 space-y-1.5">
-            <div className="flex items-center gap-2"><kbd aria-label="Enter key" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> Send message</div>
-            <div className="flex items-center gap-2"><kbd aria-label="Shift plus Enter" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> New line</div>
+            <div className="flex items-center gap-2"><kbd aria-label={ctrlEnterSend ? "Control plus Enter" : "Enter key"} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{ctrlEnterSend ? (typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl") + "+Enter" : "Enter"}</kbd> Send message</div>
+            <div className="flex items-center gap-2"><kbd aria-label={ctrlEnterSend ? "Enter key" : "Shift plus Enter"} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{ctrlEnterSend ? "Enter" : "Shift+Enter"}</kbd> New line</div>
             <div className="flex items-center gap-2"><kbd aria-label="Control plus slash" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> Focus input</div>
             <div className="flex items-center gap-2"><kbd aria-label="Forward slash" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">/</kbd> Slash commands (/clear, /export, /new, /help)</div>
             <div className="flex items-center gap-2"><kbd aria-label="Up and down arrows" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">&uarr; &darr;</kbd> Navigate input history</div>
@@ -596,9 +625,9 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
             <span className="hidden sm:flex items-center gap-1">
               <Keyboard className="h-2.5 w-2.5" />
-              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Enter</kbd> send
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{ctrlEnterSend ? (typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl") + "+Enter" : "Enter"}</kbd> send
               <span className="mx-1">&middot;</span>
-              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Shift+Enter</kbd> new line
+              <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{ctrlEnterSend ? "Enter" : "Shift+Enter"}</kbd> new line
               <span className="mx-1">&middot;</span>
               <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> focus
             </span>
