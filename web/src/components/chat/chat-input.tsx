@@ -506,28 +506,48 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         </div>
         {/* Attached files */}
         {attachments.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2 animate-fade-in">
-            {attachments.map((att) => (
-              <div
-                key={att.saved_as}
-                className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-1.5 text-xs group"
-              >
-                {isImageFile(att.filename) ? (
-                  <Image className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                ) : (
-                  <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                )}
-                <span className="text-muted-foreground truncate max-w-[150px]" title={att.filename}>{att.filename}</span>
-                <span className="text-muted-foreground/40 text-[10px]">{formatFileSize(att.size)}</span>
-                <button
-                  onClick={() => removeAttachment(att.saved_as)}
-                  className="p-0.5 rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                  title="Remove"
+          <div className="mt-2 space-y-1.5 animate-fade-in">
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((att) => (
+                <div
+                  key={att.saved_as}
+                  className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-1.5 text-xs group"
                 >
-                  <X className="h-3 w-3" />
+                  {isImageFile(att.filename) ? (
+                    <Image className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                  )}
+                  <span className="text-muted-foreground truncate max-w-[150px]" title={att.filename}>{att.filename}</span>
+                  <span className="text-muted-foreground/40 text-[10px]">{formatFileSize(att.size)}</span>
+                  <button
+                    onClick={() => removeAttachment(att.saved_as)}
+                    className="p-0.5 rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    title="Remove"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 px-1">
+              <span className="text-[10px] text-muted-foreground/40">
+                {attachments.length} file{attachments.length !== 1 ? "s" : ""} · {formatFileSize(attachments.reduce((sum, a) => sum + a.size, 0))} total
+              </span>
+              {attachments.length > 1 && (
+                <button
+                  onClick={() => {
+                    for (const att of attachments) {
+                      api.delete(`/api/uploads/${encodeURIComponent(att.saved_as)}`).catch(() => {});
+                    }
+                    setAttachments([]);
+                  }}
+                  className="text-[10px] text-muted-foreground/40 hover:text-red-400 transition-colors"
+                >
+                  Clear all
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         )}
         {/* Upload error */}
