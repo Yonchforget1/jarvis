@@ -11,6 +11,7 @@ export function useStats(pollInterval: number = 15000) {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const consecutiveFailures = useRef(0);
+  const consecutiveSuccesses = useRef(0);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -18,9 +19,14 @@ export function useStats(pollInterval: number = 15000) {
       setStats(data);
       setError(null);
       setLastUpdated(new Date());
-      consecutiveFailures.current = 0;
+      consecutiveSuccesses.current++;
+      // Reset backoff after 3 consecutive successes (trending healthy)
+      if (consecutiveSuccesses.current >= 3) {
+        consecutiveFailures.current = 0;
+      }
     } catch (err) {
       consecutiveFailures.current++;
+      consecutiveSuccesses.current = 0;
       setError(err instanceof Error ? err.message : "Failed to fetch stats");
     } finally {
       setLoading(false);

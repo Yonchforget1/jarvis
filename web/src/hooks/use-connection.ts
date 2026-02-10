@@ -7,6 +7,12 @@ type ConnectionStatus = "connected" | "degraded" | "disconnected" | "checking";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const POLL_INTERVAL = 30000; // 30 seconds
 const RETRY_INTERVAL = 5000; // 5 seconds when disconnected
+
+// Add ±10% jitter to prevent thundering herd across multiple tabs
+function jitter(interval: number): number {
+  const variance = interval * 0.1;
+  return interval + (Math.random() * 2 - 1) * variance;
+}
 const DEGRADED_LATENCY_MS = 500; // Consider degraded above this
 const DEGRADED_STREAK_THRESHOLD = 3; // Consecutive slow checks to trigger degraded
 
@@ -59,15 +65,16 @@ export function useConnection() {
   useEffect(() => {
     checkConnection();
 
-    // Adaptive polling: faster when disconnected
+    // Adaptive polling with jitter: faster when disconnected
     const poll = () => {
-      const interval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
+      const baseInterval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
+      const interval = jitter(baseInterval);
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
         checkConnection().then(() => {
           // Re-adjust interval if status changed
-          const newInterval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
-          if (newInterval !== interval) poll();
+          const newBase = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
+          if (newBase !== baseInterval) poll();
         });
       }, interval);
     };

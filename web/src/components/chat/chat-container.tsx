@@ -204,7 +204,7 @@ export function ChatContainer({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Exported", "Chat saved as Markdown");
+      toast.success("Exported", `${messages.length} messages saved as Markdown`);
     } catch {
       toast.error("Export failed", "Could not generate Markdown export");
     }
@@ -234,7 +234,7 @@ export function ChatContainer({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Exported", "Chat saved as JSON");
+      toast.success("Exported", `${messages.length} messages saved as JSON`);
     } catch {
       toast.error("Export failed", "Could not generate JSON export");
     }
