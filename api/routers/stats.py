@@ -82,12 +82,14 @@ async def get_stats(request: Request, user: UserInfo = Depends(get_current_user)
 @_limiter.limit("20/minute")
 async def get_session_stats(
     request: Request,
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, description="Skip first N sessions"),
     user: UserInfo = Depends(get_current_user),
 ):
     """Per-session token usage breakdown for the current user."""
-    sessions = _session_manager.get_user_sessions(user.id)
-    sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)[:limit]
+    all_sessions = _session_manager.get_user_sessions(user.id)
+    all_sessions = sorted(all_sessions, key=lambda s: s.last_active, reverse=True)
+    sessions = all_sessions[offset:offset + limit]
 
     return {
         "sessions": [
@@ -106,5 +108,5 @@ async def get_session_stats(
             }
             for s in sessions
         ],
-        "total": len(sessions),
+        "total": len(all_sessions),
     }

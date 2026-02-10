@@ -28,7 +28,7 @@ async def get_learnings(
     request: Request,
     topic: str | None = Query(None, description="Semantic topic search"),
     search: str | None = Query(None, max_length=200, description="Full-text search across insight, context, task"),
-    sort: str = Query("newest", description="Sort order: newest, oldest, category"),
+    sort: str = Query("newest", pattern="^(newest|oldest|category)$", description="Sort order: newest, oldest, category"),
     category: str | None = Query(None, max_length=64, description="Filter by category"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=200, description="Items per page"),

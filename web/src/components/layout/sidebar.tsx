@@ -30,6 +30,7 @@ import {
   ArrowUpDown,
   Monitor,
   Archive,
+  Link2,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useAuth } from "@/lib/auth";
@@ -769,6 +770,21 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           >
             {contextMenu.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
             {contextMenu.pinned ? "Unpin" : "Pin"}
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              const url = `${window.location.origin}/chat?session=${contextMenu.sessionId}`;
+              navigator.clipboard.writeText(url).then(() => {
+                toast.success("Link copied", "Session link copied to clipboard.");
+              }).catch(() => {
+                toast.error("Copy failed", "Could not copy to clipboard.");
+              });
+              setContextMenu(null);
+            }}
+          >
+            <Link2 className="h-3 w-3" />
+            Copy Link
           </button>
           <button
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
