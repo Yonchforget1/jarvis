@@ -8,12 +8,16 @@ import zipfile
 from datetime import datetime, timezone
 from io import BytesIO
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import UserInfo
+
+limiter = Limiter(key_func=get_remote_address)
 
 log = logging.getLogger("jarvis.compliance")
 router = APIRouter()
@@ -29,7 +33,8 @@ def set_session_manager(sm):
 
 
 @router.get("/compliance/export")
-async def export_user_data(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("5/hour")
+async def export_user_data(request: Request, user: UserInfo = Depends(get_current_user)):
     """Export all user data as a ZIP file (GDPR Article 20 - Right to Data Portability).
 
     Includes: profile, sessions, settings, audit logs, API keys.
@@ -101,7 +106,8 @@ async def export_user_data(user: UserInfo = Depends(get_current_user)):
 
 
 @router.delete("/compliance/delete-account")
-async def delete_user_data(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("2/hour")
+async def delete_user_data(request: Request, user: UserInfo = Depends(get_current_user)):
     """Delete all user data (GDPR Article 17 - Right to Erasure).
 
     Removes: sessions, settings, API keys, audit trails.

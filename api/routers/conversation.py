@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import PlainTextResponse
 
 from api.deps import get_current_user
@@ -69,7 +69,7 @@ async def list_sessions(
 
 @router.get("/sessions/{session_id}/messages")
 async def get_session_messages(
-    session_id: str,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     user: UserInfo = Depends(get_current_user),
 ):
     """Get displayable messages from a session."""
@@ -84,7 +84,7 @@ async def get_session_messages(
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(
-    session_id: str,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     user: UserInfo = Depends(get_current_user),
 ):
     """Delete a session."""
@@ -96,7 +96,7 @@ async def delete_session(
 
 @router.get("/sessions/{session_id}/export")
 async def export_session(
-    session_id: str,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     format: str = Query("json", pattern="^(json|markdown)$"),
     user: UserInfo = Depends(get_current_user),
 ):

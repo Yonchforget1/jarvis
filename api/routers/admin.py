@@ -5,11 +5,15 @@ import os
 import platform
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import UserInfo
+
+limiter = Limiter(key_func=get_remote_address)
 
 log = logging.getLogger("jarvis.api.admin")
 
@@ -33,7 +37,8 @@ def _require_admin(user: UserInfo):
 
 
 @router.get("/admin/system")
-async def system_info(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def system_info(request: Request, user: UserInfo = Depends(get_current_user)):
     """Get detailed system information (admin only)."""
     _require_admin(user)
 
@@ -74,7 +79,8 @@ async def system_info(user: UserInfo = Depends(get_current_user)):
 
 
 @router.get("/admin/sessions")
-async def list_all_sessions(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def list_all_sessions(request: Request, user: UserInfo = Depends(get_current_user)):
     """List all active sessions across all users (admin only)."""
     _require_admin(user)
 
@@ -95,7 +101,8 @@ async def list_all_sessions(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/admin/config/reload")
-async def reload_config(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("3/minute")
+async def reload_config(request: Request, user: UserInfo = Depends(get_current_user)):
     """Reload configuration from disk (admin only)."""
     _require_admin(user)
 
@@ -122,7 +129,8 @@ async def reload_config(user: UserInfo = Depends(get_current_user)):
 
 
 @router.get("/admin/tools/stats")
-async def tool_stats(user: UserInfo = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def tool_stats(request: Request, user: UserInfo = Depends(get_current_user)):
     """Get tool usage statistics across all sessions (admin only)."""
     _require_admin(user)
 
