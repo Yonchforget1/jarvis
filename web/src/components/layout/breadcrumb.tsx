@@ -11,6 +11,8 @@ const PAGE_LABELS: Record<string, string> = {
   tools: "Tools",
   learnings: "Learnings",
   settings: "Settings",
+  analytics: "Analytics",
+  admin: "Admin",
 };
 
 export function Breadcrumb() {
