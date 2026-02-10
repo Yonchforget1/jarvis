@@ -120,6 +120,8 @@ export default function AdminPage() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0); // 0 = off
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [toolSort, setToolSort] = useState<"name" | "calls" | "errors" | "speed">("calls");
+  const [auditFilter, setAuditFilter] = useState<string>("all");
 
   const fetchAll = useCallback(async () => {
     try {
@@ -457,6 +459,49 @@ export default function AdminPage() {
                 )}
               </div>
 
+              {/* Error summary */}
+              {tools.length > 0 && (() => {
+                const totalCalls = tools.reduce((s, t) => s + t.calls, 0);
+                const totalErrors = tools.reduce((s, t) => s + t.errors, 0);
+                const overallErrorRate = totalCalls > 0 ? (totalErrors / totalCalls) * 100 : 0;
+                const problemTools = tools.filter((t) => t.calls > 0 && (t.errors / t.calls) * 100 > 5).sort((a, b) => (b.errors / b.calls) - (a.errors / a.calls));
+                return (
+                  <div className={`rounded-xl border p-4 space-y-3 ${
+                    problemTools.length > 0 ? "border-red-500/30 bg-red-500/[0.02]" : "border-border/50 bg-card/50"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-medium flex items-center gap-1.5">
+                        <AlertTriangle className={`h-3.5 w-3.5 ${problemTools.length > 0 ? "text-red-400" : "text-green-400"}`} />
+                        Error Summary
+                      </h3>
+                      <span className={`text-xs font-mono tabular-nums ${overallErrorRate > 5 ? "text-red-400" : "text-muted-foreground/60"}`}>
+                        {totalErrors}/{totalCalls} ({overallErrorRate.toFixed(1)}%)
+                      </span>
+                    </div>
+                    {problemTools.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {problemTools.slice(0, 5).map((t) => {
+                          const rate = (t.errors / t.calls) * 100;
+                          return (
+                            <div key={t.name} className="flex items-center justify-between text-xs">
+                              <span className="font-mono text-red-400">{t.name}</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                                  <div className="h-full rounded-full bg-red-400" style={{ width: `${Math.min(rate, 100)}%` }} />
+                                </div>
+                                <span className="text-[10px] font-mono tabular-nums text-red-400 w-12 text-right">{rate.toFixed(0)}% err</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-green-400/70">All tools operating within normal error thresholds.</p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* System info */}
               <div className="rounded-xl border border-border/50 bg-card/50 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -557,7 +602,22 @@ export default function AdminPage() {
           {/* Tools Tab */}
           {activeTab === "tools" && (
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground/60">{tools.reduce((sum, t) => sum + t.calls, 0).toLocaleString()} total tool calls across all sessions</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground/60">{tools.reduce((sum, t) => sum + t.calls, 0).toLocaleString()} total tool calls across all sessions</p>
+                <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 px-1 py-0.5">
+                  {(["calls", "errors", "speed", "name"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setToolSort(s)}
+                      className={`px-1.5 py-0.5 text-[10px] rounded-md transition-colors capitalize ${
+                        toolSort === s ? "bg-primary/20 text-primary font-medium" : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {s === "speed" ? "Speed" : s === "name" ? "A-Z" : s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="rounded-xl border border-border/50 overflow-hidden">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-4 py-2 bg-muted/30 border-b border-border/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
                   <span>Tool</span>
@@ -568,16 +628,29 @@ export default function AdminPage() {
                 {tools.length === 0 ? (
                   <div className="px-4 py-8 text-center text-xs text-muted-foreground/40">No tool usage data</div>
                 ) : (
-                  tools.map((t) => (
-                    <div key={t.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-b border-border/20 hover:bg-muted/20 transition-colors text-xs">
-                      <span className="font-mono font-medium">{t.name}</span>
-                      <span className="tabular-nums text-right w-16">{t.calls.toLocaleString()}</span>
-                      <span className={`tabular-nums text-right w-16 ${t.errors > 0 ? "text-red-400" : "text-muted-foreground/40"}`}>
-                        {t.errors}
-                      </span>
-                      <span className="tabular-nums text-right w-20 text-muted-foreground/60">{t.avg_ms}ms</span>
-                    </div>
-                  ))
+                  [...tools].sort((a, b) => {
+                    if (toolSort === "name") return a.name.localeCompare(b.name);
+                    if (toolSort === "calls") return b.calls - a.calls;
+                    if (toolSort === "errors") return b.errors - a.errors;
+                    if (toolSort === "speed") return b.avg_ms - a.avg_ms;
+                    return 0;
+                  }).map((t) => {
+                    const errorRate = t.calls > 0 ? (t.errors / t.calls) * 100 : 0;
+                    return (
+                      <div key={t.name} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-b border-border/20 hover:bg-muted/20 transition-colors text-xs ${
+                        errorRate > 5 ? "bg-red-500/[0.03]" : ""
+                      }`}>
+                        <span className="font-mono font-medium">{t.name}</span>
+                        <span className="tabular-nums text-right w-16">{t.calls.toLocaleString()}</span>
+                        <span className={`tabular-nums text-right w-16 ${errorRate > 10 ? "text-red-400 font-medium" : t.errors > 0 ? "text-red-400" : "text-muted-foreground/40"}`}>
+                          {t.errors}{errorRate > 0 ? <span className="text-[9px] ml-0.5">({errorRate.toFixed(0)}%)</span> : ""}
+                        </span>
+                        <span className={`tabular-nums text-right w-20 ${t.avg_ms > 2000 ? "text-red-400" : t.avg_ms > 500 ? "text-yellow-400" : "text-muted-foreground/60"}`}>
+                          {t.avg_ms}ms
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -587,7 +660,25 @@ export default function AdminPage() {
           {activeTab === "audit" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground/60">{auditLogs.length} recent audit entries</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-muted-foreground/60">{auditLogs.length} recent audit entries</p>
+                  {/* Action filter */}
+                  {auditLogs.length > 0 && (
+                    <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 px-1 py-0.5">
+                      {["all", "auth", "warning"].map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => setAuditFilter(f)}
+                          className={`px-1.5 py-0.5 text-[10px] rounded-md transition-colors capitalize ${
+                            auditFilter === f ? "bg-primary/20 text-primary font-medium" : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {f === "warning" ? "Warnings" : f === "auth" ? "Auth" : "All"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {auditLogs.length > 0 && (
                   <button
                     onClick={exportAuditCSV}
@@ -599,46 +690,55 @@ export default function AdminPage() {
                 )}
               </div>
               <div className="space-y-1">
-                {auditLogs.length === 0 ? (
-                  <div className="rounded-xl border border-border/50 px-4 py-8 text-center text-xs text-muted-foreground/40">No audit logs</div>
-                ) : (
-                  auditLogs.map((entry, idx) => {
-                    const isExpanded = auditExpanded.has(idx);
-                    const isWarning = entry.action.includes("denied") || entry.action.includes("failed") || entry.action.includes("delete");
-                    return (
-                      <div key={idx} className={`rounded-lg border ${isWarning ? "border-red-500/20" : "border-border/30"} overflow-hidden`}>
-                        <button
-                          onClick={() => {
-                            setAuditExpanded((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(idx)) next.delete(idx); else next.add(idx);
-                              return next;
-                            });
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/30 transition-colors"
-                        >
-                          {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                            isWarning ? "bg-red-500/10 text-red-400" : "bg-muted text-muted-foreground/70"
-                          }`}>
-                            {entry.action}
-                          </span>
-                          <span className="text-muted-foreground/60 truncate">{entry.username}</span>
-                          <span className="ml-auto text-[10px] text-muted-foreground/30 shrink-0 tabular-nums">
-                            {new Date(entry.timestamp).toLocaleString()}
-                          </span>
-                        </button>
-                        {isExpanded && (
-                          <div className="px-3 pb-2 pt-0 text-[11px] text-muted-foreground/50 space-y-1 border-t border-border/20 bg-muted/10">
-                            {entry.detail && <p><span className="text-muted-foreground/30">Detail:</span> {entry.detail}</p>}
-                            <p><span className="text-muted-foreground/30">User ID:</span> {entry.user_id}</p>
-                            {entry.ip && <p><span className="text-muted-foreground/30">IP:</span> {entry.ip}</p>}
+                {(() => {
+                  const filtered = auditFilter === "all" ? auditLogs :
+                    auditFilter === "auth" ? auditLogs.filter((e) => e.action.includes("login") || e.action.includes("register") || e.action.includes("password") || e.action.includes("token")) :
+                    auditLogs.filter((e) => e.action.includes("denied") || e.action.includes("failed") || e.action.includes("delete") || e.action.includes("error"));
+                  return filtered.length === 0 ? (
+                    <div className="rounded-xl border border-border/50 px-4 py-8 text-center text-xs text-muted-foreground/40">
+                      {auditFilter === "all" ? "No audit logs" : "No matching audit entries"}
+                    </div>
+                  ) : (
+                    <>
+                      {filtered.map((entry, idx) => {
+                        const isExpanded = auditExpanded.has(idx);
+                        const isWarning = entry.action.includes("denied") || entry.action.includes("failed") || entry.action.includes("delete");
+                        return (
+                          <div key={idx} className={`rounded-lg border ${isWarning ? "border-red-500/20" : "border-border/30"} overflow-hidden`}>
+                            <button
+                              onClick={() => {
+                                setAuditExpanded((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(idx)) next.delete(idx); else next.add(idx);
+                                  return next;
+                                });
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/30 transition-colors"
+                            >
+                              {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
+                                isWarning ? "bg-red-500/10 text-red-400" : "bg-muted text-muted-foreground/70"
+                              }`}>
+                                {entry.action}
+                              </span>
+                              <span className="text-muted-foreground/60 truncate">{entry.username}</span>
+                              <span className="ml-auto text-[10px] text-muted-foreground/30 shrink-0 tabular-nums">
+                                {new Date(entry.timestamp).toLocaleString()}
+                              </span>
+                            </button>
+                            {isExpanded && (
+                              <div className="px-3 pb-2 pt-0 text-[11px] text-muted-foreground/50 space-y-1 border-t border-border/20 bg-muted/10">
+                                {entry.detail && <p><span className="text-muted-foreground/30">Detail:</span> {entry.detail}</p>}
+                                <p><span className="text-muted-foreground/30">User ID:</span> {entry.user_id}</p>
+                                {entry.ip && <p><span className="text-muted-foreground/30">IP:</span> {entry.ip}</p>}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
+                        );
+                      })}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
