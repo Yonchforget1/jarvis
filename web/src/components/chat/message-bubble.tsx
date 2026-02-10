@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, RefreshCw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -231,6 +231,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 export const MessageBubble = memo(function MessageBubble({
   message,
   onRetry,
+  onRegenerate,
   onStop,
   onEdit,
   searchQuery = "",
@@ -239,6 +240,7 @@ export const MessageBubble = memo(function MessageBubble({
 }: {
   message: ChatMessage;
   onRetry?: () => void;
+  onRegenerate?: () => void;
   onStop?: () => void;
   onEdit?: (newContent: string) => void;
   searchQuery?: string;
@@ -566,6 +568,16 @@ export const MessageBubble = memo(function MessageBubble({
                   </span>
                   <MessageReactions messageId={message.id} />
                 </>
+              )}
+              {onRegenerate && (
+                <button
+                  onClick={onRegenerate}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                  title="Regenerate response"
+                >
+                  <RefreshCw className="h-2.5 w-2.5" />
+                  <span>Regenerate</span>
+                </button>
               )}
               {isError && onRetry && (
                 <button

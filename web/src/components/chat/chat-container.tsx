@@ -46,6 +46,7 @@ interface ChatContainerProps {
   onSend: (message: string) => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRetry?: () => void;
+  onRegenerate?: () => void;
   onStop?: () => void;
   onClear?: () => void;
 }
@@ -83,6 +84,7 @@ export function ChatContainer({
   onSend,
   onEditMessage,
   onRetry,
+  onRegenerate,
   onStop,
   onClear,
 }: ChatContainerProps) {
@@ -600,6 +602,11 @@ export function ChatContainer({
                   <MessageBubble
                     message={msg}
                     onRetry={msg.isError ? onRetry : undefined}
+                    onRegenerate={
+                      !isLoading && msg.role === "assistant" && !msg.isStreaming && idx === visibleMessages.length - 1
+                        ? onRegenerate
+                        : undefined
+                    }
                     onStop={msg.isStreaming ? onStop : undefined}
                     onEdit={msg.role === "user" && !isLoading ? (newContent) => {
                       if (onEditMessage) {

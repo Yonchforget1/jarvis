@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import os
 import queue
 import threading
 from datetime import datetime, timezone
@@ -211,8 +212,25 @@ class ReactionRequest(BaseModel):
     reaction: str | None = None  # "up", "down", or null to clear
 
 
-# In-memory reaction counts for analytics (reset on restart)
-_reaction_counts = {"up": 0, "down": 0, "cleared": 0}
+# File-backed reaction persistence
+_REACTIONS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory", "reactions.json")
+_reactions_lock = threading.Lock()
+
+
+def _load_reactions() -> dict:
+    """Load reactions from disk."""
+    try:
+        with open(_REACTIONS_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"counts": {"up": 0, "down": 0, "cleared": 0}, "entries": []}
+
+
+def _save_reactions(data: dict):
+    """Persist reactions to disk."""
+    os.makedirs(os.path.dirname(_REACTIONS_FILE), exist_ok=True)
+    with open(_REACTIONS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 @router.post("/chat/reactions", status_code=202)
@@ -222,20 +240,34 @@ async def submit_reaction(
     body: ReactionRequest,
     user: UserInfo = Depends(get_current_user),
 ):
-    """Record a message reaction for analytics."""
-    if body.reaction == "up":
-        _reaction_counts["up"] += 1
-    elif body.reaction == "down":
-        _reaction_counts["down"] += 1
-    else:
-        _reaction_counts["cleared"] += 1
+    """Record a message reaction with file-backed persistence."""
+    with _reactions_lock:
+        data = _load_reactions()
+        if body.reaction == "up":
+            data["counts"]["up"] += 1
+        elif body.reaction == "down":
+            data["counts"]["down"] += 1
+        else:
+            data["counts"]["cleared"] += 1
+        # Keep last 1000 reaction entries
+        data["entries"].append({
+            "user_id": user.id,
+            "message_id": body.message_id[:64],
+            "reaction": body.reaction,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        if len(data["entries"]) > 1000:
+            data["entries"] = data["entries"][-1000:]
+        _save_reactions(data)
     log.info("Reaction user=%s msg=%s reaction=%s", user.id, body.message_id[:16], body.reaction)
     return {"status": "recorded"}
 
 
 def get_reaction_counts() -> dict:
     """Return reaction analytics counts."""
-    return dict(_reaction_counts)
+    with _reactions_lock:
+        data = _load_reactions()
+    return data.get("counts", {"up": 0, "down": 0, "cleared": 0})
 
 
 def _sse(event: str, data: dict) -> str:

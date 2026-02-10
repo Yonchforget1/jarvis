@@ -346,6 +346,19 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     }
   }, [sendMessage]);
 
+  const regenerate = useCallback(() => {
+    // Find the last user message and resend it, removing the assistant response
+    const msgs = messagesRef.current;
+    const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+    if (lastUserMsg) {
+      const lastUserIdx = msgs.lastIndexOf(lastUserMsg);
+      const content = lastUserMsg.content;
+      setMessages((prev) => prev.slice(0, lastUserIdx));
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => sendMessage(content), 50);
+    }
+  }, [sendMessage]);
+
   const stopStreaming = useCallback(() => {
     if (abortRef.current) {
       abortRef.current.abort();
@@ -432,6 +445,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     editMessage,
     clearChat,
     retryLast,
+    regenerate,
     stopStreaming,
     loadSession,
   };

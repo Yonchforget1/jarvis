@@ -103,6 +103,7 @@ export default function ChatPage() {
     sendMessage,
     editMessage,
     retryLast,
+    regenerate,
     stopStreaming,
     clearChat,
     loadSession,
@@ -209,6 +210,7 @@ export default function ChatPage() {
             onSend={sendMessage}
             onEditMessage={editMessage}
             onRetry={retryLast}
+            onRegenerate={regenerate}
             onStop={stopStreaming}
             onClear={clearChat}
           />
