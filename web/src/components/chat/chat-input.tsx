@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard, Paperclip, Mic, Upload, Image, Trash2, Download, HelpCircle, Sparkles } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic, MicOff, Square, Upload, Image, Trash2, Download, HelpCircle, Sparkles } from "lucide-react";
+import { useVoice } from "@/hooks/use-voice";
 
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
@@ -26,6 +27,16 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const [showSlash, setShowSlash] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const voice = useVoice({
+    onTranscript: (text) => {
+      setValue((prev) => {
+        const separator = prev.trim() ? " " : "";
+        return prev + separator + text;
+      });
+      textareaRef.current?.focus();
+    },
+  });
   const dragCountRef = useRef(0);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -230,16 +241,51 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             />
           </div>
 
-          {/* Voice button (coming soon) */}
-          <div className="hidden sm:flex shrink-0">
-            <button
-              disabled
-              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground/30 cursor-not-allowed transition-colors"
-              title="Voice input coming soon"
-            >
-              <Mic className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Voice input button */}
+          {voice.isAvailable && (
+            <div className="shrink-0">
+              {voice.isRecording ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 rounded-2xl bg-red-500/10 border border-red-500/20 px-2.5 py-1.5">
+                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-mono text-red-400 tabular-nums">
+                      {Math.floor(voice.duration / 60)}:{String(Math.floor(voice.duration % 60)).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <button
+                    onClick={voice.stopRecording}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20 active:scale-95"
+                    title="Stop recording and transcribe"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : voice.isTranscribing ? (
+                <button
+                  disabled
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors"
+                  title="Transcribing..."
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </button>
+              ) : (
+                <button
+                  onClick={voice.startRecording}
+                  disabled={disabled}
+                  className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 ${
+                    voice.error
+                      ? "text-red-400 bg-red-500/10"
+                      : disabled
+                      ? "text-muted-foreground/30 cursor-not-allowed"
+                      : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10"
+                  }`}
+                  title={voice.error || "Record voice message"}
+                >
+                  {voice.error ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleSubmit}
