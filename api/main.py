@@ -14,7 +14,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -201,3 +202,15 @@ async def health(deep: bool = False):
         if not backend_ok:
             result["status"] = "degraded"
     return result
+
+
+# --- Web Chat UI ---
+
+_STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+@app.get("/")
+async def root():
+    """Serve the web chat UI."""
+    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
+
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")

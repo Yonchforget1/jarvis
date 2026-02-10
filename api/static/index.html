@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis AI</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --user-bg: #1a1a2e;
+    --ai-bg: #0f0f1a;
+    --tool-bg: #141420;
+    --success: #22c55e;
+    --error: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .status {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .status-dot.offline { background: var(--error); }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .msg {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.6;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.assistant {
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.system {
+    align-self: center;
+    color: var(--muted);
+    font-size: 12px;
+    font-style: italic;
+  }
+  .msg.tool {
+    align-self: flex-start;
+    background: var(--tool-bg);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    max-width: 90%;
+  }
+  .tool-name {
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .thinking {
+    align-self: flex-start;
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .thinking .dots span {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+  .thinking .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.2); }
+  }
+
+  #input-area {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 12px;
+  }
+  #msg-input {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 120px;
+  }
+  #msg-input:focus { border-color: var(--accent); }
+  #msg-input::placeholder { color: var(--muted); }
+  #send-btn {
+    padding: 0 20px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  #send-btn:hover { background: var(--accent-hover); }
+  #send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <h1>JARVIS</h1>
+  <div class="status">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Connecting...</span>
+  </div>
+</header>
+
+<div id="chat"></div>
+
+<div id="input-area">
+  <textarea id="msg-input" placeholder="Message Jarvis..." rows="1"></textarea>
+  <button id="send-btn" disabled>Send</button>
+</div>
+
+<script>
+const API = window.location.origin;
+let token = null;
+let sessionId = null;
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('msg-input');
+const btn = document.getElementById('send-btn');
+const dot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+
+// Auto-resize textarea
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+btn.addEventListener('click', sendMessage);
+
+function addMsg(role, content) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.textContent = content;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function showThinking() {
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.id = 'thinking';
+  div.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Thinking...';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideThinking() {
+  const el = document.getElementById('thinking');
+  if (el) el.remove();
+}
+
+async function init() {
+  try {
+    // Register/login as guest user
+    let res = await fetch(API + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'web_user', password: 'jarvis2024', email: '' })
+    });
+
+    if (res.status === 409 || res.status === 400) {
+      // User exists, login instead
+      res = await fetch(API + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'web_user', password: 'jarvis2024' })
+      });
+    }
+
+    const data = await res.json();
+    token = data.token || data.access_token;
+    if (!token) throw new Error('No token in response');
+
+    dot.classList.remove('offline');
+    statusText.textContent = 'Connected';
+    btn.disabled = false;
+    input.focus();
+    addMsg('system', 'Connected to Jarvis. Type a message to begin.');
+  } catch (err) {
+    dot.classList.add('offline');
+    statusText.textContent = 'Disconnected';
+    addMsg('system', 'Failed to connect: ' + err.message);
+  }
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text || !token) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  btn.disabled = true;
+  addMsg('user', text);
+  showThinking();
+
+  try {
+    const res = await fetch(API + '/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ message: text, session_id: sessionId })
+    });
+
+    hideThinking();
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      addMsg('system', 'Error: ' + (err.detail || res.statusText));
+      btn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    sessionId = data.session_id;
+
+    // Show tool calls if any
+    if (data.tool_calls && data.tool_calls.length > 0) {
+      for (const tc of data.tool_calls) {
+        const toolDiv = document.createElement('div');
+        toolDiv.className = 'msg tool';
+        toolDiv.innerHTML = '<div class="tool-name">' + tc.name + '</div>' +
+          '<div>' + (typeof tc.result === 'string' ? tc.result.substring(0, 500) : JSON.stringify(tc.result).substring(0, 500)) + '</div>';
+        chat.appendChild(toolDiv);
+      }
+    }
+
+    addMsg('assistant', data.response);
+  } catch (err) {
+    hideThinking();
+    addMsg('system', 'Network error: ' + err.message);
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+init();
+</script>
+</body>
+</html>
