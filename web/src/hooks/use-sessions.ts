@@ -89,9 +89,12 @@ export function useSessions() {
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
-      // Optimistic: remove from UI immediately
-      const previousSessions = sessions;
-      setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+      // Capture current state for rollback via functional update
+      let previousSessions: SessionEntry[] = [];
+      setSessions((prev) => {
+        previousSessions = prev;
+        return prev.filter((s) => s.session_id !== sessionId);
+      });
       setSessionNames((prev) => {
         const next = { ...prev };
         delete next[sessionId];
@@ -105,7 +108,7 @@ export function useSessions() {
         setSessions(previousSessions);
       }
     },
-    [sessions],
+    [],
   );
 
   const renameSession = useCallback(

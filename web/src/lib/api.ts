@@ -66,6 +66,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         throw new ApiError(body.detail || res.statusText, res.status);
       }
 
+      // Handle 204 No Content (common for DELETE)
+      if (res.status === 204 || res.headers.get("content-length") === "0") {
+        return undefined as T;
+      }
       return res.json();
     } catch (err) {
       lastError = err;

@@ -5,13 +5,15 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
 import { Tooltip } from "@/components/ui/tooltip";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -19,7 +21,8 @@ function CopyButton({ text }: { text: string }) {
     } catch {
       setCopied(false);
     }
-    setTimeout(() => setCopied(false), 2000);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 2000);
   };
   return (
     <button
@@ -38,6 +41,8 @@ function CopyButton({ text }: { text: string }) {
 
 function MessageCopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -45,7 +50,8 @@ function MessageCopyButton({ text }: { text: string }) {
     } catch {
       setCopied(false);
     }
-    setTimeout(() => setCopied(false), 2000);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 2000);
   };
   return (
     <button
