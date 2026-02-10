@@ -5,7 +5,7 @@ import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Brain, Download, ArrowUpDown } from "lucide-react";
+import { Search, Brain, Download, ArrowUpDown, TrendingUp, Calendar, Tag } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -129,6 +129,43 @@ export default function LearningsPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Stats */}
+      {total > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border/50 bg-card/30 p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-400/10">
+              <TrendingUp className="h-4 w-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold tabular-nums">{total}</p>
+              <p className="text-[10px] text-muted-foreground/50">Total Insights</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-card/30 p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/10">
+              <Tag className="h-4 w-4 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold tabular-nums">{categories.length}</p>
+              <p className="text-[10px] text-muted-foreground/50">Categories</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-card/30 p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400/10">
+              <Calendar className="h-4 w-4 text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold tabular-nums">
+                {allLearnings.length > 0
+                  ? new Date(allLearnings[allLearnings.length - 1]?.timestamp || Date.now()).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                  : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/50">Latest Entry</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div role="search" className="relative max-w-md">

@@ -190,6 +190,19 @@ export function useSessions() {
     [],
   );
 
+  const archiveSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        await api.patch(`/api/conversation/sessions/${sessionId}/archive`, {});
+        // Remove from visible list (archived sessions are hidden by default)
+        setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+      } catch {
+        _onDeleteError?.("Failed to archive session.");
+      }
+    },
+    [],
+  );
+
   // Clean up stale session names/pins that reference deleted sessions
   useEffect(() => {
     if (sessions.length === 0 || loading) return;
@@ -234,5 +247,5 @@ export function useSessions() {
     [sessions, sessionNames, pinnedIds],
   );
 
-  return { sessions: sessionsWithNames, loading, error, fetchSessions, deleteSession, renameSession, togglePin };
+  return { sessions: sessionsWithNames, loading, error, fetchSessions, deleteSession, renameSession, togglePin, archiveSession };
 }

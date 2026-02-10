@@ -29,6 +29,7 @@ import {
   Search,
   ArrowUpDown,
   Monitor,
+  Archive,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useAuth } from "@/lib/auth";
@@ -123,7 +124,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unreadCount, isProcessing } = useSessionContext();
-  const { sessions, loading: sessionsLoading, error: sessionsError, fetchSessions, deleteSession, renameSession, togglePin } = useSessions();
+  const { sessions, loading: sessionsLoading, error: sessionsError, fetchSessions, deleteSession, renameSession, togglePin, archiveSession } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const avatarHue = usernameHue(user?.username || "User");
@@ -771,6 +772,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           >
             <Pencil className="h-3 w-3" />
             Rename
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              archiveSession(contextMenu.sessionId);
+              setContextMenu(null);
+            }}
+          >
+            <Archive className="h-3 w-3" />
+            Archive
           </button>
           <div className="mx-2 my-1 h-px bg-border/50" />
           <button
