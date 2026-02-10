@@ -111,12 +111,16 @@ export function Onboarding() {
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border/30 bg-muted/20">
           {/* Step dots */}
-          <div className="flex gap-1.5">
-            {STEPS.map((_, i) => (
-              <div
+          <div className="flex gap-1.5" role="tablist" aria-label="Onboarding steps">
+            {STEPS.map((s, i) => (
+              <button
                 key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === step ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/20"
+                role="tab"
+                aria-selected={i === step}
+                aria-label={`Step ${i + 1}: ${s.title}`}
+                onClick={() => setStep(i)}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === step ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40"
                 }`}
               />
             ))}

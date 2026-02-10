@@ -37,6 +37,7 @@ const SHORTCUT_GROUPS = [
       { keys: [MOD, "L"], description: "Clear chat" },
       { keys: [MOD, "Shift", "F"], description: "Focus mode" },
       { keys: [MOD, "Home"], description: "Scroll to top" },
+      { keys: [MOD, "?"], description: "This shortcuts dialog" },
       { keys: ["Esc"], description: "Close search / dialog" },
     ],
   },
@@ -92,9 +93,14 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
             <Keyboard className="h-4 w-4 text-primary" />
           </div>
-          <h3 id="shortcuts-title" className="text-sm font-semibold">
-            Keyboard Shortcuts
-          </h3>
+          <div>
+            <h3 id="shortcuts-title" className="text-sm font-semibold">
+              Keyboard Shortcuts
+            </h3>
+            <p className="text-[10px] text-muted-foreground/50">
+              Press <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{MOD}+?</kbd> to open this dialog anytime
+            </p>
+          </div>
         </div>
 
         <div className="space-y-5">

@@ -540,7 +540,7 @@ export function ChatContainer({
                 <button
                   key={s.text}
                   onClick={() => onSend(s.text)}
-                  className={`flex items-start gap-3 rounded-2xl border p-4 text-left text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${s.bg}`}
+                  className={`flex items-start gap-3 rounded-2xl border p-4 text-left text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${s.bg}`}
                 >
                   <s.icon className={`h-4 w-4 mt-0.5 shrink-0 ${s.color}`} />
                   <span className="text-muted-foreground leading-relaxed">
