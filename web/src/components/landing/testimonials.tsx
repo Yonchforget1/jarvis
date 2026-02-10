@@ -50,19 +50,20 @@ export function Testimonials() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {TESTIMONIALS.map((t) => (
-            <div
+            <article
               key={t.name}
+              aria-label={`Review by ${t.name}`}
               className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 hover:border-primary/20 hover:bg-white/[0.04] hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
             >
               {/* Stars */}
-              <div className="flex gap-0.5 mb-4">
+              <div aria-label={`${t.stars} out of 5 stars`} className="flex gap-0.5 mb-4">
                 {Array.from({ length: t.stars }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                  <Star key={i} aria-hidden="true" className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+              <blockquote className="text-sm text-muted-foreground leading-relaxed mb-6">
                 &ldquo;{t.quote}&rdquo;
-              </p>
+              </blockquote>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary group-hover:bg-primary/20 transition-colors">
                   {t.initial}
@@ -72,7 +73,7 @@ export function Testimonials() {
                   <p className="text-xs text-muted-foreground">{t.title}</p>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>

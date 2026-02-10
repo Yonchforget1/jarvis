@@ -50,6 +50,8 @@ export function Footer() {
                   key={s.label}
                   href={s.href}
                   aria-label={s.label}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/30 text-muted-foreground/50 hover:bg-primary/10 hover:text-primary transition-all duration-200"
                 >
                   <s.icon className="h-4 w-4" />
@@ -60,7 +62,7 @@ export function Footer() {
 
           {/* Link columns */}
           {Object.entries(LINKS).map(([category, links]) => (
-            <div key={category}>
+            <nav key={category} aria-label={`${category} links`}>
               <h4 className="text-sm font-semibold mb-4">{category}</h4>
               <ul className="space-y-2.5">
                 {links.map((link) => (
@@ -74,7 +76,7 @@ export function Footer() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
         </div>
 

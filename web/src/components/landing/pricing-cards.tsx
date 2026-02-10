@@ -70,8 +70,10 @@ export function PricingCards() {
           </p>
 
           {/* Billing toggle */}
-          <div className="inline-flex items-center gap-3 rounded-full border border-border/50 bg-muted/30 p-1.5">
+          <div role="radiogroup" aria-label="Billing period" className="inline-flex items-center gap-3 rounded-full border border-border/50 bg-muted/30 p-1.5">
             <button
+              role="radio"
+              aria-checked={!annual}
               onClick={() => setAnnual(false)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
                 !annual
@@ -82,6 +84,8 @@ export function PricingCards() {
               Monthly
             </button>
             <button
+              role="radio"
+              aria-checked={annual}
               onClick={() => setAnnual(true)}
               className={`relative rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
                 annual
@@ -127,7 +131,7 @@ export function PricingCards() {
                     Save ${(tier.monthly - tier.annual) * 12}/year
                   </p>
                 )}
-                <ul className="mt-6 space-y-3">
+                <ul aria-label={`${tier.name} features`} className="mt-6 space-y-3">
                   {tier.features.map((feature) => (
                     <li key={feature} className="flex items-center gap-2 text-sm">
                       <Check className="h-4 w-4 text-primary shrink-0" />
