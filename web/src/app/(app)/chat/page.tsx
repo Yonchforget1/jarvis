@@ -112,6 +112,7 @@ export default function ChatPage() {
     messages,
     isLoading,
     sessionId,
+    error: chatError,
     sendMessage,
     editMessage,
     retryLast,
@@ -249,6 +250,8 @@ export default function ChatPage() {
             onRegenerate={regenerate}
             onStop={stopStreaming}
             onClear={clearChat}
+            error={chatError}
+            onRetryLoad={selectedSessionId ? () => loadSession(selectedSessionId) : undefined}
           />
         </div>
       </div>

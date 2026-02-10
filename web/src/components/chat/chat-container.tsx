@@ -19,6 +19,7 @@ import {
   FileText,
   Trash2,
   Copy,
+  AlertTriangle,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -49,6 +50,8 @@ interface ChatContainerProps {
   onRegenerate?: () => void;
   onStop?: () => void;
   onClear?: () => void;
+  error?: string | null;
+  onRetryLoad?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -87,6 +90,8 @@ export function ChatContainer({
   onRegenerate,
   onStop,
   onClear,
+  error,
+  onRetryLoad,
 }: ChatContainerProps) {
   const { status: connectionStatus, latency: connectionLatency, retry: retryConnection } = useConnection();
   const toast = useToast();
@@ -456,6 +461,20 @@ export function ChatContainer({
           >
             Retry
           </button>
+        </div>
+      )}
+      {error && messages.length === 0 && (
+        <div className="flex items-center justify-center gap-2 bg-red-500/10 border-b border-red-500/20 px-4 py-2.5 animate-fade-in">
+          <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+          <span className="text-xs text-red-400">{error}</span>
+          {onRetryLoad && (
+            <button
+              onClick={onRetryLoad}
+              className="text-xs text-red-400 underline underline-offset-2 hover:text-red-300 transition-colors"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 

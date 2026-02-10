@@ -405,6 +405,14 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             <span className="text-xs text-red-400">You&apos;re offline. Messages will send when connection is restored.</span>
           </div>
         )}
+        {/* Over character limit warning */}
+        {isOverLimit && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2 animate-fade-in">
+            <span className="text-xs text-red-400">
+              Message exceeds {MAX_LENGTH.toLocaleString()} character limit ({(charCount - MAX_LENGTH).toLocaleString()} over). Shorten your message to send.
+            </span>
+          </div>
+        )}
         {/* Paste image notification */}
         {pastedImage && (
           <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 animate-fade-in">
