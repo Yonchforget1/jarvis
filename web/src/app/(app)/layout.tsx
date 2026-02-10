@@ -16,6 +16,7 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { ConnectionMonitor } from "@/components/connection-monitor";
 import { Onboarding } from "@/components/onboarding";
 import { PWAInstall } from "@/components/pwa-install";
+import { TokenExpiryBanner } from "@/components/token-expiry-banner";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -208,6 +209,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <Onboarding />
       {/* PWA install prompt */}
       <PWAInstall />
+      {/* Token expiry warning */}
+      <TokenExpiryBanner />
     </div>
   );
 }

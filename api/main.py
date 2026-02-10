@@ -287,11 +287,14 @@ async def health(request: Request, deep: bool = False):
         subsystems = {}
         overall_status = "ok"
 
-        # Backend connectivity
+        # Backend connectivity (10s timeout to prevent hanging health checks)
         try:
+            import concurrent.futures
             from jarvis.backends import create_backend
             backend = create_backend(session_manager.config)
-            backend_ok = backend.ping()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(backend.ping)
+                backend_ok = future.result(timeout=10)
         except Exception:
             backend_ok = False
         subsystems["backend"] = {
