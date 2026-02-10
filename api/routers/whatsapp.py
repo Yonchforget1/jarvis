@@ -1,13 +1,11 @@
-"""Twilio WhatsApp webhook: receive messages, process with Jarvis, reply."""
+"""WhatsApp integration: bridge endpoint for whatsapp-web.js + legacy Twilio webhook."""
 
 import asyncio
-import hashlib
-import hmac
 import logging
 import os
-from urllib.parse import urlencode
 
-from fastapi import APIRouter, Form, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 log = logging.getLogger("jarvis.whatsapp")
 
@@ -24,127 +22,112 @@ def set_session_manager(sm):
     _session_manager = sm
 
 
-def _verify_twilio_signature(request: Request, body: bytes) -> bool:
-    """Verify the X-Twilio-Signature header to ensure the request is from Twilio.
+# ---------------------------------------------------------------------------
+# Bridge endpoint (used by whatsapp_bridge.js — no auth required, localhost only)
+# ---------------------------------------------------------------------------
 
-    Returns True if verification passes or if TWILIO_AUTH_TOKEN is not set
-    (development mode).
-    """
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-    if not auth_token:
-        log.warning("TWILIO_AUTH_TOKEN not set -- skipping signature verification")
-        return True
-
-    signature = request.headers.get("X-Twilio-Signature", "")
-    if not signature:
-        return False
-
-    # Reconstruct the full URL Twilio used to call us
-    url = str(request.url)
-
-    # Parse form params and sort them
-    from urllib.parse import parse_qs
-    params = parse_qs(body.decode("utf-8"), keep_blank_values=True)
-    sorted_params = sorted(params.items())
-    param_string = url + "".join(f"{k}{v[0]}" for k, v in sorted_params)
-
-    # HMAC-SHA1
-    computed = hmac.new(
-        auth_token.encode("utf-8"),
-        param_string.encode("utf-8"),
-        hashlib.sha1,
-    ).digest()
-
-    import base64
-    expected = base64.b64encode(computed).decode("utf-8")
-    return hmac.compare_digest(expected, signature)
+class BridgeRequest(BaseModel):
+    phone: str
+    name: str = ""
+    message: str
+    session_id: str | None = None
 
 
-def _twiml_reply(message: str) -> str:
-    """Build a minimal TwiML response to send a WhatsApp reply."""
-    # Escape XML special characters
-    safe = (
-        message
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-    return (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        "<Response>"
-        f"<Message>{safe}</Message>"
-        "</Response>"
-    )
+class BridgeResponse(BaseModel):
+    session_id: str
+    response: str
+    tool_calls: list = []
 
 
-@router.post("/whatsapp")
-async def whatsapp_webhook(
-    request: Request,
-    From: str = Form(""),
-    Body: str = Form(""),
-    To: str = Form(""),
-    MessageSid: str = Form(""),
-    NumMedia: str = Form("0"),
-):
-    """Twilio WhatsApp incoming message webhook.
+@router.post("/whatsapp/bridge", response_model=BridgeResponse)
+async def whatsapp_bridge(body: BridgeRequest, request: Request):
+    """Internal endpoint for the Node.js WhatsApp bridge.
 
-    Twilio sends POST with form-encoded data. We process the message
-    through Jarvis and reply with TwiML.
+    Receives a message from a WhatsApp user, processes it through Jarvis,
+    and returns the response. No authentication — only accepts localhost.
     """
     if not _session_manager:
         raise HTTPException(503, "Service not initialized")
 
-    if not From or not Body:
-        log.warning("WhatsApp webhook called with missing From/Body")
-        return Response(
-            content=_twiml_reply("Sorry, I couldn't process that message."),
-            media_type="application/xml",
-        )
+    # Security: only allow from localhost
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(403, "Bridge endpoint only accessible from localhost")
 
-    # Use phone number as a stable user ID
-    phone = From.replace("whatsapp:", "")
+    phone = body.phone
     user_id = f"wa_{phone}"
-    log.info("WhatsApp from %s: %s", phone, Body[:100])
+    log.info("WhatsApp bridge from %s (%s): %s", body.name or phone, phone, body.message[:100])
 
-    # Get or create a session for this phone number
-    session_id = _phone_sessions.get(phone)
+    # Get or create session — prefer the one tracked server-side
+    session_id = _phone_sessions.get(phone) or body.session_id
     session = _session_manager.get_or_create(session_id, user_id)
     _phone_sessions[phone] = session.session_id
 
-    # Process message through Jarvis
     try:
         loop = asyncio.get_event_loop()
         response_text = await loop.run_in_executor(
-            None, session.conversation.send, Body
+            None, session.conversation.send, body.message
         )
     except Exception as e:
-        log.error("WhatsApp processing error for %s: %s", phone, e)
-        response_text = "Sorry, I encountered an error processing your request. Please try again."
+        log.error("WhatsApp bridge error for %s: %s", phone, e)
+        response_text = "Sorry, I encountered an error processing your request."
 
-    # Twilio WhatsApp has a 1600 character limit per message
-    if len(response_text) > 1500:
-        response_text = response_text[:1500] + "..."
+    raw_calls = session.conversation.get_and_clear_tool_calls()
+    log.info("WhatsApp bridge reply to %s: %s", phone, response_text[:100])
 
-    log.info("WhatsApp reply to %s: %s", phone, response_text[:100])
-
-    return Response(
-        content=_twiml_reply(response_text),
-        media_type="application/xml",
+    return BridgeResponse(
+        session_id=session.session_id,
+        response=response_text,
+        tool_calls=[{"name": tc["name"], "result": tc["result"][:200]} for tc in raw_calls],
     )
 
+
+# ---------------------------------------------------------------------------
+# OCR endpoint (used by whatsapp_bridge.js for image messages)
+# ---------------------------------------------------------------------------
+
+class OCRRequest(BaseModel):
+    image_path: str
+
+
+@router.post("/whatsapp/ocr")
+async def whatsapp_ocr(body: OCRRequest, request: Request):
+    """OCR an image file saved by the WhatsApp bridge. Localhost only."""
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(403, "OCR endpoint only accessible from localhost")
+
+    if not os.path.isfile(body.image_path):
+        raise HTTPException(400, f"Image not found: {body.image_path}")
+
+    try:
+        import pytesseract
+        from PIL import Image
+        tesseract_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        if os.path.exists(tesseract_path):
+            pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        img = Image.open(body.image_path)
+        text = pytesseract.image_to_string(img).strip()
+        log.info("OCR result for %s: %s", body.image_path, text[:100])
+        return {"text": text, "chars": len(text)}
+    except ImportError:
+        return {"text": "(OCR not available — install pytesseract)", "chars": 0}
+    except Exception as e:
+        log.error("OCR error: %s", e)
+        return {"text": f"(OCR error: {e})", "chars": 0}
+
+
+# ---------------------------------------------------------------------------
+# Status endpoint
+# ---------------------------------------------------------------------------
 
 @router.get("/whatsapp/status")
 async def whatsapp_status():
     """Check WhatsApp integration status."""
-    auth_token_set = bool(os.getenv("TWILIO_AUTH_TOKEN", ""))
-    account_sid_set = bool(os.getenv("TWILIO_ACCOUNT_SID", ""))
-    whatsapp_from = os.getenv("TWILIO_WHATSAPP_FROM", "")
-
     return {
-        "enabled": auth_token_set and account_sid_set,
-        "auth_token_set": auth_token_set,
-        "account_sid_set": account_sid_set,
-        "whatsapp_from": whatsapp_from or "not configured",
+        "mode": "bridge",
+        "bridge_endpoint": "/api/whatsapp/bridge",
+        "ocr_endpoint": "/api/whatsapp/ocr",
         "active_conversations": len(_phone_sessions),
+        "sessions": {phone: sid for phone, sid in _phone_sessions.items()},
     }
