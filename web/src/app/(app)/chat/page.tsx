@@ -113,6 +113,16 @@ export default function ChatPage() {
     setProcessing(isLoading);
   }, [isLoading, setProcessing]);
 
+  // Warn before closing tab when streaming is active
+  useEffect(() => {
+    if (!isLoading) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isLoading]);
+
   // Dynamic page title based on first user message
   useEffect(() => {
     const firstUserMsg = messages.find((m) => m.role === "user");

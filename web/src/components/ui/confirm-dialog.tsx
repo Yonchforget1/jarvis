@@ -28,11 +28,12 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Focus cancel button for danger dialogs (safer default), confirm for others
   useEffect(() => {
     if (open) {
-      setTimeout(() => {
+      focusTimerRef.current = setTimeout(() => {
         if (variant === "danger") {
           cancelRef.current?.focus();
         } else {
@@ -40,6 +41,9 @@ export function ConfirmDialog({
         }
       }, 50);
     }
+    return () => {
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
   }, [open, variant]);
 
   // Escape to close
@@ -69,7 +73,7 @@ export function ConfirmDialog({
       />
       {/* Dialog */}
       <FocusTrap>
-      <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl animate-fade-in-up">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-desc" className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl animate-fade-in-up">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 rounded-lg p-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
@@ -85,7 +89,7 @@ export function ConfirmDialog({
           )}
           <div>
             <h3 id="confirm-dialog-title" className="text-sm font-semibold">{title}</h3>
-            <p className="text-xs text-muted-foreground/70 mt-1 leading-relaxed">
+            <p id="confirm-dialog-desc" className="text-xs text-muted-foreground/70 mt-1 leading-relaxed">
               {description}
             </p>
           </div>
