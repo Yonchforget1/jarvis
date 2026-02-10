@@ -153,7 +153,8 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
           );
         }
 
-        const reader = response.body!.getReader();
+        if (!response.body) throw new Error("No response body from server");
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         let streamSessionId: string | null = null;

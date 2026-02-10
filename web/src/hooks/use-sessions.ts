@@ -104,7 +104,7 @@ export function useSessions() {
     try {
       const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200&archived=false");
       // Handle both paginated response and legacy array format
-      const list = Array.isArray(data) ? data : data.sessions;
+      const list = Array.isArray(data) ? data : (data?.sessions || []);
       setSessions(list);
       setError(null);
     } catch (err) {
@@ -117,7 +117,7 @@ export function useSessions() {
   const fetchArchivedSessions = useCallback(async () => {
     try {
       const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200&archived=true");
-      const list = Array.isArray(data) ? data : data.sessions;
+      const list = Array.isArray(data) ? data : (data?.sessions || []);
       setArchivedSessions(list);
     } catch {
       setArchivedSessions([]);

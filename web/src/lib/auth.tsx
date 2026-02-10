@@ -45,8 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Validate token with server in background
         api.get<{ user: User }>("/api/auth/me", { signal: controller.signal }).then((res) => {
           if (cancelled) return;
-          setUser(res.user);
-          localStorage.setItem("jarvis_user", JSON.stringify(res.user));
+          if (res?.user) {
+            setUser(res.user);
+            localStorage.setItem("jarvis_user", JSON.stringify(res.user));
+          }
         }).catch((err) => {
           if (cancelled) return;
           // Only clear on 401 (expired/invalid token), not on network errors
