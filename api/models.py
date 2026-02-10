@@ -58,7 +58,14 @@ class AuthResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    session_id: str | None = None
+    session_id: str | None = Field(default=None, max_length=64)
+
+    @field_validator("session_id")
+    @classmethod
+    def validate_session_id(cls, v: str | None) -> str | None:
+        if v is not None and not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError("session_id may only contain letters, numbers, underscores, and hyphens.")
+        return v
 
     @field_validator("message")
     @classmethod

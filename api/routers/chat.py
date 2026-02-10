@@ -121,6 +121,12 @@ async def chat_stream(
                 # Send keepalive to prevent connection timeout
                 yield ": keepalive\n\n"
 
+    audit_log(
+        user_id=user.id, username=user.username, action="chat_stream",
+        detail=f"session={session.session_id}",
+        ip=request.client.host if request.client else "",
+    )
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -148,6 +154,11 @@ async def chat_batch(
     Each message can target a different session. Returns results in order.
     Maximum 10 messages per batch.
     """
+    if not body.messages:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Batch must contain at least 1 message"},
+        )
     if len(body.messages) > 10:
         return JSONResponse(
             status_code=400,

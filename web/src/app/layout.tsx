@@ -25,6 +25,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: {
     default: "JARVIS AI Agent Platform",
     template: "%s | JARVIS",
@@ -50,12 +51,21 @@ export const metadata: Metadata = {
     title: "JARVIS - Deploy Your AI Workforce",
     description:
       "The most advanced AI agent platform. Execute real tasks with 16+ professional tools. From code to games to automation.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "JARVIS AI Agent Platform - Deploy Your AI Workforce",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "JARVIS AI Agent Platform",
     description:
       "The most advanced AI agent platform. 16+ professional tools. Deploy your AI workforce today.",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,

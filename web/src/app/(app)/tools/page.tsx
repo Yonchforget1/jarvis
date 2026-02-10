@@ -97,6 +97,8 @@ function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boo
       <button
         onClick={() => setExpanded(!isExpanded)}
         className="flex w-full items-center gap-3 p-4 text-left transition-colors"
+        aria-expanded={isExpanded}
+        aria-label={`${tool.name}: ${tool.description}`}
       >
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${meta.bg} shrink-0`}>
           <meta.icon className={`h-4 w-4 ${meta.color}`} />
@@ -227,7 +229,7 @@ export default function ToolsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Tools</h1>
-          <p className="text-sm text-muted-foreground/60 mt-0.5">
+          <p className="text-sm text-muted-foreground/60 mt-0.5" role="status" aria-live="polite" aria-atomic="true">
             {filtered.length} of {tools.length} professional tools
           </p>
         </div>
@@ -250,6 +252,8 @@ export default function ToolsPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tools by name or description..."
           className="pl-9 h-10 rounded-xl bg-secondary/50 border-border"
+          aria-label="Search tools by name or description"
+          aria-controls="tools-results"
         />
       </div>
 
@@ -310,7 +314,7 @@ export default function ToolsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div id="tools-results" className="grid grid-cols-1 md:grid-cols-2 gap-3" role="region" aria-label="Tools list">
           {filtered.map((tool) => (
             <ToolCard key={tool.name} tool={tool} forceExpanded={allExpanded} />
           ))}
