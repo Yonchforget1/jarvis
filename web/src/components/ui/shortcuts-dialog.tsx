@@ -9,13 +9,17 @@ interface ShortcutsDialogProps {
   onClose: () => void;
 }
 
+const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent);
+const MOD = isMac ? "\u2318" : "Ctrl";
+
 const SHORTCUT_GROUPS = [
   {
     title: "Chat",
     shortcuts: [
       { keys: ["Enter"], description: "Send message" },
+      { keys: [MOD, "Enter"], description: "Send message (alternative)" },
       { keys: ["Shift", "Enter"], description: "New line" },
-      { keys: ["Ctrl", "/"], description: "Focus input" },
+      { keys: [MOD, "/"], description: "Focus input" },
       { keys: ["\u2191"], description: "Previous message from history" },
       { keys: ["\u2193"], description: "Next message from history" },
       { keys: ["/"], description: "Slash commands" },
@@ -24,15 +28,15 @@ const SHORTCUT_GROUPS = [
   {
     title: "Navigation",
     shortcuts: [
-      { keys: ["Ctrl", "F"], description: "Search messages" },
-      { keys: ["Ctrl", "K"], description: "Command palette" },
-      { keys: ["Ctrl", "N"], description: "New chat" },
-      { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
-      { keys: ["Ctrl", "Shift", "E"], description: "Export chat" },
-      { keys: ["Ctrl", "Shift", "R"], description: "Retry last failed" },
-      { keys: ["Ctrl", "L"], description: "Clear chat" },
-      { keys: ["Ctrl", "Shift", "F"], description: "Focus mode" },
-      { keys: ["Ctrl", "Home"], description: "Scroll to top" },
+      { keys: [MOD, "F"], description: "Search messages" },
+      { keys: [MOD, "K"], description: "Command palette" },
+      { keys: [MOD, "N"], description: "New chat" },
+      { keys: [MOD, "B"], description: "Toggle sidebar" },
+      { keys: [MOD, "Shift", "E"], description: "Export chat" },
+      { keys: [MOD, "Shift", "R"], description: "Retry last failed" },
+      { keys: [MOD, "L"], description: "Clear chat" },
+      { keys: [MOD, "Shift", "F"], description: "Focus mode" },
+      { keys: [MOD, "Home"], description: "Scroll to top" },
       { keys: ["Esc"], description: "Close search / dialog" },
     ],
   },

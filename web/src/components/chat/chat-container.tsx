@@ -557,6 +557,7 @@ export function ChatContainer({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 animate-fade-in-up">
             <button
               onClick={scrollToBottom}
+              aria-label={newMessageCount > 0 ? `${newMessageCount} new messages, scroll to latest` : "Scroll to latest message"}
               className="flex items-center gap-1.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-card transition-all duration-200 hover:shadow-xl"
             >
               <ArrowDown className="h-3.5 w-3.5" />
@@ -580,6 +581,7 @@ export function ChatContainer({
         <div className="flex justify-center py-2 animate-fade-in">
           <button
             onClick={onStop}
+            aria-label="Stop generating response"
             className="flex items-center gap-2 rounded-full bg-card border border-border/50 shadow-lg px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 hover:shadow-xl active:scale-95"
           >
             <Square className="h-3.5 w-3.5 fill-current" />
