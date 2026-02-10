@@ -3,18 +3,37 @@
 Local models (Ollama) perform poorly when given dozens of tool schemas.
 This router analyzes the user message and picks the ~8 most relevant tools,
 keeping quality high and context usage low.
+
+Routing strategy:
+  1. Detect conversational intent (greeting, general question) — send fewer tools.
+  2. Score each route group by how many keywords match (more matches = higher confidence).
+  3. Always include a small baseline set (shell, read, write).
+  4. Rank tools by their route group score, then cap at MAX_TOOLS.
 """
 
+import logging
 import re
 
 from jarvis.tool_registry import ToolDef, ToolRegistry
 
+log = logging.getLogger("jarvis.tool_router")
+
 # Maximum tools to send per request
 MAX_TOOLS = 8
 
-# --- Keyword → tool-name mapping ---
+# --- Conversational intent patterns (no tools needed) ---
+_CONVERSATIONAL_PATTERNS = [
+    re.compile(r"^(hi|hello|hey|howdy|yo|sup|greetings|good\s+(morning|afternoon|evening))\b", re.I),
+    re.compile(r"^(thanks|thank you|thx|ty|cheers)\b", re.I),
+    re.compile(r"^(bye|goodbye|see you|later|cya)\b", re.I),
+    re.compile(r"^(who are you|what are you|what can you do)\b", re.I),
+    re.compile(r"^(yes|no|ok|okay|sure|yep|nope|alright)\b", re.I),
+]
+
+# --- Keyword → tool-name mapping with weights ---
 # Each entry: frozenset of trigger keywords → list of tool names to include.
 # A tool is selected if ANY keyword in a group appears in the message.
+# Multiple keyword matches within a group increase the group's score.
 _ROUTES: list[tuple[frozenset[str], list[str]]] = [
     # File operations
     (frozenset(["file", "read", "write", "save", "create", "edit", "open",
@@ -90,50 +109,74 @@ _ROUTES: list[tuple[frozenset[str], list[str]]] = [
 # Baseline tools always included (cheap, universally useful)
 _ALWAYS_INCLUDE = {"run_shell", "read_file", "write_file"}
 
+# General-purpose fallback set for non-specific requests
+_GENERAL_TOOLS = ["run_python", "search_web", "list_directory", "fetch_url"]
+
 
 def _kw_match(keyword: str, text: str) -> bool:
     """Match keyword in text using word boundaries to avoid substring false positives."""
     return bool(re.search(r'\b' + re.escape(keyword) + r'\b', text))
 
 
+def _is_conversational(message: str) -> bool:
+    """Detect if the message is purely conversational and needs no tools."""
+    stripped = message.strip()
+    # Very short messages that match conversational patterns
+    if len(stripped) < 60:
+        for pattern in _CONVERSATIONAL_PATTERNS:
+            if pattern.search(stripped):
+                return True
+    return False
+
+
 def select_tools(message: str, registry: ToolRegistry, max_tools: int = MAX_TOOLS) -> list[ToolDef]:
     """Pick the most relevant tools for a user message.
 
-    Returns at most *max_tools* ToolDef objects. Always includes a small
-    baseline set (shell, read, write) and adds more based on keyword matching.
+    Returns at most *max_tools* ToolDef objects. Uses scored ranking:
+    route groups with more keyword matches rank higher.
     """
     msg_lower = message.lower()
-    selected_names: set[str] = set(_ALWAYS_INCLUDE)
 
+    # For purely conversational messages, send minimal tools
+    if _is_conversational(msg_lower):
+        log.info("Tool router: conversational message, sending minimal tools")
+        all_tools = {t.name: t for t in registry.all_tools()}
+        return [all_tools[n] for n in ("search_web", "run_shell") if n in all_tools]
+
+    # Score each route group by number of keyword matches
+    tool_scores: dict[str, float] = {}
     for keywords, tool_names in _ROUTES:
-        for kw in keywords:
-            if _kw_match(kw, msg_lower):
-                selected_names.update(tool_names)
-                break  # one keyword match is enough per route group
+        match_count = sum(1 for kw in keywords if _kw_match(kw, msg_lower))
+        if match_count > 0:
+            # Score scales with number of keyword matches (more = higher confidence)
+            score = match_count / len(keywords)  # normalize 0-1
+            for name in tool_names:
+                # Take the max score if a tool appears in multiple groups
+                tool_scores[name] = max(tool_scores.get(name, 0), score)
 
-    # If nothing specific matched, give a general-purpose set
-    if selected_names == _ALWAYS_INCLUDE:
-        selected_names.update([
-            "run_python", "search_web", "list_directory", "run_shell",
-            "fetch_url",
-        ])
+    # Always include baseline tools with a moderate score
+    for name in _ALWAYS_INCLUDE:
+        tool_scores.setdefault(name, 0.1)
 
-    # Resolve names to actual registered ToolDef objects
+    # If nothing specific matched, add general-purpose tools
+    if all(tool_scores[n] <= 0.1 for n in tool_scores):
+        for name in _GENERAL_TOOLS:
+            tool_scores.setdefault(name, 0.15)
+
+    # Resolve names to actual registered ToolDef objects and sort by score
     all_tools = {t.name: t for t in registry.all_tools()}
-    result = []
-    for name in selected_names:
+    scored_tools = []
+    for name, score in tool_scores.items():
         tool = all_tools.get(name)
         if tool:
-            result.append(tool)
+            scored_tools.append((score, tool))
 
-    # If we're over the limit, prioritize the baseline then alphabetically
-    if len(result) > max_tools:
-        baseline = [t for t in result if t.name in _ALWAYS_INCLUDE]
-        rest = sorted(
-            [t for t in result if t.name not in _ALWAYS_INCLUDE],
-            key=lambda t: t.name,
-        )
-        result = baseline + rest
-        result = result[:max_tools]
+    # Sort by score descending, then by name for determinism
+    scored_tools.sort(key=lambda x: (-x[0], x[1].name))
+    result = [t for _, t in scored_tools[:max_tools]]
+
+    log.info("Tool router selected %d/%d tools: %s",
+             len(result), len(all_tools),
+             [(t.name, f"{tool_scores[t.name]:.2f}") for t in result])
 
     return result
