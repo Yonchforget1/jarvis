@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign, BarChart3, Activity } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign, BarChart3, Activity, History } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useConnection } from "@/hooks/use-connection";
 import { useLearnings } from "@/hooks/use-learnings";
@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { api } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/utils";
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -44,6 +45,17 @@ export default function DashboardPage() {
   const [sessionStats, setSessionStats] = useState<{ session_id: string; title: string; cost_estimate_usd: number; input_tokens: number; output_tokens: number; message_count: number }[]>([]);
   const [sessionStatsError, setSessionStatsError] = useState<string | null>(null);
   const [totalCostAllSessions, setTotalCostAllSessions] = useState<number>(0);
+  const [recentSessions, setRecentSessions] = useState<{ session_id: string; last_active: string; message_count: number; preview: string; custom_name?: string | null; auto_title?: string | null }[]>([]);
+
+  // Fetch recent sessions for quick resume
+  useEffect(() => {
+    api.get<{ sessions: typeof recentSessions }>("/api/conversation/sessions?limit=5&archived=false")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.sessions || []);
+        setRecentSessions(list);
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch session cost breakdown
   useEffect(() => {
@@ -285,6 +297,43 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Recent Sessions */}
+      {recentSessions.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
+              <History className="h-3 w-3" /> Recent Conversations
+            </h3>
+            <Link href="/chat" className="text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors">
+              View all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {recentSessions.slice(0, 6).map((s) => {
+              const title = s.custom_name || s.auto_title || (s.preview ? s.preview.slice(0, 40) : "New conversation");
+              return (
+                <Link
+                  key={s.session_id}
+                  href={`/chat?session=${s.session_id}`}
+                  className="group flex items-start gap-3 rounded-xl border border-border/30 bg-card/30 p-3.5 transition-all duration-200 hover:border-border hover:bg-card/60 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <MessageSquare className="h-4 w-4 text-primary/60 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground/80 group-hover:text-foreground truncate transition-colors">
+                      {title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+                      {s.message_count} msgs &middot; {formatRelativeTime(s.last_active)}
+                    </p>
+                  </div>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-all group-hover:translate-x-0.5 shrink-0 mt-1" />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quick-start Prompts */}
       <div className="space-y-3">
