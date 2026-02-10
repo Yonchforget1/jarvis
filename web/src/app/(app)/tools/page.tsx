@@ -99,7 +99,7 @@ function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boo
         onClick={() => setExpanded(!isExpanded)}
         className="flex w-full items-center gap-3 p-4 text-left transition-colors"
         aria-expanded={isExpanded}
-        aria-label={`${tool.name}: ${tool.description}`}
+        aria-label={`${isExpanded ? "Collapse" : "Expand"} ${tool.name} details`}
       >
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${meta.bg} shrink-0`}>
           <meta.icon className={`h-4 w-4 ${meta.color}`} />

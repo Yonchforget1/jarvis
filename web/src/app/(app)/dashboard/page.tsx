@@ -309,7 +309,11 @@ export default function DashboardPage() {
             Recent Learnings
           </h3>
           {learningsLoading ? (
-            <Skeleton className="h-48 rounded-2xl" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-20 rounded-2xl" />
+              ))}
+            </div>
           ) : learningsError ? (
             <ErrorState message="Failed to load recent learnings" />
           ) : (

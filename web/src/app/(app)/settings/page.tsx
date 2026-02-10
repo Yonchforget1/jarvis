@@ -672,6 +672,7 @@ export default function SettingsPage() {
               <Label htmlFor="api_key">
                 {modelsData?.backends.find((b) => b.id === backend)?.key_env || "API Key"}
               </Label>
+              <p className="text-[10px] text-muted-foreground/50">Leave empty to use the server&apos;s default key</p>
               <div className="relative">
                 <Input
                   id="api_key"

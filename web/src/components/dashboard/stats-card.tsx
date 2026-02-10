@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, memo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -74,7 +74,7 @@ function AnimatedValue({ value }: { value: string | number }) {
   return <>{value}</>;
 }
 
-function TrendBadge({ trend }: { trend: TrendInfo }) {
+const TrendBadge = memo(function TrendBadge({ trend }: { trend: TrendInfo }) {
   const config = {
     up: { icon: TrendingUp, color: "text-green-400 bg-green-400/10" },
     down: { icon: TrendingDown, color: "text-red-400 bg-red-400/10" },
@@ -87,7 +87,7 @@ function TrendBadge({ trend }: { trend: TrendInfo }) {
       {trend.label}
     </span>
   );
-}
+});
 
 export function StatsCard({
   title,

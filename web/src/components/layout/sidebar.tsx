@@ -128,7 +128,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const { sessions, loading: sessionsLoading, error: sessionsError, fetchSessions, deleteSession, renameSession, togglePin, archiveSession } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const avatarHue = usernameHue(user?.username || "User");
+  const avatarHue = useMemo(() => usernameHue(user?.username || "User"), [user?.username]);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
