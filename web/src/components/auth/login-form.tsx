@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ export function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+  const rateLimitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -26,6 +29,13 @@ export function LoginForm() {
     }
   }, [authLoading, isAuthenticated, router]);
 
+  // Cleanup rate limit timer on unmount
+  useEffect(() => {
+    return () => {
+      if (rateLimitTimerRef.current) clearInterval(rateLimitTimerRef.current);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -35,7 +45,29 @@ export function LoginForm() {
       await login(username, password);
       router.push("/chat");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const message = err instanceof Error ? err.message : "Login failed";
+      // Detect rate limiting (429 Too Many Requests)
+      const isRateLimit = message.toLowerCase().includes("rate") || message.toLowerCase().includes("too many");
+      if (isRateLimit) {
+        setIsRateLimited(true);
+        setRateLimitSeconds(60);
+        setError("Too many login attempts. Please wait before trying again.");
+        // Start countdown timer
+        if (rateLimitTimerRef.current) clearInterval(rateLimitTimerRef.current);
+        rateLimitTimerRef.current = setInterval(() => {
+          setRateLimitSeconds((prev) => {
+            if (prev <= 1) {
+              if (rateLimitTimerRef.current) clearInterval(rateLimitTimerRef.current);
+              setIsRateLimited(false);
+              setError("");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +93,20 @@ export function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
-              {error}
+              {isRateLimited && (
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <div>
+                    <p>{error}</p>
+                    {rateLimitSeconds > 0 && (
+                      <p className="text-xs text-red-400/70 mt-1">
+                        Try again in {rateLimitSeconds}s
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!isRateLimited && error}
             </div>
           )}
           <div className="space-y-2">
@@ -107,7 +152,7 @@ export function LoginForm() {
           <Button
             type="submit"
             className="w-full h-11 rounded-xl gap-2 text-sm font-medium"
-            disabled={loading}
+            disabled={loading || isRateLimited}
           >
             {loading ? (
               <>

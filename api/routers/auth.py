@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from api.audit import audit_log
 from pydantic import BaseModel
 
-from api.auth import authenticate_user, create_api_key, create_token, create_user, list_user_api_keys, revoke_api_key
+from api.auth import authenticate_user, blacklist_token, create_api_key, create_token, create_user, list_user_api_keys, revoke_api_key
 from api.deps import get_current_user
 from api.models import AuthRequest, AuthResponse, RegisterRequest, UserInfo
 
@@ -62,6 +62,20 @@ async def login(request: AuthRequest, req: Request):
         access_token=token,
         user=UserInfo(id=user["id"], username=user["username"], email=user.get("email", "")),
     )
+
+
+@router.post("/logout")
+async def logout(req: Request, user: UserInfo = Depends(get_current_user)):
+    """Logout: blacklist the current JWT token so it can't be reused."""
+    auth_header = req.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    if token:
+        blacklist_token(token)
+    audit_log(
+        user_id=user.id, username=user.username, action="logout",
+        ip=req.client.host if req.client else "",
+    )
+    return {"status": "logged_out"}
 
 
 @router.get("/me", response_model=UserInfo)

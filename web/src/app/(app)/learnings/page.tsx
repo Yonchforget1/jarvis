@@ -5,7 +5,7 @@ import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Brain, Download } from "lucide-react";
+import { Search, Brain, Download, ArrowUpDown } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -29,6 +29,9 @@ export default function LearningsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -41,15 +44,35 @@ export default function LearningsPage() {
     [learnings],
   );
 
-  const filtered = useMemo(() => learnings.filter((l) => {
-    const matchesSearch =
-      !debouncedSearch ||
-      l.insight.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      l.context.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      l.task_description.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchesCategory = !categoryFilter || l.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  }), [learnings, debouncedSearch, categoryFilter]);
+  const filtered = useMemo(() => {
+    const result = learnings.filter((l) => {
+      const matchesSearch =
+        !debouncedSearch ||
+        l.insight.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        l.context.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        l.task_description.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesCategory = !categoryFilter || l.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+    // Sort by timestamp
+    result.sort((a, b) => {
+      const ta = new Date(a.timestamp).getTime();
+      const tb = new Date(b.timestamp).getTime();
+      return sortOrder === "newest" ? tb - ta : ta - tb;
+    });
+    return result;
+  }, [learnings, debouncedSearch, categoryFilter, sortOrder]);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [debouncedSearch, categoryFilter, sortOrder]);
+
+  const visibleLearnings = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+  const hasMore = visibleCount < filtered.length;
 
   const handleExport = useCallback(() => {
     const markdown = filtered
@@ -109,13 +132,23 @@ export default function LearningsPage() {
         </div>
         <div className="flex items-center gap-2">
           {learnings.length > 0 && (
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </button>
+            <>
+              <button
+                onClick={() => setSortOrder(sortOrder === "newest" ? "oldest" : "newest")}
+                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title={`Sort by ${sortOrder === "newest" ? "oldest" : "newest"} first`}
+              >
+                <ArrowUpDown className="h-3.5 w-3.5" />
+                {sortOrder === "newest" ? "Newest" : "Oldest"}
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </button>
+            </>
           )}
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-400/10">
             <Brain className="h-5 w-5 text-purple-400" />
@@ -190,7 +223,19 @@ export default function LearningsPage() {
           </p>
         </div>
       ) : (
-        <LearningsTimeline learnings={filtered} />
+        <>
+          <LearningsTimeline learnings={visibleLearnings} />
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                className="rounded-full border border-border/50 bg-muted/50 px-6 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                Show more ({filtered.length - visibleCount} remaining)
+              </button>
+            </div>
+          )}
+        </>
       )}
       </div>
     </div>

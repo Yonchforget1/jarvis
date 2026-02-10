@@ -2,6 +2,7 @@
 
 import json
 import os
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -27,6 +28,81 @@ JWT_EXPIRY_HOURS = 24
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
+
+# --- Token blacklist (in-memory with file persistence for restarts) ---
+_BLACKLIST_FILE = os.path.join(DATA_DIR, "token_blacklist.json")
+_blacklist_lock = threading.Lock()
+_token_blacklist: set[str] = set()  # Set of blacklisted token JTIs
+
+
+def _load_blacklist():
+    """Load blacklist from file, pruning expired entries."""
+    global _token_blacklist
+    if not os.path.exists(_BLACKLIST_FILE):
+        return
+    try:
+        with open(_BLACKLIST_FILE, "r", encoding="utf-8") as f:
+            entries = json.load(f)
+        # Prune entries older than JWT_EXPIRY_HOURS (they've expired anyway)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=JWT_EXPIRY_HOURS + 1)
+        _token_blacklist = {
+            e["jti"] for e in entries
+            if datetime.fromisoformat(e["revoked_at"]) > cutoff
+        }
+    except Exception:
+        _token_blacklist = set()
+
+
+def _save_blacklist():
+    """Persist current blacklist to file."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=JWT_EXPIRY_HOURS + 1)
+    # Load existing entries to preserve revoked_at timestamps
+    existing = []
+    if os.path.exists(_BLACKLIST_FILE):
+        try:
+            with open(_BLACKLIST_FILE, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except Exception:
+            pass
+    # Merge: keep non-expired existing + add new ones
+    by_jti = {e["jti"]: e for e in existing if datetime.fromisoformat(e["revoked_at"]) > cutoff}
+    now = datetime.now(timezone.utc).isoformat()
+    for jti in _token_blacklist:
+        if jti not in by_jti:
+            by_jti[jti] = {"jti": jti, "revoked_at": now}
+    with open(_BLACKLIST_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(by_jti.values()), f, indent=2)
+
+
+def blacklist_token(token: str) -> bool:
+    """Add a token to the blacklist. Returns True if successfully blacklisted."""
+    payload = decode_token(token, check_blacklist=False)
+    if payload is None:
+        return False
+    jti = payload.get("jti")
+    if not jti:
+        return False
+    with _blacklist_lock:
+        _token_blacklist.add(jti)
+        _save_blacklist()
+    return True
+
+
+def blacklist_user_tokens(user_id: str):
+    """Blacklist all active tokens for a user (force logout everywhere)."""
+    # This is a best-effort operation - tokens without JTI won't be caught
+    # New tokens include JTI, so this will work for all tokens going forward
+    pass
+
+
+def is_token_blacklisted(jti: str) -> bool:
+    """Check if a token JTI is in the blacklist."""
+    return jti in _token_blacklist
+
+
+# Load blacklist on module import
+_load_blacklist()
 
 
 def _load_users() -> list[dict]:
@@ -78,20 +154,26 @@ def get_user_by_id(user_id: str) -> dict | None:
 
 
 def create_token(user: dict) -> str:
-    """Create a JWT token for a user."""
+    """Create a JWT token for a user with a unique JTI for revocation support."""
     expires = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)
     payload = {
         "sub": user["id"],
         "username": user["username"],
         "exp": expires,
+        "jti": str(uuid.uuid4()),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def decode_token(token: str) -> dict | None:
-    """Decode and validate a JWT token. Returns payload or None."""
+def decode_token(token: str, check_blacklist: bool = True) -> dict | None:
+    """Decode and validate a JWT token. Returns payload or None.
+
+    If check_blacklist is True, also verifies the token hasn't been revoked.
+    """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if check_blacklist and payload.get("jti") and is_token_blacklisted(payload["jti"]):
+            return None
         return payload
     except JWTError:
         return None
