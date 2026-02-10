@@ -38,6 +38,8 @@ def set_session_manager(sm):
 @router.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
 async def chat(request: Request, body: ChatRequest, user: UserInfo = Depends(get_current_user)):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_or_create(body.session_id, user.id)
 
     loop = asyncio.get_event_loop()
@@ -97,6 +99,8 @@ async def chat_stream(
         done      - Stream complete
         error     - Error occurred
     """
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_or_create(body.session_id, user.id)
     event_queue: queue.Queue = queue.Queue()
 

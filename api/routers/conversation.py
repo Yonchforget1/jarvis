@@ -39,6 +39,8 @@ async def clear_conversation(
     body: ClearRequest,
     user: UserInfo = Depends(get_current_user),
 ):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     success = _session_manager.clear_session(body.session_id, user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")

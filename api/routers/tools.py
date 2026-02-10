@@ -71,6 +71,8 @@ def set_session_manager(sm):
 @router.get("/tools", response_model=ToolsResponse)
 @_limiter.limit("30/minute")
 async def list_tools(request: Request, user: UserInfo = Depends(get_current_user)):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     try:
         session = _session_manager.get_or_create(None, user.id)
         tools = session.conversation.registry.all_tools()

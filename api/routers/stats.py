@@ -39,6 +39,8 @@ def _get_cost(input_tokens: int, output_tokens: int) -> float:
 @router.get("/stats", response_model=StatsResponse)
 @_limiter.limit("30/minute")
 async def get_stats(request: Request, response: Response, user: UserInfo = Depends(get_current_user)):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     response.headers["Cache-Control"] = "private, max-age=30"
     try:
         config = _session_manager.config

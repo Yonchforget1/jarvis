@@ -295,15 +295,15 @@ export default function ToolsPage() {
 
       {/* Tools grid */}
       {tools.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in-up">
+        <div className="flex flex-col items-center justify-center py-20 px-4 animate-fade-in-up">
           <div className="relative mb-6">
             <div className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-blue-500/10 via-green-500/10 to-orange-500/10 blur-xl animate-glow-pulse" />
             <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border/50">
               <Wrench className="h-8 w-8 text-blue-400" />
             </div>
           </div>
-          <h3 className="text-lg font-semibold mb-1">No tools loaded</h3>
-          <p className="text-sm text-muted-foreground/60 max-w-xs text-center leading-relaxed">
+          <h3 className="text-lg font-semibold mb-1 text-center">No tools loaded</h3>
+          <p className="text-sm text-muted-foreground/60 max-w-sm text-center leading-relaxed">
             Tools will appear here once the API server is connected and tools are registered.
           </p>
         </div>
