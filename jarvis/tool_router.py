@@ -65,7 +65,7 @@ _ROUTES: list[tuple[frozenset[str], list[str]]] = [
                 "launch", "focus"]),
      ["list_windows", "focus_window", "launch_application", "click_control",
       "type_into_control", "inspect_window", "handle_dialog",
-      "read_screen_text", "take_screenshot", "send_keys"]),
+      "read_screen_text", "take_screenshot", "send_keys", "get_window_text"]),
 
     # Database
     (frozenset(["database", "sql", "sqlite", "query", "table", "db"]),
@@ -95,8 +95,8 @@ _ROUTES: list[tuple[frozenset[str], list[str]]] = [
      ["create_archive", "extract_archive", "list_archive"]),
 
     # Clipboard / env
-    (frozenset(["clipboard", "paste", "copy text"]),
-     ["clipboard_read", "clipboard_write"]),
+    (frozenset(["clipboard", "paste", "copy text", "copy"]),
+     ["get_clipboard", "set_clipboard"]),
     (frozenset(["environment", "env var"]),
      ["get_env", "list_env"]),
 

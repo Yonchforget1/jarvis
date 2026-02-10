@@ -94,10 +94,14 @@ def _save_temp_image(img):
     return tmp.name
 
 
-def register(registry, config):
-    """Register all desktop automation tools."""
-    api_key = config.api_key
-    vision_model = config.model
+def register(registry, config=None):
+    """Register all desktop automation tools.
+
+    Most tools (window management, controls, OCR, keyboard/mouse) need no API key.
+    Only analyze_screen requires a vision-capable API key.
+    """
+    api_key = getattr(config, "api_key", None) if config else None
+    vision_model = getattr(config, "model", None) if config else None
 
     # =========================================================================
     # WINDOW MANAGEMENT (pywinauto)
@@ -912,6 +916,83 @@ def register(registry, config):
             return f"Error handling open dialog: {e}"
 
     # =========================================================================
+    # CLIPBOARD
+    # =========================================================================
+
+    def get_clipboard() -> str:
+        """Read the current clipboard content."""
+        try:
+            import pyperclip
+            content = pyperclip.paste()
+            if not content:
+                return "(clipboard is empty)"
+            return content
+        except ImportError:
+            # Fallback: use pyautogui
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["powershell", "-Command", "Get-Clipboard"],
+                    capture_output=True, text=True, timeout=5
+                )
+                return result.stdout.strip() or "(clipboard is empty)"
+            except Exception as e:
+                return f"Error reading clipboard: {e}"
+
+    def set_clipboard(text: str) -> str:
+        """Copy text to the clipboard."""
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+            return f"Copied {len(text)} characters to clipboard"
+        except ImportError:
+            try:
+                import subprocess
+                process = subprocess.Popen(
+                    ["powershell", "-Command", f"Set-Clipboard -Value '{text}'"],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                process.communicate(timeout=5)
+                return f"Copied {len(text)} characters to clipboard"
+            except Exception as e:
+                return f"Error setting clipboard: {e}"
+
+    # =========================================================================
+    # WINDOW TEXT READING (no OCR needed)
+    # =========================================================================
+
+    def get_window_text(title: str, max_depth: int = 5) -> str:
+        """Read all text content from a window's controls without OCR.
+
+        Extracts text from all UI elements (labels, edit boxes, static text, etc.).
+        Much faster and more accurate than OCR for native Windows apps.
+        """
+        if not _HAS_PYWINAUTO:
+            return "Error: pywinauto not available"
+        try:
+            app = Application(backend="uia").connect(title_re=f".*{re.escape(title)}.*")
+            win = app.top_window()
+            texts = []
+
+            def _extract(ctrl, depth=0):
+                if depth > max_depth:
+                    return
+                try:
+                    text = ctrl.window_text().strip()
+                    ctype = ctrl.friendly_class_name()
+                    if text and ctype not in ("Pane", "Window", "TabControl"):
+                        texts.append(text)
+                    for child in ctrl.children():
+                        _extract(child, depth + 1)
+                except Exception:
+                    pass
+
+            _extract(win)
+            return "\n".join(texts) if texts else "(no text found in window)"
+        except Exception as e:
+            return f"Error reading window text: {e}"
+
+    # =========================================================================
     # REGISTER ALL TOOLS
     # =========================================================================
 
@@ -1360,5 +1441,45 @@ def register(registry, config):
             "required": ["filename"],
         },
         func=open_file_dialog,
+        category="computer",
+    ))
+
+    # --- Clipboard ---
+    registry.register(ToolDef(
+        name="get_clipboard",
+        description="Read the current clipboard content. Useful for reading copied text or checking copy operations.",
+        parameters={
+            "properties": {},
+            "required": [],
+        },
+        func=get_clipboard,
+        category="computer",
+    ))
+
+    registry.register(ToolDef(
+        name="set_clipboard",
+        description="Copy text to the system clipboard.",
+        parameters={
+            "properties": {
+                "text": {"type": "string", "description": "Text to copy to clipboard"},
+            },
+            "required": ["text"],
+        },
+        func=set_clipboard,
+        category="computer",
+    ))
+
+    # --- Window Text Reading ---
+    registry.register(ToolDef(
+        name="get_window_text",
+        description="Read all text from a window's controls without OCR. Faster and more accurate than read_screen_text for native apps.",
+        parameters={
+            "properties": {
+                "title": {"type": "string", "description": "Window title (partial match)"},
+                "max_depth": {"type": "integer", "description": "Control tree depth to scan", "default": 5},
+            },
+            "required": ["title"],
+        },
+        func=get_window_text,
         category="computer",
     ))

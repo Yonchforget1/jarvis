@@ -19,11 +19,21 @@ def register_all(registry, config=None):
     planner_tools.register(registry)
     tool_chain.register(registry)
 
-    if config and config.api_key:
-        # Lazy-load heavy computer vision modules only when an API key is set
-        from . import computer, browser
+    # Computer control tools: always register (they work without API key).
+    # Only the AI vision tool (analyze_screen) needs an API key.
+    try:
+        from . import computer
         computer.register(registry, config)
-        browser.register(registry, config)
+    except ImportError:
+        pass  # pywinauto/pyautogui not installed
+
+    if config and config.api_key:
+        # Browser automation requires API key for page analysis
+        try:
+            from . import browser
+            browser.register(registry, config)
+        except ImportError:
+            pass
 
 
 # Alias so both names work across the codebase
