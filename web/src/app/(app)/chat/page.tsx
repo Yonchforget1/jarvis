@@ -13,10 +13,51 @@ export default function ChatPage() {
     clearUnread();
   }, [clearUnread]);
 
+  // Request notification permission on first visit
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      // Delay to not interrupt the user immediately
+      const timer = setTimeout(() => {
+        Notification.requestPermission();
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Increment unread when assistant responds and tab is hidden
+  const titleFlashRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Flash title when tab is hidden to notify user
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden && titleFlashRef.current) {
+        clearInterval(titleFlashRef.current);
+        titleFlashRef.current = null;
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
   const onAssistantMessage = useCallback(() => {
     if (document.hidden) {
       incrementUnread();
+      // Flash the title
+      if (!titleFlashRef.current) {
+        const original = document.title;
+        let show = true;
+        titleFlashRef.current = setInterval(() => {
+          document.title = show ? "New message - JARVIS" : original;
+          show = !show;
+        }, 1000);
+      }
+      // Send browser notification if permitted
+      if (Notification.permission === "granted") {
+        new Notification("JARVIS", {
+          body: "New response ready",
+          icon: "/icon-192x192.png",
+        });
+      }
     }
   }, [incrementUnread]);
 
