@@ -100,7 +100,7 @@ export function RegisterForm() {
     setLoading(true);
     try {
       await register(username, password, email);
-      router.push("/chat");
+      router.replace("/chat");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -219,6 +219,9 @@ export function RegisterForm() {
                 <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500 animate-scale-in" />
               )}
             </div>
+            {confirmPassword && !passwordsMatch && (
+              <p className="text-[10px] text-red-400">Passwords do not match</p>
+            )}
           </div>
           <Button
             type="submit"

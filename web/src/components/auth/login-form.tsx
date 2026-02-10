@@ -43,7 +43,7 @@ export function LoginForm() {
     setLoading(true);
     try {
       await login(username, password);
-      router.push("/chat");
+      router.replace("/chat");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed";
       // Detect rate limiting (429 Too Many Requests)

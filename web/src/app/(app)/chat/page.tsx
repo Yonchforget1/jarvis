@@ -30,10 +30,11 @@ export default function ChatPage() {
 
   // Deep-link: load session from ?session=<id> query parameter
   const deepLinkHandled = useRef(false);
+  const isValidSessionId = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   useEffect(() => {
     if (deepLinkHandled.current) return;
     const sessionParam = searchParams.get("session");
-    if (sessionParam && sessionParam !== selectedSessionId) {
+    if (sessionParam && sessionParam !== selectedSessionId && isValidSessionId(sessionParam)) {
       deepLinkHandled.current = true;
       selectSession(sessionParam);
     }

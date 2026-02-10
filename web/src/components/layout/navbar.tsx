@@ -95,7 +95,9 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="sm:hidden border-t border-border/20 bg-background/95 backdrop-blur-xl animate-fade-in">
+        <>
+        <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+        <div className="sm:hidden border-t border-border/20 bg-background/95 backdrop-blur-xl animate-fade-in relative z-50">
           <div className="flex flex-col gap-1 p-4">
             <Link
               href="#features"
@@ -121,6 +123,7 @@ export function Navbar() {
             </div>
           </div>
         </div>
+        </>
       )}
     </nav>
   );
