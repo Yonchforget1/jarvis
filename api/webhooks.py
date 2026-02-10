@@ -91,8 +91,12 @@ def fire_event(user_id: str, event: str, data: dict) -> None:
         thread.start()
 
 
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 2  # seconds
+
+
 def _deliver(hook: dict, event: str, data: dict) -> None:
-    """Deliver a webhook payload via POST."""
+    """Deliver a webhook payload via POST with retry on failure."""
     url = hook.get("url", "")
     payload = {
         "event": event,
@@ -107,8 +111,15 @@ def _deliver(hook: dict, event: str, data: dict) -> None:
         sig = hmac.new(hook["secret"].encode(), json.dumps(payload).encode(), hashlib.sha256).hexdigest()
         headers["X-Jarvis-Signature"] = sig
 
-    try:
-        resp = httpx.post(url, json=payload, headers=headers, timeout=10)
-        log.info("Webhook delivered to %s: %d", url, resp.status_code)
-    except Exception as e:
-        log.warning("Webhook delivery failed to %s: %s", url, e)
+    for attempt in range(_MAX_RETRIES):
+        try:
+            resp = httpx.post(url, json=payload, headers=headers, timeout=10)
+            if resp.status_code < 500:
+                log.info("Webhook delivered to %s: %d (attempt %d)", url, resp.status_code, attempt + 1)
+                return
+            log.warning("Webhook %s returned %d, retrying (%d/%d)", url, resp.status_code, attempt + 1, _MAX_RETRIES)
+        except Exception as e:
+            log.warning("Webhook delivery failed to %s: %s (attempt %d/%d)", url, e, attempt + 1, _MAX_RETRIES)
+        if attempt < _MAX_RETRIES - 1:
+            time.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
+    log.error("Webhook delivery permanently failed to %s after %d attempts", url, _MAX_RETRIES)

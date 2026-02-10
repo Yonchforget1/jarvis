@@ -203,18 +203,23 @@ class SessionManager:
             return list(self._sessions.values())
 
     def cleanup_expired(self) -> int:
-        """Remove sessions that have been inactive longer than SESSION_TTL_HOURS."""
+        """Remove sessions that have been inactive longer than SESSION_TTL_HOURS.
+        Persists sessions to disk before removing them from memory."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=SESSION_TTL_HOURS)
         with self._lock:
-            expired = [
-                sid for sid, s in self._sessions.items()
+            expired_sessions = [
+                s for s in self._sessions.values()
                 if s.last_active < cutoff
             ]
-            for sid in expired:
-                del self._sessions[sid]
-        if expired:
-            log.info("Cleaned up %d expired session(s)", len(expired))
-        return len(expired)
+            for s in expired_sessions:
+                try:
+                    s.save_to_disk()
+                except Exception as e:
+                    log.warning("Failed to persist expired session %s: %s", s.session_id, e)
+                del self._sessions[s.session_id]
+        if expired_sessions:
+            log.info("Cleaned up %d expired session(s) (persisted to disk)", len(expired_sessions))
+        return len(expired_sessions)
 
     def start_cleanup_timer(self, interval_seconds: int = 3600):
         """Start a background timer to clean up expired sessions periodically."""
@@ -229,8 +234,14 @@ class SessionManager:
         self._cleanup_thread.start()
 
     def shutdown(self):
-        """Clean up all sessions."""
+        """Persist all sessions to disk, then clean up."""
         if hasattr(self, "_shutdown_event"):
             self._shutdown_event.set()
         with self._lock:
+            for s in self._sessions.values():
+                try:
+                    s.save_to_disk()
+                except Exception as e:
+                    log.warning("Failed to persist session %s on shutdown: %s", s.session_id, e)
+            log.info("Persisted %d session(s) on shutdown", len(self._sessions))
             self._sessions.clear()
