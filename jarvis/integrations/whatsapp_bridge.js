@@ -22,10 +22,13 @@ const https = require("https");
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
-const API_BASE =
-  process.argv.find((a) => a.startsWith("--api="))?.split("=")[1] ||
-  process.argv[process.argv.indexOf("--api") + 1] ||
-  "http://localhost:8000";
+const API_BASE = (() => {
+  const eqArg = process.argv.find((a) => a.startsWith("--api="));
+  if (eqArg) return eqArg.split("=")[1];
+  const idx = process.argv.indexOf("--api");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return "http://localhost:8000";
+})();
 
 const IMAGES_DIR = path.join(__dirname, "whatsapp_images");
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
