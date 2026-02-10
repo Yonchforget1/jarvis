@@ -156,6 +156,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let streamSessionId: string | null = null;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -194,6 +195,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
             switch (eventType) {
               case "session": {
                 const d = data as SSESessionEvent;
+                streamSessionId = d.session_id;
                 setSessionId(d.session_id);
                 break;
               }
@@ -269,10 +271,10 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
                   timestamp: new Date().toISOString(),
                 }));
                 // Propagate auto-generated title so sidebar can update
-                if (doneData.auto_title) {
+                if (doneData.auto_title && (streamSessionId || sessionId)) {
                   window.dispatchEvent(
                     new CustomEvent("session-title-updated", {
-                      detail: { sessionId: sessionId, autoTitle: doneData.auto_title },
+                      detail: { sessionId: streamSessionId || sessionId, autoTitle: doneData.auto_title },
                     }),
                   );
                 }

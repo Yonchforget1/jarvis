@@ -44,6 +44,7 @@ class JarvisSession:
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     custom_name: str = ""
     auto_title: str = ""
+    archived: bool = False
 
     @property
     def message_count(self) -> int:
@@ -66,7 +67,7 @@ class JarvisSession:
             total_input_tokens=self.conversation.total_input_tokens,
             total_output_tokens=self.conversation.total_output_tokens,
             total_tool_calls=self.conversation.total_tool_calls,
-            metadata={"custom_name": self.custom_name, "auto_title": self.auto_title},
+            metadata={"custom_name": self.custom_name, "auto_title": self.auto_title, "archived": self.archived},
         )
 
     def auto_save(self):

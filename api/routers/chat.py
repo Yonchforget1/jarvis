@@ -205,6 +205,9 @@ async def chat_batch(
             content={"detail": "Maximum 10 messages per batch"},
         )
 
+    if _session_manager is None:
+        return JSONResponse(status_code=503, content={"detail": "Service initializing"})
+
     loop = asyncio.get_event_loop()
     results = []
 
