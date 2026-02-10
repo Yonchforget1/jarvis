@@ -11,7 +11,11 @@ const RETRY_INTERVAL = 5000; // 5 seconds when disconnected
 export function useConnection() {
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [latency, setLatency] = useState<number | null>(null);
+  const statusRef = useRef<ConnectionStatus>("checking");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep statusRef in sync without causing re-renders in the effect
+  statusRef.current = status;
 
   const checkConnection = useCallback(async () => {
     const start = Date.now();
@@ -36,19 +40,29 @@ export function useConnection() {
   useEffect(() => {
     checkConnection();
 
-    const startPolling = () => {
+    // Adaptive polling: faster when disconnected
+    const poll = () => {
+      const interval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
       if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(checkConnection, POLL_INTERVAL);
+      intervalRef.current = setInterval(() => {
+        checkConnection().then(() => {
+          // Re-adjust interval if status changed
+          const newInterval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
+          if (newInterval !== interval) poll();
+        });
+      }, interval);
     };
+    poll();
 
-    startPolling();
-
-    // Poll faster when disconnected
-    const statusCheck = setInterval(() => {
-      if (status === "disconnected") {
+    // Pause polling when tab is hidden
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      } else {
         checkConnection();
+        poll();
       }
-    }, RETRY_INTERVAL);
+    };
 
     // Detect browser online/offline for instant feedback
     const handleOnline = () => checkConnection();
@@ -56,16 +70,18 @@ export function useConnection() {
       setStatus("disconnected");
       setLatency(null);
     };
+
+    document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      clearInterval(statusCheck);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [checkConnection, status]);
+  }, [checkConnection]);
 
   return { status, latency, retry: checkConnection };
 }

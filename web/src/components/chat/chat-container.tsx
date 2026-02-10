@@ -14,7 +14,7 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowDown,
-  Download,
+  Square,
   FileJson,
   FileText,
   Trash2,
@@ -515,6 +515,19 @@ export function ChatContainer({
               )}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Floating stop button during streaming */}
+      {isLoading && onStop && messages.some((m) => m.isStreaming) && (
+        <div className="flex justify-center py-2 animate-fade-in">
+          <button
+            onClick={onStop}
+            className="flex items-center gap-2 rounded-full bg-card border border-border/50 shadow-lg px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 hover:shadow-xl active:scale-95"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+            Stop generating
+          </button>
         </div>
       )}
 
