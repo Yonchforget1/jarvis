@@ -249,10 +249,14 @@ async def session_analytics(
 async def search_conversations(
     request: Request,
     q: str = Query(..., min_length=1, max_length=200, description="Search query"),
+    limit: int = Query(default=20, ge=1, le=50, description="Max sessions to return"),
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     user: UserInfo = Depends(get_current_user),
 ):
     """Full-text search across all conversation messages for the current user."""
     sessions = _session_manager.get_user_sessions(user.id)
+    # Search most recent sessions first for faster relevant results
+    sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)
     query_lower = q.lower()
     results = []
 
@@ -289,10 +293,17 @@ async def search_conversations(
                 "match_count": len(matches),
             })
 
+    sorted_results = sorted(results, key=lambda r: r["match_count"], reverse=True)
+    total = len(sorted_results)
+    page = sorted_results[offset:offset + limit]
+
     return {
         "query": q,
-        "total_matches": sum(r["match_count"] for r in results),
-        "sessions": sorted(results, key=lambda r: r["match_count"], reverse=True)[:20],
+        "total_matches": sum(r["match_count"] for r in sorted_results),
+        "total_sessions": total,
+        "sessions": page,
+        "limit": limit,
+        "offset": offset,
     }
 
 

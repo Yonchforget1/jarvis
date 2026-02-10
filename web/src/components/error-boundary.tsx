@@ -84,13 +84,36 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("[ErrorBoundary]", {
+    const details = {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
       url: typeof window !== "undefined" ? window.location.href : "unknown",
       timestamp: new Date().toISOString(),
-    });
+    };
+    console.error("[ErrorBoundary]", details);
+
+    // Report to backend logging endpoint (fire-and-forget)
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      fetch(`${apiUrl}/api/logs/client-errors`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          errors: [{
+            level: "error",
+            message: error.message,
+            component: "ErrorBoundary",
+            pathname: typeof window !== "undefined" ? window.location.pathname : "",
+            stack_trace: (error.stack || "").slice(0, 5000),
+            timestamp: details.timestamp,
+          }],
+        }),
+      }).catch(() => {});
+    } catch { /* ignore */ }
   }
 
   handleReset = () => {

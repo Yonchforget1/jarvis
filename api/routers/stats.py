@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -67,3 +67,36 @@ async def get_stats(request: Request, user: UserInfo = Depends(get_current_user)
     except Exception as e:
         log.exception("Failed to get stats for user %s", user.id)
         raise HTTPException(status_code=500, detail="Failed to retrieve stats")
+
+
+@router.get("/stats/sessions")
+@_limiter.limit("20/minute")
+async def get_session_stats(
+    request: Request,
+    limit: int = Query(default=20, ge=1, le=50),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Per-session token usage breakdown for the current user."""
+    sessions = _session_manager.get_user_sessions(user.id)
+    sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)[:limit]
+
+    return {
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "title": s.custom_name or s.auto_title or s.conversation.get_first_user_message()[:50] or "Untitled",
+                "created_at": s.created_at.isoformat(),
+                "last_active": s.last_active.isoformat(),
+                "message_count": s.message_count,
+                "input_tokens": s.conversation.total_input_tokens,
+                "output_tokens": s.conversation.total_output_tokens,
+                "tool_calls": s.conversation.total_tool_calls,
+                "cost_estimate_usd": round(
+                    (s.conversation.total_input_tokens * 3.0 / 1_000_000)
+                    + (s.conversation.total_output_tokens * 15.0 / 1_000_000), 4
+                ),
+            }
+            for s in sessions
+        ],
+        "total": len(sessions),
+    }
