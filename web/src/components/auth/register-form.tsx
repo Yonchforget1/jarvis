@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,9 @@ export function RegisterForm() {
   }, [authLoading, isAuthenticated, router]);
 
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  const emailValid = !email || emailRegex.test(email);
+  const emailTouched = email.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,22 +140,34 @@ export function RegisterForm() {
               autoComplete="username"
               enterKeyHint="next"
               aria-describedby={error ? "register-error" : undefined}
-              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
+              aria-invalid={!!error && error.toLowerCase().includes("username")}
+              className={`h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 ${error && error.toLowerCase().includes("username") ? "border-red-500/50" : ""}`}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email" className="text-xs">Email <span className="text-muted-foreground/40">(optional)</span></Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              pattern="[a-zA-Z0-9.!#$%&amp;'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+"
-              title="Enter a valid email address"
-              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
-            />
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                aria-invalid={emailTouched && !emailValid}
+                aria-describedby={emailTouched && !emailValid ? "email-error" : undefined}
+                className={`h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10 ${emailTouched && !emailValid ? "border-red-500/50" : ""}`}
+              />
+              {emailTouched && !emailValid && (
+                <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" />
+              )}
+              {emailTouched && emailValid && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500 animate-scale-in" />
+              )}
+            </div>
+            {emailTouched && !emailValid && (
+              <p id="email-error" className="text-[10px] text-red-400">Please enter a valid email address</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-xs">Password</Label>

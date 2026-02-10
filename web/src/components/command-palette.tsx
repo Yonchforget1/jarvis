@@ -18,7 +18,7 @@ import {
   Monitor,
   Trash2,
   FileText,
-  FileJson,
+  AlertTriangle,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
@@ -34,6 +34,7 @@ interface CommandItem {
   icon: typeof Search;
   action: () => void;
   category: string;
+  destructive?: boolean;
 }
 
 // Recent actions tracking (frecency)
@@ -199,6 +200,7 @@ export function CommandPalette() {
       label: "Clear Chat",
       description: "Remove all messages from current conversation",
       icon: Trash2,
+      destructive: true,
       action: () => {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "l", ctrlKey: true }));
         close();
@@ -218,6 +220,7 @@ export function CommandPalette() {
       label: "Log Out",
       description: "Sign out of Jarvis",
       icon: LogOut,
+      destructive: true,
       action: () => { logout(); close(); },
       category: "Actions",
     },
@@ -408,13 +411,16 @@ export function CommandPalette() {
                           onMouseEnter={() => setSelectedIndex(fi)}
                           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                             isSelected
-                              ? "bg-primary/10 text-foreground"
-                              : "text-muted-foreground hover:bg-muted/50"
+                              ? cmd.destructive ? "bg-red-500/10 text-red-400" : "bg-primary/10 text-foreground"
+                              : cmd.destructive ? "text-red-400/70 hover:bg-red-500/5" : "text-muted-foreground hover:bg-muted/50"
                           }`}
                         >
-                          <cmd.icon className={`h-4 w-4 shrink-0 ${isSelected ? "text-primary" : ""}`} />
+                          <cmd.icon className={`h-4 w-4 shrink-0 ${isSelected ? (cmd.destructive ? "text-red-400" : "text-primary") : ""}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{cmd.label}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-medium">{cmd.label}</p>
+                              {cmd.destructive && <AlertTriangle className="h-3 w-3 text-red-400/60 shrink-0" />}
+                            </div>
                             {cmd.description && (
                               <p className="text-xs text-muted-foreground/60 truncate">
                                 {cmd.description}

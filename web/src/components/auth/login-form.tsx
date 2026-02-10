@@ -122,7 +122,8 @@ export function LoginForm() {
               autoComplete="username"
               enterKeyHint="next"
               aria-describedby={error ? "login-error" : undefined}
-              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
+              aria-invalid={!!error}
+              className={`h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 ${error ? "border-red-500/50" : ""}`}
             />
           </div>
           <div className="space-y-2">
@@ -139,7 +140,8 @@ export function LoginForm() {
                 autoComplete="current-password"
                 enterKeyHint="go"
                 aria-describedby={error ? "login-error" : undefined}
-                className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
+                aria-invalid={!!error}
+                className={`h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10 ${error ? "border-red-500/50" : ""}`}
               />
               <button
                 type="button"

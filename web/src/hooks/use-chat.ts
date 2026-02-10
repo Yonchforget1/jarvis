@@ -288,9 +288,25 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
           const errorMessage =
             err instanceof Error ? err.message : "Failed to get response";
           setError(errorMessage);
+
+          // Parse error type and suggest recovery action
+          let suggestion = "Please try again or start a new chat.";
+          const status = err instanceof ApiError ? err.status : 0;
+          if (status === 429) {
+            suggestion = "You're sending messages too quickly. Please wait a moment and try again.";
+          } else if (status === 503 || status === 502) {
+            suggestion = "The server is temporarily unavailable. Please wait a few seconds and retry.";
+          } else if (status === 413) {
+            suggestion = "Your message was too long. Try shortening it and sending again.";
+          } else if (errorMessage.toLowerCase().includes("fetch") || errorMessage.toLowerCase().includes("network")) {
+            suggestion = "Network connection lost. Check your internet and try again.";
+          } else if (status >= 500) {
+            suggestion = "A server error occurred. The team has been notified. Please try again shortly.";
+          }
+
           updateStreamingMessage(assistantMsgId, (m) => ({
             ...m,
-            content: `I encountered an error: ${errorMessage}\n\nPlease try again or start a new chat.`,
+            content: `**Error:** ${errorMessage}\n\n${suggestion}`,
             isError: true,
             isStreaming: false,
             streamStatus: undefined,
