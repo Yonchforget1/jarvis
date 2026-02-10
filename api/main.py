@@ -122,6 +122,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": "Invalid request", "errors": errors},
     )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler for unhandled exceptions — returns structured 500."""
+    req_id = request.headers.get("X-Request-ID", "?")
+    log.exception("[%s] Unhandled error on %s %s: %s", req_id, request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": req_id},
+    )
+
+
 _cors_origins = os.getenv(
     "CORS_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000",

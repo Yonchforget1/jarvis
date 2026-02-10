@@ -71,6 +71,10 @@ export default function SettingsPage() {
       toast.error("Too short", "New password must be at least 8 characters.");
       return;
     }
+    if (/^\d+$/.test(newPassword) || /^[a-zA-Z]+$/.test(newPassword)) {
+      toast.error("Too simple", "Password must contain both letters and numbers.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       toast.error("Mismatch", "New passwords do not match.");
       return;
