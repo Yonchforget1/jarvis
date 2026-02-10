@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -18,12 +18,27 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${Math.floor(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+}
+
+const STALE_THRESHOLD_SECONDS = 45;
+
 export default function DashboardPage() {
   const { stats, loading: statsLoading, refetching, error: statsError, refetch, lastUpdated } = useStats(15000);
   const { learnings, loading: learningsLoading, error: learningsError } = useLearnings();
   const [lastUpdatedText, setLastUpdatedText] = useState("");
+  const [isStale, setIsStale] = useState(false);
 
-  // Update "last updated" text every second
+  // Update "last updated" text every second and detect stale data
   useEffect(() => {
     if (!lastUpdated) return;
     const update = () => {
@@ -31,6 +46,7 @@ export default function DashboardPage() {
       if (secs < 5) setLastUpdatedText("just now");
       else if (secs < 60) setLastUpdatedText(`${secs}s ago`);
       else setLastUpdatedText(`${Math.floor(secs / 60)}m ago`);
+      setIsStale(secs > STALE_THRESHOLD_SECONDS);
     };
     update();
     const timer = setInterval(update, 1000);
@@ -119,6 +135,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Stale data warning */}
+      {isStale && (
+        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-2.5 animate-fade-in">
+          <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
+          <span className="text-xs text-yellow-400">Data may be outdated (last update {lastUpdatedText})</span>
+          <button
+            onClick={refetch}
+            disabled={refetching}
+            className="ml-auto text-xs text-yellow-400 underline underline-offset-2 hover:text-yellow-300 transition-colors"
+          >
+            {refetching ? "Refreshing..." : "Refresh now"}
+          </button>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div role="region" aria-live="polite" aria-label="System statistics" className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <StatsCard
@@ -164,7 +195,7 @@ export default function DashboardPage() {
         <StatsCard
           title="Sessions"
           value={stats?.active_sessions || 0}
-          description="Currently active"
+          description={`Uptime: ${formatUptime(stats?.uptime_seconds || 0)}`}
           icon={Users}
           iconColor="text-orange-400"
           bgColor="bg-orange-400/10"

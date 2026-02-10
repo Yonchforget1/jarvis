@@ -44,6 +44,8 @@ export interface SystemStats {
   total_input_tokens: number;
   total_output_tokens: number;
   total_tool_calls: number;
+  total_messages: number;
+  avg_tokens_per_message: number;
 }
 
 export interface User {

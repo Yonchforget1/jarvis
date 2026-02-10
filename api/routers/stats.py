@@ -40,6 +40,13 @@ async def get_stats(user: UserInfo = Depends(get_current_user)):
             all_sessions = _session_manager.get_all_sessions()
             tool_count = len(all_sessions[0].conversation.registry.all_tools()) if all_sessions else 0
 
+        # Total messages across all sessions
+        total_messages = sum(len(s.conversation.messages) for s in sessions)
+
+        # Average tokens per message
+        total_tokens = total_input + total_output
+        avg_tokens = round(total_tokens / total_messages, 1) if total_messages > 0 else 0
+
         return StatsResponse(
             backend=config.backend,
             model=config.model,
@@ -50,6 +57,8 @@ async def get_stats(user: UserInfo = Depends(get_current_user)):
             total_input_tokens=total_input,
             total_output_tokens=total_output,
             total_tool_calls=total_tools,
+            total_messages=total_messages,
+            avg_tokens_per_message=avg_tokens,
         )
     except Exception as e:
         log.exception("Failed to get stats for user %s", user.id)
