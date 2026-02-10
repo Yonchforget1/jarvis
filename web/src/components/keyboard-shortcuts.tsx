@@ -8,6 +8,7 @@ const SHORTCUTS = [
     category: "Navigation",
     items: [
       { keys: ["Ctrl", "K"], description: "Open command palette" },
+      { keys: ["Ctrl", "N"], description: "New chat" },
       { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
       { keys: ["Ctrl", "Shift", "F"], description: "Toggle focus mode" },
       { keys: ["Esc"], description: "Close sidebar / modal" },

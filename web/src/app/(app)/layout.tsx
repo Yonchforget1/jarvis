@@ -57,6 +57,12 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         e.preventDefault();
         toggleSidebarCollapse();
       }
+      // Ctrl+N starts a new chat
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        selectSession("");
+        router.push("/chat");
+      }
       // Ctrl+Shift+F toggles focus mode
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
         e.preventDefault();

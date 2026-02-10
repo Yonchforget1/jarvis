@@ -24,8 +24,11 @@ const SHORTCUT_GROUPS = [
     title: "Navigation",
     shortcuts: [
       { keys: ["Ctrl", "F"], description: "Search messages" },
-      { keys: ["Ctrl", "K"], description: "New chat" },
+      { keys: ["Ctrl", "K"], description: "Command palette" },
+      { keys: ["Ctrl", "N"], description: "New chat" },
+      { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
       { keys: ["Ctrl", "Shift", "E"], description: "Export chat" },
+      { keys: ["Ctrl", "Shift", "F"], description: "Focus mode" },
       { keys: ["Esc"], description: "Close search / dialog" },
     ],
   },

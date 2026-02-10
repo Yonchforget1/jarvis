@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bot } from "lucide-react";
 
 const THINKING_PHRASES = [
@@ -13,6 +13,8 @@ const THINKING_PHRASES = [
 
 export function TypingIndicator() {
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
 
   // Cycle through phrases
   useEffect(() => {
@@ -21,6 +23,20 @@ export function TypingIndicator() {
     }, 3000);
     return () => clearInterval(timer);
   }, []);
+
+  // Track elapsed time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatElapsed = (s: number) => {
+    if (s < 5) return "";
+    if (s < 60) return `${s}s`;
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  };
 
   return (
     <div className="flex gap-3 px-4 py-3 animate-fade-in-up">
@@ -40,6 +56,11 @@ export function TypingIndicator() {
             />
           ))}
         </div>
+        {elapsed >= 5 && (
+          <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums ml-1">
+            {formatElapsed(elapsed)}
+          </span>
+        )}
       </div>
     </div>
   );
