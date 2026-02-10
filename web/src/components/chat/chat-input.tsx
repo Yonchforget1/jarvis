@@ -154,6 +154,20 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const draftRef = useRef("");
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Listen for files dropped on the chat container (full-page drop zone)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const files = (e as CustomEvent<{ files: File[] }>).detail?.files;
+      if (files) {
+        for (const file of files) {
+          uploadFile(file);
+        }
+      }
+    };
+    window.addEventListener("chat-drop-files", handler);
+    return () => window.removeEventListener("chat-drop-files", handler);
+  }, [uploadFile]);
+
   // Restore input history and draft from localStorage on mount
   useEffect(() => {
     try {

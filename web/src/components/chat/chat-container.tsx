@@ -27,6 +27,7 @@ import {
   Bug,
   BookOpen,
   ChevronsDownUp,
+  Upload,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -139,6 +140,8 @@ export function ChatContainer({
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const prevMessageCountRef = useRef(messages.length);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCountRef = useRef(0);
 
   // Fetch templates once for empty state
   useEffect(() => {
@@ -417,7 +420,43 @@ export function ChatContainer({
       : null;
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col relative"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragCountRef.current++;
+        setIsDragOver(true);
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={() => {
+        dragCountRef.current--;
+        if (dragCountRef.current <= 0) {
+          dragCountRef.current = 0;
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragCountRef.current = 0;
+        setIsDragOver(false);
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          window.dispatchEvent(new CustomEvent("chat-drop-files", { detail: { files: Array.from(files) } }));
+        }
+      }}
+    >
+      {/* Full-page drop zone overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary/50 rounded-xl animate-fade-in pointer-events-none">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 border border-primary/30">
+              <Upload className="h-8 w-8 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Drop files to attach</p>
+            <p className="text-xs text-muted-foreground/60">Supports images, documents, and code files</p>
+          </div>
+        </div>
+      )}
       {/* Search bar */}
       <div
         className={`overflow-hidden transition-all duration-200 ease-in-out ${
