@@ -328,18 +328,21 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     }
   }, []);
 
-  const loadSession = useCallback(async (sid: string) => {
+  const loadSession = useCallback(async (sid: string, _attempt = 0) => {
+    const MAX_LOAD_RETRIES = 2;
     // Validate session ID format to prevent invalid API calls
     if (!sid || sid.length < 5) return;
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    if (loadAbortRef.current) {
-      loadAbortRef.current.abort();
+    if (_attempt === 0) {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      if (loadAbortRef.current) {
+        loadAbortRef.current.abort();
+      }
+      setIsLoading(true);
+      setError(null);
     }
     loadAbortRef.current = new AbortController();
-    setIsLoading(true);
-    setError(null);
 
     try {
       const token =
@@ -382,10 +385,17 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
       setSessionId(sid);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
+      if (_attempt < MAX_LOAD_RETRIES) {
+        // Retry with exponential backoff
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, _attempt)));
+        return loadSession(sid, _attempt + 1);
+      }
       setError("Failed to load conversation history");
     } finally {
-      setIsLoading(false);
-      loadAbortRef.current = null;
+      if (_attempt === 0 || _attempt >= MAX_LOAD_RETRIES) {
+        setIsLoading(false);
+        loadAbortRef.current = null;
+      }
     }
   }, []);
 
