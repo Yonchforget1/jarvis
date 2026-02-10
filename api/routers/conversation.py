@@ -158,6 +158,29 @@ async def archive_session(
     return {"status": "archived" if session.archived else "unarchived", "session_id": session_id}
 
 
+@router.post("/sessions/{session_id}/duplicate")
+@_limiter.limit("5/minute")
+async def duplicate_session(
+    request: Request,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Duplicate a session with all its messages into a new session."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+    new_session = _session_manager.duplicate_session(session_id, user.id)
+    if not new_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {
+        "status": "duplicated",
+        "session_id": new_session.session_id,
+        "source_session_id": session_id,
+        "custom_name": new_session.custom_name or None,
+        "auto_title": new_session.auto_title or None,
+        "message_count": new_session.message_count,
+    }
+
+
 @router.delete("/sessions/{session_id}")
 @_limiter.limit("10/minute")
 async def delete_session(

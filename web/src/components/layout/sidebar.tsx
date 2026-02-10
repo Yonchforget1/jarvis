@@ -32,6 +32,7 @@ import {
   Archive,
   ArchiveRestore,
   Link2,
+  Copy,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useAuth } from "@/lib/auth";
@@ -256,6 +257,19 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
       renameSession(editingSessionId, editValue);
       setEditingSessionId(null);
       setEditValue("");
+    }
+  };
+
+  const duplicateSession = async (sessionId: string) => {
+    try {
+      const res = await api.post<{ session_id: string; custom_name?: string; auto_title?: string }>(`/api/conversation/sessions/${sessionId}/duplicate`, {});
+      toast.success("Duplicated", "Session forked into a new conversation.");
+      fetchSessions();
+      if (onSessionSelect) {
+        onSessionSelect(res.session_id, res.custom_name || res.auto_title || undefined);
+      }
+    } catch {
+      toast.error("Duplicate failed", "Could not duplicate session.");
     }
   };
 
@@ -882,6 +896,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           >
             <Link2 className="h-3 w-3" />
             Copy Link
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              duplicateSession(contextMenu.sessionId);
+              setContextMenu(null);
+            }}
+          >
+            <Copy className="h-3 w-3" />
+            Duplicate
           </button>
           <button
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

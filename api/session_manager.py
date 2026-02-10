@@ -174,6 +174,49 @@ class SessionManager:
                 log.warning("Failed to persist evicted session %s: %s", evict.session_id, e)
         return self._create_session(user_id)
 
+    def duplicate_session(self, session_id: str, user_id: str) -> JarvisSession | None:
+        """Duplicate a session with all its messages into a new session."""
+        import copy
+
+        source = self.get_session(session_id, user_id)
+        if not source:
+            return None
+
+        # Enforce per-user session limit before creating
+        with self._lock:
+            user_sessions = sorted(
+                [s for s in self._sessions.values() if s.user_id == user_id],
+                key=lambda s: s.last_active,
+            )
+            if len(user_sessions) >= MAX_SESSIONS_PER_USER:
+                evict = user_sessions[0]
+                log.info("User %s hit session cap (%d) during duplicate, evicting %s",
+                         user_id, MAX_SESSIONS_PER_USER, evict.session_id)
+                self._sessions.pop(evict.session_id, None)
+                try:
+                    evict.save_to_disk()
+                except Exception as e:
+                    log.warning("Failed to persist evicted session %s: %s", evict.session_id, e)
+
+        new_session = self._create_session(user_id)
+
+        # Copy messages
+        new_session.conversation.messages = copy.deepcopy(source.conversation.messages)
+        new_session.conversation.total_input_tokens = source.conversation.total_input_tokens
+        new_session.conversation.total_output_tokens = source.conversation.total_output_tokens
+        new_session.conversation.total_tool_calls = source.conversation.total_tool_calls
+
+        # Set name indicating it's a copy
+        source_name = source.custom_name or source.auto_title or ""
+        if source_name:
+            new_session.custom_name = f"{source_name} (copy)"
+        else:
+            first_msg = source.conversation.get_first_user_message()
+            title = _generate_auto_title(first_msg) if first_msg else "Conversation"
+            new_session.auto_title = f"{title} (copy)"
+
+        return new_session
+
     def get_session(self, session_id: str, user_id: str) -> JarvisSession | None:
         """Get a session by ID if it belongs to the user."""
         with self._lock:
