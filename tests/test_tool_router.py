@@ -86,10 +86,20 @@ class TestSelectTools:
                          "type_into_control", "send_keys", "get_window_text"}
         assert names & computer_tools, f"Expected computer tools in {names}"
 
-    def test_conversational_sends_minimal(self):
+    def test_conversational_sends_zero_tools(self):
         registry = _make_registry()
         tools = select_tools("hello", registry)
-        assert len(tools) <= 3
+        assert len(tools) == 0, f"Expected zero tools for 'hello', got {[t.name for t in tools]}"
+
+    def test_conversational_how_are_you_sends_zero(self):
+        registry = _make_registry()
+        tools = select_tools("how are you", registry)
+        assert len(tools) == 0
+
+    def test_conversational_whats_up_sends_zero(self):
+        registry = _make_registry()
+        tools = select_tools("what's up", registry)
+        assert len(tools) == 0
 
     def test_baseline_always_present(self):
         registry = _make_registry()

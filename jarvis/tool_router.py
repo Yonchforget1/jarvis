@@ -5,7 +5,7 @@ This router analyzes the user message and picks the ~8 most relevant tools,
 keeping quality high and context usage low.
 
 Routing strategy:
-  1. Detect conversational intent (greeting, general question) — send fewer tools.
+  1. Detect conversational intent (greeting, general question) — send zero tools.
   2. Score each route group by how many keywords match (more matches = higher confidence).
   3. Always include a small baseline set (shell, read, write).
   4. Rank tools by their route group score, then cap at MAX_TOOLS.
@@ -28,6 +28,11 @@ _CONVERSATIONAL_PATTERNS = [
     re.compile(r"^(bye|goodbye|see you|later|cya)\b", re.I),
     re.compile(r"^(who are you|what are you|what can you do)\b", re.I),
     re.compile(r"^(yes|no|ok|okay|sure|yep|nope|alright)\b", re.I),
+    re.compile(r"^how\s+are\s+you\b", re.I),
+    re.compile(r"^what'?s\s+up\b", re.I),
+    re.compile(r"^tell\s+me\s+(a\s+joke|about\s+yourself)\b", re.I),
+    re.compile(r"^(lol|haha|nice|cool|great|awesome|wow|omg)\b", re.I),
+    re.compile(r"^(help|help me)$", re.I),
 ]
 
 # --- Keyword → tool-name mapping with weights ---
@@ -137,11 +142,10 @@ def select_tools(message: str, registry: ToolRegistry, max_tools: int = MAX_TOOL
     """
     msg_lower = message.lower()
 
-    # For purely conversational messages, send minimal tools
+    # For purely conversational messages, send ZERO tools so the model just talks
     if _is_conversational(msg_lower):
-        log.info("Tool router: conversational message, sending minimal tools")
-        all_tools = {t.name: t for t in registry.all_tools()}
-        return [all_tools[n] for n in ("search_web", "run_shell") if n in all_tools]
+        log.info("Tool router: conversational message, sending zero tools")
+        return []
 
     # Score each route group by number of keyword matches
     tool_scores: dict[str, float] = {}
