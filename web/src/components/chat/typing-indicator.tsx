@@ -39,7 +39,7 @@ export function TypingIndicator() {
   };
 
   return (
-    <div className="flex gap-3 px-4 py-3 animate-fade-in-up">
+    <div className="flex gap-3 px-4 py-3 animate-fade-in-up" role="status" aria-live="polite" aria-label="JARVIS is thinking">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 animate-glow-pulse">
         <Bot className="h-4 w-4 text-primary" />
       </div>

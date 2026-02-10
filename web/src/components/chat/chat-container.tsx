@@ -26,6 +26,7 @@ import { ChatInput } from "./chat-input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ShortcutsDialog } from "@/components/ui/shortcuts-dialog";
 import { useConnection } from "@/hooks/use-connection";
+import { useToast } from "@/components/ui/toast";
 
 function getDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
@@ -83,6 +84,7 @@ export function ChatContainer({
   onClear,
 }: ChatContainerProps) {
   const { status: connectionStatus, retry: retryConnection } = useConnection();
+  const toast = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -176,7 +178,8 @@ export function ChatContainer({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [messages]);
+    toast.success("Exported", "Chat saved as Markdown");
+  }, [messages, toast]);
 
   const exportChatJSON = useCallback(() => {
     if (messages.length === 0) return;
@@ -201,7 +204,8 @@ export function ChatContainer({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [messages]);
+    toast.success("Exported", "Chat saved as JSON");
+  }, [messages, toast]);
 
   // Ctrl+F to open search, Ctrl+Shift+E to export, Escape to close
   useEffect(() => {

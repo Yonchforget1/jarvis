@@ -21,6 +21,7 @@ import {
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
+import { useSessions } from "@/hooks/use-sessions";
 
 interface CommandItem {
   id: string;
@@ -41,6 +42,7 @@ export function CommandPalette() {
   const { theme, setTheme } = useTheme();
   const { logout } = useAuth();
   const { selectSession } = useSessionContext();
+  const { sessions } = useSessions();
 
   const close = useCallback(() => {
     setOpen(false);
@@ -145,13 +147,27 @@ export function CommandPalette() {
     },
   ];
 
+  // Add recent sessions as switchable commands (only when searching)
+  const sessionCommands: CommandItem[] = query
+    ? sessions.slice(0, 8).map((s) => ({
+        id: `session-${s.session_id}`,
+        label: s.customName || s.autoTitle || s.preview || "New conversation",
+        description: `${s.message_count} messages`,
+        icon: MessageSquare,
+        action: () => { selectSession(s.session_id, s.customName || s.autoTitle || s.preview); router.push("/chat"); close(); },
+        category: "Sessions",
+      }))
+    : [];
+
+  const allCommands = [...commands, ...sessionCommands];
+
   const filtered = query
-    ? commands.filter(
+    ? allCommands.filter(
         (cmd) =>
           cmd.label.toLowerCase().includes(query.toLowerCase()) ||
           cmd.description?.toLowerCase().includes(query.toLowerCase())
       )
-    : commands;
+    : commands; // Don't show sessions when there's no query
 
   // Group by category
   const categories = [...new Set(filtered.map((c) => c.category))];
