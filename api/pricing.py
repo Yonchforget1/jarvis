@@ -1,5 +1,9 @@
 """Token pricing for different AI backends and models."""
 
+import logging
+
+log = logging.getLogger("jarvis.api.pricing")
+
 # Pricing per 1M tokens (USD)
 PRICING: dict[str, dict[str, dict[str, float]]] = {
     "claude": {
@@ -27,7 +31,10 @@ _DEFAULT_PRICING = {"input": 3.0, "output": 15.0}
 def get_cost_estimate(backend: str, model: str, input_tokens: int, output_tokens: int) -> float:
     """Calculate estimated cost in USD for token usage."""
     backend_models = PRICING.get(backend, {})
-    pricing = backend_models.get(model, _DEFAULT_PRICING)
+    pricing = backend_models.get(model)
+    if pricing is None:
+        log.debug("No pricing for %s/%s, using default", backend, model)
+        pricing = _DEFAULT_PRICING
     if not pricing:
         return 0.0
     return (input_tokens * pricing["input"] / 1_000_000) + (output_tokens * pricing["output"] / 1_000_000)

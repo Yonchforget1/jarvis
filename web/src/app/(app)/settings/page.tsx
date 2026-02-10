@@ -67,6 +67,10 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (changingPassword) return;
+    if (!oldPassword.trim()) {
+      toast.error("Required", "Please enter your current password.");
+      return;
+    }
     if (newPassword.length < 8) {
       toast.error("Too short", "New password must be at least 8 characters.");
       return;

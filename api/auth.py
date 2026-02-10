@@ -291,14 +291,19 @@ def create_api_key(user_id: str, label: str = "") -> dict:
 
 
 def validate_api_key(key_value: str) -> dict | None:
-    """Validate an API key. Returns user dict or None."""
+    """Validate an API key. Returns user dict or None.
+
+    Always iterates all keys to avoid timing-based enumeration.
+    """
     keys = _load_api_keys()
+    matched_record = None
     for key_record in keys:
         if bcrypt.checkpw(key_value.encode("utf-8"), key_record["key_hash"].encode("utf-8")):
-            # Update last_used
-            key_record["last_used"] = datetime.now(timezone.utc).isoformat()
-            _save_api_keys(keys)
-            return get_user_by_id(key_record["user_id"])
+            matched_record = key_record
+    if matched_record:
+        matched_record["last_used"] = datetime.now(timezone.utc).isoformat()
+        _save_api_keys(keys)
+        return get_user_by_id(matched_record["user_id"])
     return None
 
 

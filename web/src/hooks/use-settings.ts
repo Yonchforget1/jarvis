@@ -110,9 +110,13 @@ export function useSettings() {
         const res = await api.put<SettingsData>("/api/settings", update);
         setSettings(res);
         setCache(SETTINGS_CACHE_KEY, res);
-        // Clear stale model label cache so chat header refreshes
+        // Clear stale model label cache and eagerly update from response
         if (update.model || update.backend) {
           try { sessionStorage.removeItem("jarvis_model_label"); } catch { /* ignore */ }
+          if (res.model) {
+            const short = res.model.split("-").slice(0, 3).join("-");
+            try { sessionStorage.setItem("jarvis_model_label", short); } catch { /* ignore */ }
+          }
         }
         return res;
       } catch (err) {
