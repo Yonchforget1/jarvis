@@ -100,6 +100,49 @@ async def create_webhook(
     return {"webhook": safe}
 
 
+@router.post("/webhooks/{webhook_id}/test")
+@_limiter.limit("5/minute")
+async def test_webhook(
+    request: Request,
+    webhook_id: str,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Send a test event to a specific webhook to verify it's reachable."""
+    from api.webhooks import _deliver
+    import time as _time
+
+    hooks = get_user_webhooks(user.id)
+    hook = next((h for h in hooks if h.get("id") == webhook_id), None)
+    if not hook:
+        raise HTTPException(404, "Webhook not found")
+
+    test_data = {
+        "message": "This is a test event from Jarvis.",
+        "webhook_id": webhook_id,
+        "timestamp": _time.time(),
+    }
+    payload = {
+        "event": "test",
+        "data": test_data,
+        "timestamp": _time.time(),
+        "webhook_id": webhook_id,
+    }
+    import json as _json
+    import httpx as _httpx
+
+    headers = {"Content-Type": "application/json", "X-Jarvis-Event": "test"}
+    if hook.get("secret"):
+        import hashlib, hmac
+        sig = hmac.new(hook["secret"].encode(), _json.dumps(payload, sort_keys=True).encode(), hashlib.sha256).hexdigest()
+        headers["X-Jarvis-Signature"] = sig
+
+    try:
+        resp = _httpx.post(hook["url"], json=payload, headers=headers, timeout=10)
+        return {"status": "delivered", "http_status": resp.status_code, "webhook_id": webhook_id}
+    except Exception as e:
+        return {"status": "failed", "error": str(e), "webhook_id": webhook_id}
+
+
 @router.delete("/webhooks/{webhook_id}")
 @_limiter.limit("10/minute")
 async def delete_webhook(

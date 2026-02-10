@@ -33,6 +33,7 @@ import {
   ToggleRight,
   FileArchive,
   Webhook,
+  Zap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -281,6 +282,7 @@ export default function SettingsPage() {
   const [creatingWebhook, setCreatingWebhook] = useState(false);
   const [confirmDeleteWebhookId, setConfirmDeleteWebhookId] = useState<string | null>(null);
   const confirmDeleteWebhookTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [testingWebhookId, setTestingWebhookId] = useState<string | null>(null);
 
   const WEBHOOK_EVENTS = [
     { value: "*", label: "All Events" },
@@ -334,6 +336,22 @@ export default function SettingsPage() {
       setConfirmDeleteWebhookId(id);
       if (confirmDeleteWebhookTimerRef.current) clearTimeout(confirmDeleteWebhookTimerRef.current);
       confirmDeleteWebhookTimerRef.current = setTimeout(() => setConfirmDeleteWebhookId(null), 5000);
+    }
+  };
+
+  const handleTestWebhook = async (id: string) => {
+    setTestingWebhookId(id);
+    try {
+      const res = await api.post<{ status: string; http_status?: number; error?: string }>(`/api/webhooks/${id}/test`, {});
+      if (res.status === "delivered") {
+        toast.success("Test sent", `Webhook responded with HTTP ${res.http_status}.`);
+      } else {
+        toast.error("Test failed", res.error || "Could not reach webhook.");
+      }
+    } catch {
+      toast.error("Test failed", "Could not send test event.");
+    } finally {
+      setTestingWebhookId(null);
     }
   };
 
@@ -1276,17 +1294,28 @@ export default function SettingsPage() {
                         {wh.has_secret && <span className="text-[9px] rounded-full bg-green-400/10 text-green-400 px-1.5 py-0.5">HMAC</span>}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteWebhook(wh.id)}
-                      className={`px-2 py-1.5 rounded-lg text-xs transition-colors shrink-0 ml-2 ${
-                        confirmDeleteWebhookId === wh.id
-                          ? "bg-red-500/20 text-red-400 border border-red-500/30 font-medium"
-                          : "text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10"
-                      }`}
-                      aria-label={confirmDeleteWebhookId === wh.id ? "Confirm delete webhook" : "Delete webhook"}
-                    >
-                      {confirmDeleteWebhookId === wh.id ? "Confirm?" : <Trash2 className="h-3.5 w-3.5" />}
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        onClick={() => handleTestWebhook(wh.id)}
+                        disabled={testingWebhookId === wh.id}
+                        className="px-2 py-1.5 rounded-lg text-xs transition-colors text-muted-foreground/40 hover:text-cyan-400 hover:bg-cyan-400/10 disabled:opacity-50"
+                        aria-label="Send test event"
+                        title="Send test event"
+                      >
+                        {testingWebhookId === wh.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWebhook(wh.id)}
+                        className={`px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                          confirmDeleteWebhookId === wh.id
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30 font-medium"
+                            : "text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10"
+                        }`}
+                        aria-label={confirmDeleteWebhookId === wh.id ? "Confirm delete webhook" : "Delete webhook"}
+                      >
+                        {confirmDeleteWebhookId === wh.id ? "Confirm?" : <Trash2 className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
