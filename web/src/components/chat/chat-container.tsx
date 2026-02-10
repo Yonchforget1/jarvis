@@ -696,7 +696,7 @@ export function ChatContainer({
             )}
 
             {/* Keyboard shortcut hint */}
-            <div className="mt-8 flex items-center gap-3 text-[10px] text-muted-foreground/40">
+            <div className="mt-8 flex items-center gap-3 text-[10px] text-muted-foreground/40 flex-wrap justify-center">
               <Keyboard className="h-3 w-3" />
               <span>
                 <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+K</kbd>{" "}
@@ -711,6 +711,11 @@ export function ChatContainer({
               <span>
                 <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">/</kbd>{" "}
                 slash commands
+              </span>
+              <span className="text-muted-foreground/20">|</span>
+              <span>
+                <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+?</kbd>{" "}
+                all shortcuts
               </span>
             </div>
           </div>

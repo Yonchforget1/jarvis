@@ -498,6 +498,33 @@ export default function SettingsPage() {
     toast.success("Onboarding reset", "The welcome tour will show on your next page load.");
   };
 
+  const [confirmReset, setConfirmReset] = useState(false);
+  const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleResetDefaults = () => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
+      confirmResetTimerRef.current = setTimeout(() => setConfirmReset(false), 5000);
+      return;
+    }
+    // Reset server-side settings
+    const defaultBackend = modelsData?.backends[0]?.id || "claude";
+    const defaultModel = modelsData?.models[defaultBackend]?.[0]?.id || "";
+    setBackend(defaultBackend);
+    setModel(defaultModel);
+    setMaxTokens(4096);
+    setApiKey("");
+    setHasChanges(true);
+    // Reset local preferences
+    setTheme("system");
+    handleToggleNotifications(true);
+    handleToggleSound(false);
+    handleToggleCtrlEnter(false);
+    setDisabledTools(new Set());
+    setConfirmReset(false);
+    toast.success("Settings reset", "All settings restored to defaults. Click Save to apply server-side changes.");
+  };
+
   const [exportingData, setExportingData] = useState(false);
 
   const handleExportAllData = async () => {
@@ -1316,6 +1343,22 @@ export default function SettingsPage() {
               <RotateCcw className="h-4 w-4 text-primary" />
               Replay Welcome Tour
             </Button>
+            <Separator className="bg-border/30" />
+            <Button
+              variant="outline"
+              className={`w-full justify-start gap-2 h-11 rounded-xl transition-all duration-200 ${
+                confirmReset
+                  ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 animate-pulse"
+                  : "border-border/50"
+              }`}
+              onClick={handleResetDefaults}
+            >
+              <RotateCcw className="h-4 w-4 text-yellow-400" />
+              {confirmReset ? "Click again to confirm reset" : "Reset All Settings to Defaults"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground/40 px-1">
+              Resets theme, notifications, input preferences, model, and token limit. Does not delete sessions or API keys.
+            </p>
           </CardContent>
         </Card>
 
