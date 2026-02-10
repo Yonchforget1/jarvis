@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign, BarChart3 } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign, BarChart3, Activity } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
+import { useConnection } from "@/hooks/use-connection";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { BackendStatus } from "@/components/dashboard/backend-status";
@@ -37,6 +38,7 @@ const STALE_THRESHOLD_SECONDS = 45;
 export default function DashboardPage() {
   const { stats, loading: statsLoading, refetching, error: statsError, refetch, lastUpdated } = useStats(15000);
   const { learnings, loading: learningsLoading, error: learningsError } = useLearnings();
+  const { status: connStatus, latency: connLatency } = useConnection();
   const [lastUpdatedText, setLastUpdatedText] = useState("");
   const [isStale, setIsStale] = useState(false);
   const [sessionStats, setSessionStats] = useState<{ session_id: string; title: string; cost_estimate_usd: number; input_tokens: number; output_tokens: number; message_count: number }[]>([]);
@@ -135,6 +137,20 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Connection health badge */}
+          <div className={`hidden sm:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium border ${
+            connStatus === "connected"
+              ? "bg-green-400/10 border-green-400/20 text-green-400"
+              : connStatus === "degraded"
+              ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400"
+              : "bg-red-400/10 border-red-400/20 text-red-400"
+          }`}>
+            <Activity className="h-2.5 w-2.5" />
+            {connStatus === "connected" ? "Healthy" : connStatus === "degraded" ? "Slow" : "Offline"}
+            {connLatency !== null && connStatus !== "disconnected" && (
+              <span className="text-[9px] opacity-60 tabular-nums">{connLatency}ms</span>
+            )}
+          </div>
           {lastUpdatedText && (
             <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums hidden sm:inline">
               Updated {lastUpdatedText}
@@ -184,7 +200,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats Grid */}
-      <div role="region" aria-live="polite" aria-label="System statistics" className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div role="region" aria-live="polite" aria-label="System statistics" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatsCard
           title="Backend"
           value={stats?.backend?.toUpperCase() || "N/A"}
@@ -232,6 +248,14 @@ export default function DashboardPage() {
           icon={Users}
           iconColor="text-orange-400"
           bgColor="bg-orange-400/10"
+        />
+        <StatsCard
+          title="Avg Tokens/Msg"
+          value={stats?.avg_tokens_per_message ? formatTokens(stats.avg_tokens_per_message) : "N/A"}
+          description={`${stats?.total_messages || 0} total messages`}
+          icon={Activity}
+          iconColor="text-pink-400"
+          bgColor="bg-pink-400/10"
         />
       </div>
 
