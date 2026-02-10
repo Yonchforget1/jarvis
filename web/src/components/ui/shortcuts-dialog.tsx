@@ -28,6 +28,7 @@ const SHORTCUT_GROUPS = [
       { keys: ["Ctrl", "N"], description: "New chat" },
       { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
       { keys: ["Ctrl", "Shift", "E"], description: "Export chat" },
+      { keys: ["Ctrl", "L"], description: "Clear chat" },
       { keys: ["Ctrl", "Shift", "F"], description: "Focus mode" },
       { keys: ["Esc"], description: "Close search / dialog" },
     ],

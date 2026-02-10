@@ -226,10 +226,14 @@ export function ChatContainer({
         e.preventDefault();
         setShortcutsOpen(true);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "l" && messages.length > 0 && onClear) {
+        e.preventDefault();
+        setClearConfirmOpen(true);
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [searchOpen, closeSearch, messages.length, exportChat]);
+  }, [searchOpen, closeSearch, messages.length, exportChat, onClear]);
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
@@ -431,12 +435,21 @@ export function ChatContainer({
             </div>
 
             {/* Keyboard shortcut hint */}
-            <div className="mt-8 flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+            <div className="mt-8 flex items-center gap-3 text-[10px] text-muted-foreground/40">
               <Keyboard className="h-3 w-3" />
               <span>
-                Press{" "}
                 <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+K</kbd>{" "}
-                for new chat
+                commands
+              </span>
+              <span className="text-muted-foreground/20">|</span>
+              <span>
+                <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl+N</kbd>{" "}
+                new chat
+              </span>
+              <span className="text-muted-foreground/20">|</span>
+              <span>
+                <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">/</kbd>{" "}
+                slash commands
               </span>
             </div>
           </div>

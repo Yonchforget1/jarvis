@@ -22,6 +22,7 @@ const SHORTCUTS = [
       { keys: ["Ctrl", "/"], description: "Focus chat input" },
       { keys: ["Ctrl", "F"], description: "Search in messages" },
       { keys: ["Ctrl", "Shift", "E"], description: "Export chat as Markdown" },
+      { keys: ["Ctrl", "L"], description: "Clear chat" },
     ],
   },
   {
