@@ -36,30 +36,33 @@ export function useStats(pollInterval: number = 15000) {
 
   // Visibility-aware polling with exponential backoff on errors
   useEffect(() => {
-    fetchStats();
-
     let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+
     const scheduleNext = () => {
+      if (cancelled) return;
       // Exponential backoff: double interval per failure, cap at 2 minutes
       const backoff = consecutiveFailures.current > 0
         ? Math.min(pollInterval * Math.pow(2, consecutiveFailures.current), 120000)
         : pollInterval;
       timer = setTimeout(() => {
-        fetchStats().then(scheduleNext);
+        if (!cancelled) fetchStats().then(scheduleNext);
       }, backoff);
     };
+
     fetchStats().then(scheduleNext);
 
     const handleVisibility = () => {
       if (document.hidden) {
         clearTimeout(timer);
-      } else {
+      } else if (!cancelled) {
         fetchStats().then(scheduleNext);
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
+      cancelled = true;
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };

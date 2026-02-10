@@ -4,12 +4,17 @@ import asyncio
 import json
 import logging
 import queue
+import re
 import threading
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from api.auth import decode_token, get_user_by_id, validate_api_key
+
+MAX_WS_MESSAGE_SIZE = 51_200  # 50 KB
+_SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 log = logging.getLogger("jarvis.api.ws")
 router = APIRouter()
@@ -63,9 +68,28 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
     log.info("WebSocket client connected: user=%s", user_id)
 
     session = None
+    # Per-connection rate limiting: track recent message timestamps
+    _msg_timestamps: list[float] = []
+    _MAX_MSGS_PER_WINDOW = 20  # Max messages per 60-second window
+    _RATE_WINDOW = 60.0
+
     try:
         while True:
             raw = await websocket.receive_text()
+
+            # Message size limit
+            if len(raw) > MAX_WS_MESSAGE_SIZE:
+                await websocket.send_json({"type": "error", "message": f"Message too large (max {MAX_WS_MESSAGE_SIZE // 1024} KB)"})
+                continue
+
+            # Per-connection rate limiting
+            now = time.monotonic()
+            _msg_timestamps = [t for t in _msg_timestamps if now - t < _RATE_WINDOW]
+            if len(_msg_timestamps) >= _MAX_MSGS_PER_WINDOW:
+                await websocket.send_json({"type": "error", "message": "Rate limit exceeded. Please slow down."})
+                continue
+            _msg_timestamps.append(now)
+
             try:
                 data = json.loads(raw)
             except json.JSONDecodeError:
@@ -77,6 +101,16 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
 
             if not message:
                 await websocket.send_json({"type": "error", "message": "Empty message"})
+                continue
+
+            # Validate session_id format
+            if session_id is not None and not _SESSION_ID_RE.match(str(session_id)):
+                await websocket.send_json({"type": "error", "message": "Invalid session_id format"})
+                continue
+
+            # Validate message length
+            if len(message) > 50_000:
+                await websocket.send_json({"type": "error", "message": "Message too long (max 50,000 characters)"})
                 continue
 
             if _session_manager is None:

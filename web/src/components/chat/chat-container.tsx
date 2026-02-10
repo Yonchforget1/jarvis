@@ -100,6 +100,15 @@ export function ChatContainer({
 
   const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
 
+  // Message windowing: only render recent messages to avoid DOM bloat
+  const MSG_WINDOW_SIZE = 100;
+  const [showAllMessages, setShowAllMessages] = useState(false);
+  const visibleMessages = useMemo(() => {
+    if (showAllMessages || messages.length <= MSG_WINDOW_SIZE) return messages;
+    return messages.slice(-MSG_WINDOW_SIZE);
+  }, [messages, showAllMessages]);
+  const hiddenCount = messages.length - visibleMessages.length;
+
   // Debounce search query to avoid recomputing matches on every keystroke
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -118,14 +127,14 @@ export function ChatContainer({
       .filter((i) => i !== -1);
   }, [messages, debouncedSearch]);
 
-  // Scroll to active match
+  // Scroll to active match (instant to avoid layout thrashing on large histories)
   useEffect(() => {
     if (matchingIndices.length === 0 || !scrollRef.current) return;
     const msgId = messages[matchingIndices[activeMatchIndex]]?.id;
     if (!msgId) return;
     const el = scrollRef.current.querySelector(`[data-message-id="${msgId}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.scrollIntoView({ behavior: "instant", block: "center" });
     }
   }, [activeMatchIndex, matchingIndices, messages]);
 
@@ -526,8 +535,18 @@ export function ChatContainer({
           </div>
         ) : (
           <div className="mx-auto max-w-3xl py-4">
-            {messages.map((msg, idx) => {
-              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            {hiddenCount > 0 && (
+              <div className="flex justify-center py-3">
+                <button
+                  onClick={() => setShowAllMessages(true)}
+                  className="rounded-full border border-border/50 bg-muted/50 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  Load {hiddenCount} older message{hiddenCount !== 1 ? "s" : ""}
+                </button>
+              </div>
+            )}
+            {visibleMessages.map((msg, idx) => {
+              const prevMsg = idx > 0 ? visibleMessages[idx - 1] : null;
               const currentDate = getDateLabel(msg.timestamp);
               const prevDate = prevMsg ? getDateLabel(prevMsg.timestamp) : null;
               const showDateSeparator = currentDate !== prevDate;
