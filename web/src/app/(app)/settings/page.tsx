@@ -27,6 +27,10 @@ import {
   X,
   Bell,
   BellOff,
+  ChevronDown,
+  ChevronUp,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -134,8 +138,12 @@ export default function SettingsPage() {
     } catch { /* ignore */ }
   };
 
-  // Tool groups (fetched dynamically)
+  // Tool groups and individual tools (fetched dynamically)
   const [toolGroups, setToolGroups] = useState<{ name: string; count: number; color: string }[]>([]);
+  const [allTools, setAllTools] = useState<{ name: string; description: string; category: string }[]>([]);
+  const [disabledTools, setDisabledTools] = useState<Set<string>>(new Set());
+  const [savingTools, setSavingTools] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
 
   // API Key management
   const [apiKeys, setApiKeys] = useState<{ id: string; label: string; prefix: string; created_at: string; last_used: string | null }[]>([]);
@@ -167,8 +175,9 @@ export default function SettingsPage() {
     browser: "text-pink-400", other: "text-muted-foreground",
   };
   useEffect(() => {
-    api.get<{ tools: { category: string }[] }>("/api/tools")
+    api.get<{ tools: { name: string; description: string; category: string }[] }>("/api/tools")
       .then((res) => {
+        setAllTools(res.tools || []);
         const counts: Record<string, number> = {};
         for (const t of res.tools) {
           const cat = t.category || "other";
@@ -186,6 +195,33 @@ export default function SettingsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Sync disabled_tools from settings
+  useEffect(() => {
+    if (settings?.disabled_tools) {
+      setDisabledTools(new Set(settings.disabled_tools));
+    }
+  }, [settings?.disabled_tools]);
+
+  const handleToggleTool = async (toolName: string) => {
+    const next = new Set(disabledTools);
+    if (next.has(toolName)) {
+      next.delete(toolName);
+    } else {
+      next.add(toolName);
+    }
+    setDisabledTools(next);
+    setSavingTools(true);
+    try {
+      await updateSettings({ disabled_tools: [...next] });
+    } catch {
+      // Revert on error
+      setDisabledTools(disabledTools);
+      toast.error("Failed", "Could not update tool configuration.");
+    } finally {
+      setSavingTools(false);
+    }
+  };
 
   const handleCreateApiKey = async () => {
     if (creatingKey) return;
@@ -905,29 +941,100 @@ export default function SettingsPage() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Wrench className="h-4 w-4 text-primary" />
               Tools
+              {disabledTools.size > 0 && (
+                <span className="ml-auto text-[10px] font-normal text-yellow-400 bg-yellow-400/10 rounded-full px-2 py-0.5">
+                  {disabledTools.size} disabled
+                </span>
+              )}
             </CardTitle>
             <CardDescription>
-              All tools are enabled by default. Installed tool groups:
+              Toggle individual tools on or off. Disabled tools will not be available in chat.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {/* Tool group summary */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {toolGroups.length > 0 ? toolGroups.map((group) => (
-                <div
-                  key={group.name}
-                  className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 p-2.5"
-                >
-                  <div className={`text-xs font-medium ${group.color}`}>
-                    {group.name}
+              {toolGroups.length > 0 ? toolGroups.map((group) => {
+                const groupTools = allTools.filter((t) => (t.category || "other").charAt(0).toUpperCase() + (t.category || "other").slice(1) === group.name);
+                const disabledInGroup = groupTools.filter((t) => disabledTools.has(t.name)).length;
+                return (
+                  <div
+                    key={group.name}
+                    className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 p-2.5"
+                  >
+                    <div className={`text-xs font-medium ${group.color}`}>
+                      {group.name}
+                    </div>
+                    <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                      {disabledInGroup > 0 ? `${group.count - disabledInGroup}/${group.count}` : group.count}
+                    </span>
                   </div>
-                  <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    {group.count}
-                  </span>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="col-span-full text-xs text-muted-foreground/50">Loading tools...</div>
               )}
             </div>
+
+            {/* Expand/collapse individual tools */}
+            {allTools.length > 0 && (
+              <>
+                <button
+                  onClick={() => setToolsExpanded(!toolsExpanded)}
+                  className="flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors"
+                >
+                  {toolsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  {toolsExpanded ? "Hide individual tools" : `Configure individual tools (${allTools.length})`}
+                </button>
+
+                {toolsExpanded && (
+                  <div className="space-y-1 max-h-[400px] overflow-y-auto rounded-xl border border-border/30 p-2">
+                    {Object.entries(
+                      allTools.reduce<Record<string, typeof allTools>>((acc, tool) => {
+                        const cat = (tool.category || "other").charAt(0).toUpperCase() + (tool.category || "other").slice(1);
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(tool);
+                        return acc;
+                      }, {})
+                    ).sort(([a], [b]) => a.localeCompare(b)).map(([category, tools]) => (
+                      <div key={category}>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 px-2 py-1.5">
+                          {category}
+                        </p>
+                        {tools.sort((a, b) => a.name.localeCompare(b.name)).map((tool) => {
+                          const isDisabled = disabledTools.has(tool.name);
+                          return (
+                            <button
+                              key={tool.name}
+                              onClick={() => handleToggleTool(tool.name)}
+                              disabled={savingTools}
+                              className={`flex items-center gap-3 w-full rounded-lg px-2 py-2 text-left transition-colors ${
+                                isDisabled
+                                  ? "opacity-50 hover:opacity-70"
+                                  : "hover:bg-muted/50"
+                              }`}
+                            >
+                              {isDisabled ? (
+                                <ToggleLeft className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                              ) : (
+                                <ToggleRight className="h-4 w-4 text-green-400 shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-medium ${isDisabled ? "text-muted-foreground/50 line-through" : "text-foreground"}`}>
+                                  {tool.name}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground/40 truncate">
+                                  {tool.description}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
