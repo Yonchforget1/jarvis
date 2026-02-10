@@ -43,17 +43,21 @@ function StatItem({ value, suffix, label, delay }: { value: number; suffix: stri
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setTimeout(() => setVisible(true), delay);
+          timer = setTimeout(() => setVisible(true), delay);
           observer.disconnect();
         }
       },
       { threshold: 0.3 },
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
   }, [delay]);
 
   return (

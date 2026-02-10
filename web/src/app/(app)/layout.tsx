@@ -71,7 +71,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [toggleSidebarCollapse, selectSession, router]);
 
   // Touch swipe to open/close sidebar on mobile
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
