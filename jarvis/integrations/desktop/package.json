@@ -1,0 +1,55 @@
+{
+  "name": "jarvis-desktop",
+  "version": "1.0.0",
+  "description": "JARVIS AI Agent Platform - Desktop Application",
+  "main": "main.js",
+  "author": "Yonatan Weintraub",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.jarvis.desktop",
+    "productName": "JARVIS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "tray.js",
+      "icons/**/*"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "icons/icon.ico",
+      "uninstallerIcon": "icons/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "icons/icon.icns",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "icons",
+      "category": "Development"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
