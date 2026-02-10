@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /chat
+Disallow: /dashboard
+Disallow: /tools
+Disallow: /learnings
+Disallow: /settings
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://jarvis.ai/sitemap.xml
