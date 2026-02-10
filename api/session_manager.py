@@ -16,6 +16,7 @@ from jarvis.config import Config
 from jarvis.backends import create_backend
 from jarvis.core import build_system_prompt
 from jarvis.memory import Memory
+from jarvis.session_persistence import save_session as persist_save, load_session as persist_load, delete_session as persist_delete, auto_save_session as persist_auto_save
 from jarvis.tool_registry import ToolRegistry
 from jarvis.tools.memory_tools import register as register_memory_tools
 
@@ -55,6 +56,22 @@ class JarvisSession:
         first_msg = self.conversation.get_first_user_message()
         if first_msg:
             self.auto_title = _generate_auto_title(first_msg)
+
+    def save_to_disk(self):
+        """Persist session to disk."""
+        persist_save(
+            session_id=self.session_id,
+            user_id=self.user_id,
+            messages=self.conversation.messages,
+            total_input_tokens=self.conversation.total_input_tokens,
+            total_output_tokens=self.conversation.total_output_tokens,
+            total_tool_calls=self.conversation.total_tool_calls,
+            metadata={"custom_name": self.custom_name, "auto_title": self.auto_title},
+        )
+
+    def auto_save(self):
+        """Auto-save if enough messages accumulated."""
+        persist_auto_save(self)
 
 
 class SessionManager:
@@ -166,11 +183,12 @@ class SessionManager:
         return False
 
     def remove_session(self, session_id: str, user_id: str) -> bool:
-        """Remove a session entirely."""
+        """Remove a session entirely (memory + disk)."""
         with self._lock:
             session = self._sessions.get(session_id)
             if session and session.user_id == user_id:
                 del self._sessions[session_id]
+                persist_delete(session_id)
                 return True
         return False
 

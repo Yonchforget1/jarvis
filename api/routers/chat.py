@@ -18,6 +18,7 @@ from starlette.responses import StreamingResponse
 from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import ChatRequest, ChatResponse, ToolCallDetail, UserInfo
+from api.webhooks import fire_event
 
 log = logging.getLogger("jarvis.api.chat")
 
@@ -53,6 +54,15 @@ async def chat(request: Request, body: ChatRequest, user: UserInfo = Depends(get
         )
         for tc in raw_calls
     ]
+
+    # Auto-save and fire webhooks
+    session.auto_save()
+    session.ensure_auto_title()
+    fire_event(user.id, "chat.complete", {
+        "session_id": session.session_id,
+        "response_length": len(response_text),
+        "tool_calls": len(tool_calls),
+    })
 
     audit_log(
         user_id=user.id, username=user.username, action="chat",
@@ -92,6 +102,13 @@ async def chat_stream(
     def run_conversation():
         try:
             session.conversation.send_stream(body.message, event_queue)
+            # Auto-save and fire webhooks after successful stream
+            session.auto_save()
+            session.ensure_auto_title()
+            fire_event(user.id, "chat.complete", {
+                "session_id": session.session_id,
+                "streaming": True,
+            })
         except Exception as e:
             log.error("Stream error for user=%s session=%s: %s", user.id, session.session_id, e)
             event_queue.put({"event": "error", "data": {"message": "An error occurred processing your request."}})
