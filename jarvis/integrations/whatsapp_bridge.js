@@ -58,6 +58,9 @@ const WORK_DIR = (() => {
 // Tesseract OCR path
 const TESSERACT_PATH = String.raw`C:\Program Files\Tesseract-OCR\tesseract.exe`;
 
+// Phone whitelist - ONLY respond to these numbers (no country code prefix issues)
+const PHONE_WHITELIST = new Set(["13478058362"]);
+
 // Claude Code timeout: 10 minutes (can run tests, edit files, etc.)
 const CLAUDE_TIMEOUT = 10 * 60 * 1000;
 
@@ -181,6 +184,8 @@ function invokeClaudeCode(message, phone, name) {
   return new Promise((resolve, reject) => {
     const session = getOrCreateSession(phone);
 
+    // Only use args that have no spaces — avoids Windows shell: true
+    // concatenation bug where multi-word args get split.
     const args = ["-p", "--output-format", "json"];
 
     // First message: create session; subsequent: resume
@@ -190,33 +195,31 @@ function invokeClaudeCode(message, phone, name) {
       args.push("-r", session.sessionId);
     }
 
-    // WhatsApp context so Claude keeps responses mobile-friendly
-    args.push(
-      "--append-system-prompt",
-      `The user is messaging from WhatsApp (phone: ${phone}, name: ${name}). ` +
-        `Keep responses concise and mobile-friendly. ` +
-        `Avoid large code blocks unless specifically requested. ` +
-        `Use plain text formatting since WhatsApp has limited markdown support.`
-    );
-
-    // For long messages, pipe via stdin; otherwise pass as argument
-    const useStdin = message.length > 7000;
-    if (!useStdin) {
-      args.push(message);
-    }
+    // Prepend WhatsApp context to the message piped via stdin.
+    // (--append-system-prompt can't be used with shell: true on Windows
+    //  because its multi-word value gets split by cmd.exe.)
+    const context =
+      `[Context: User is messaging from WhatsApp. Phone: ${phone}, Name: ${name}. ` +
+      `Keep responses concise and mobile-friendly. ` +
+      `Avoid large code blocks unless specifically requested. ` +
+      `Use plain text formatting since WhatsApp has limited markdown support.]\n\n`;
 
     const child = spawn("claude", args, {
       cwd: WORK_DIR,
       shell: true,
-      timeout: CLAUDE_TIMEOUT,
       env: { ...process.env },
       windowsHide: true,
     });
 
-    if (useStdin) {
-      child.stdin.write(message);
-      child.stdin.end();
-    }
+    // spawn does not support timeout natively — enforce it manually
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error("Claude Code timed out after 10 minutes"));
+    }, CLAUDE_TIMEOUT);
+
+    // Always pipe via stdin to avoid shell escaping issues
+    child.stdin.write(context + message);
+    child.stdin.end();
 
     let stdout = "";
     let stderr = "";
@@ -229,10 +232,12 @@ function invokeClaudeCode(message, phone, name) {
     });
 
     child.on("error", (err) => {
+      clearTimeout(timer);
       reject(new Error(`Claude Code spawn error: ${err.message}`));
     });
 
     child.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         console.error(`[jarvis-wa] Claude Code exited with code ${code}`);
         console.error(`[jarvis-wa] stderr: ${stderr.slice(0, 500)}`);
@@ -313,9 +318,15 @@ async function sendChunkedReply(msg, text) {
 // Bridge commands (intercepted, not sent to Claude)
 // ---------------------------------------------------------------------------
 async function trackReply(msg, text) {
-  const sent = await msg.reply(text);
-  if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
-  return sent;
+  const chatId = msg.from;
+  bridgeSending.add(chatId);
+  try {
+    const sent = await msg.reply(text);
+    if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
+    return sent;
+  } finally {
+    bridgeSending.delete(chatId);
+  }
 }
 
 const BRIDGE_COMMANDS = {
@@ -350,8 +361,13 @@ const BRIDGE_COMMANDS = {
 // Message handlers
 // ---------------------------------------------------------------------------
 const busyPhones = new Set();
+// Track whether we already sent a "busy" message for each phone (max 1)
+const busyNotified = new Set();
 // Track message IDs sent by the bridge to avoid infinite loops with self-chat
 const bridgeSentIds = new Set();
+// Track chatIds where the bridge is actively sending — message_create fires
+// BEFORE sendMessage() resolves, so bridgeSentIds alone can't prevent the loop.
+const bridgeSending = new Set();
 // Periodically clean up old IDs (keep set from growing forever)
 setInterval(() => {
   if (bridgeSentIds.size > 500) {
@@ -363,11 +379,17 @@ setInterval(() => {
 
 async function handleClaudeCodeMessage(msg, phone, name, messageText) {
   if (busyPhones.has(phone)) {
-    await trackReply(msg, "Still working on your previous request... please wait.");
+    if (!busyNotified.has(phone)) {
+      busyNotified.add(phone);
+      await trackReply(msg, "Still working on your previous request... please wait.");
+    } else {
+      console.log(`[jarvis-wa] Phone ${phone} already notified about busy state, suppressing.`);
+    }
     return;
   }
 
   busyPhones.add(phone);
+  const chatId = msg.from;
   try {
     // Typing indicator
     const chat = await msg.getChat();
@@ -382,11 +404,53 @@ async function handleClaudeCodeMessage(msg, phone, name, messageText) {
       console.log(`[jarvis-wa] Claude Code cost: $${result.cost.toFixed(4)}`);
     }
 
-    await sendChunkedReply(msg, result.response);
-    console.log(`[jarvis-wa] Replied to ${name}: ${result.response.slice(0, 100)}...`);
+    // Send response back to the WhatsApp chat via client.sendMessage(),
+    // which is more reliable than msg.reply() (msg can go stale after
+    // a long Claude Code invocation).
+    let responseText = result.response || "(empty response)";
+    if (responseText.length > 65000) {
+      responseText =
+        responseText.slice(0, 64900) +
+        "\n\n... (response truncated, too long for WhatsApp)";
+    }
+
+    bridgeSending.add(chatId);
+    try {
+      if (responseText.length > 4000) {
+        const chunks = smartChunk(responseText, 4000);
+        for (let i = 0; i < chunks.length; i++) {
+          const prefix = chunks.length > 1 ? `(${i + 1}/${chunks.length}) ` : "";
+          const sent = await client.sendMessage(chatId, prefix + chunks[i]);
+          if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
+          if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 500));
+        }
+      } else {
+        const sent = await client.sendMessage(chatId, responseText);
+        if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
+      }
+    } finally {
+      bridgeSending.delete(chatId);
+    }
+
+    console.log(`[jarvis-wa] Replied to ${name}: ${responseText.slice(0, 100)}...`);
     debouncedSave();
+  } catch (err) {
+    console.error(`[jarvis-wa] Error in handleClaudeCodeMessage: ${err.message}`);
+    bridgeSending.add(chatId);
+    try {
+      const sent = await client.sendMessage(
+        chatId,
+        `Sorry, an error occurred: ${err.message.slice(0, 200)}`
+      );
+      if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
+    } catch (sendErr) {
+      console.error("[jarvis-wa] Failed to send error message:", sendErr.message);
+    } finally {
+      bridgeSending.delete(chatId);
+    }
   } finally {
     busyPhones.delete(phone);
+    busyNotified.delete(phone);
     try {
       const chat = await msg.getChat();
       chat.clearState();
@@ -504,6 +568,15 @@ client.on("message_create", async (msg) => {
     return;
   }
 
+  // Skip messages arriving while the bridge is actively sending to this chat
+  // (message_create fires BEFORE sendMessage resolves, so bridgeSentIds misses it)
+  const senderChat = msg.from || msg.to || "";
+  if (bridgeSending.has(senderChat)) {
+    console.log("[jarvis-wa] Skipping message during active bridge send.");
+    bridgeSentIds.add(msgId);
+    return;
+  }
+
   // For self-chat (Message yourself): msg.fromMe is true for both user AND bridge
   // We allow fromMe messages but skip if the bridge is currently busy with this phone
   // (the busyPhones guard in handleClaudeCodeMessage handles this)
@@ -514,6 +587,12 @@ client.on("message_create", async (msg) => {
 
   const phone = (msg.from || msg.to || "").replace("@c.us", "");
   if (!phone) return;
+
+  // Whitelist check - only respond to allowed phone numbers
+  if (!PHONE_WHITELIST.has(phone)) {
+    console.log(`[jarvis-wa] Ignoring message from non-whitelisted phone: ${phone}`);
+    return;
+  }
 
   let name = phone;
   try {
