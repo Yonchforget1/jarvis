@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { PageTransition } from "@/components/page-transition";
 import { ConnectionMonitor } from "@/components/connection-monitor";
 import { Onboarding } from "@/components/onboarding";
+import { PWAInstall } from "@/components/pwa-install";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -160,6 +161,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <ConnectionMonitor />
       {/* First-time user onboarding */}
       <Onboarding />
+      {/* PWA install prompt */}
+      <PWAInstall />
     </div>
   );
 }
