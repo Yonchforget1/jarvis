@@ -37,7 +37,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem("jarvis_user");
     if (token && savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        // Validate token with server in background
+        api.get<{ user: User }>("/api/auth/me").then((res) => {
+          setUser(res.user);
+          localStorage.setItem("jarvis_user", JSON.stringify(res.user));
+        }).catch((err) => {
+          // Only clear on 401 (expired/invalid token), not on network errors
+          if (err instanceof ApiError && err.status === 401) {
+            localStorage.removeItem("jarvis_token");
+            localStorage.removeItem("jarvis_user");
+            setUser(null);
+          }
+        });
       } catch {
         localStorage.removeItem("jarvis_token");
         localStorage.removeItem("jarvis_user");

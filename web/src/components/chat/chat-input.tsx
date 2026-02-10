@@ -41,6 +41,30 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const draftRef = useRef("");
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("jarvis_draft");
+      if (saved) setValue(saved);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Auto-save draft to localStorage (debounced 500ms)
+  useEffect(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      try {
+        if (value.trim()) {
+          localStorage.setItem("jarvis_draft", value);
+        } else {
+          localStorage.removeItem("jarvis_draft");
+        }
+      } catch { /* ignore */ }
+    }, 500);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [value]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -90,6 +114,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     draftRef.current = "";
     onSend(trimmed);
     setValue("");
+    try { localStorage.removeItem("jarvis_draft"); } catch { /* ignore */ }
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }

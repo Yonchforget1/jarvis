@@ -120,6 +120,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [editValue, setEditValue] = useState("");
   const avatarHue = usernameHue(user?.username || "User");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -541,7 +542,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
             <Button
               variant="ghost"
               size="icon"
-              onClick={logout}
+              onClick={() => setShowLogoutConfirm(true)}
               aria-label="Log out"
               className="h-8 w-8 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
             >
@@ -563,6 +564,17 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
         title="Delete conversation?"
         description="This will permanently delete this chat session and all its messages."
         confirmLabel="Delete"
+        variant="danger"
+      />
+
+      {/* Logout confirmation */}
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={logout}
+        title="Log out?"
+        description="You will need to sign in again to access your conversations."
+        confirmLabel="Log out"
         variant="danger"
       />
     </nav>
