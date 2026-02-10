@@ -61,6 +61,7 @@ export function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -123,6 +124,7 @@ export function RegisterForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              autoComplete="email"
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
