@@ -47,7 +47,7 @@ function AnimatedTerminal() {
   }, [visibleLines, currentChar]);
 
   return (
-    <div aria-hidden="true" className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5">
+    <div aria-hidden="true" className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5 select-none">
       <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
         <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
         <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
@@ -99,8 +99,8 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden px-4 pt-32 pb-20">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+      <div aria-hidden="true" className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
 
       <div className="relative mx-auto max-w-4xl text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">

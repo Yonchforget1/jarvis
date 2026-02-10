@@ -61,8 +61,8 @@ function StatItem({ value, suffix, label, delay }: { value: number; suffix: stri
   }, [delay]);
 
   return (
-    <div ref={ref} className="text-center">
-      <p className="text-4xl sm:text-5xl font-bold tracking-tight">
+    <div ref={ref} className="text-center" aria-label={`${value}${suffix} ${label}`}>
+      <p className="text-4xl sm:text-5xl font-bold tracking-tight" aria-hidden="true">
         <span className="bg-gradient-to-b from-foreground to-foreground/60 bg-clip-text text-transparent">
           {count}
         </span>

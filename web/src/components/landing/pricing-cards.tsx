@@ -59,10 +59,10 @@ export function PricingCards() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="px-4 py-24">
+    <section id="pricing" aria-labelledby="pricing-heading" className="px-4 py-24">
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+          <h2 id="pricing-heading" className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Simple, Transparent Pricing
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto mb-8">

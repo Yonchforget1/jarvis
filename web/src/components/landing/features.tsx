@@ -88,10 +88,10 @@ function FeatureCard({ feature, delay }: { feature: typeof FEATURES[number]; del
 
 export function Features() {
   return (
-    <section id="features" className="px-4 py-24">
+    <section id="features" aria-labelledby="features-heading" className="px-4 py-24">
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+          <h2 id="features-heading" className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Built for Professionals
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">

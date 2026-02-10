@@ -8,8 +8,8 @@ export function CtaSection() {
       <div className="mx-auto max-w-3xl text-center">
         <div className="relative rounded-3xl p-12 sm:p-16 overflow-hidden">
           {/* Animated gradient border */}
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-primary/30 via-purple-500/30 to-cyan-500/30 animate-glow-pulse" />
-          <div className="absolute inset-[1px] rounded-3xl bg-gradient-to-b from-background via-background to-background/95" />
+          <div aria-hidden="true" className="absolute inset-0 rounded-3xl bg-gradient-to-r from-primary/30 via-purple-500/30 to-cyan-500/30 animate-glow-pulse" />
+          <div aria-hidden="true" className="absolute inset-[1px] rounded-3xl bg-gradient-to-b from-background via-background to-background/95" />
           <div className="relative z-10">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
               Ready to Deploy Your AI Workforce?
