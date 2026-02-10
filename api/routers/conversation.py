@@ -388,7 +388,11 @@ async def search_conversations(
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     user: UserInfo = Depends(get_current_user),
 ):
-    """Full-text search across all conversation messages for the current user."""
+    """Full-text search across all conversation messages for the current user.
+
+    Searches both in-memory sessions (full message search) and persisted
+    sessions on disk (title/preview search for lightweight matching).
+    """
     if _session_manager is None:
         raise HTTPException(status_code=503, detail="Service initializing")
     sessions = _session_manager.get_user_sessions(user.id)
@@ -397,8 +401,10 @@ async def search_conversations(
     query_lower = q.lower()
     q_len = len(q)
     results = []
+    searched_ids = set()
 
     for session in sessions:
+        searched_ids.add(session.session_id)
         # Early exit: stop scanning once we have 3x the requested limit
         if len(results) >= limit * 3:
             break
@@ -435,6 +441,35 @@ async def search_conversations(
                 "matches": matches[:10],  # Cap matches per session
                 "match_count": len(matches),
             })
+
+    # Also search persisted sessions (title + preview match only)
+    if len(results) < limit * 3:
+        for entry in _session_manager.get_persisted_user_sessions(user.id):
+            sid = entry.get("session_id", "")
+            if sid in searched_ids:
+                continue
+            searchable = " ".join(filter(None, [
+                entry.get("custom_name", ""),
+                entry.get("auto_title", ""),
+                entry.get("preview", ""),
+            ])).lower()
+            if query_lower in searchable:
+                # Build a snippet from whichever field matched
+                idx = searchable.find(query_lower)
+                start = max(0, idx - 30)
+                end = min(len(searchable), idx + q_len + 30)
+                snippet = searchable[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(searchable):
+                    snippet = snippet + "..."
+                results.append({
+                    "session_id": sid,
+                    "created_at": entry.get("saved_at", ""),
+                    "preview": entry.get("preview", ""),
+                    "matches": [{"message_index": 0, "role": "user", "snippet": snippet}],
+                    "match_count": 1,
+                })
 
     sorted_results = sorted(results, key=lambda r: r["match_count"], reverse=True)
     total = len(sorted_results)
