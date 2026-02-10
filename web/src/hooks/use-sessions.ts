@@ -61,6 +61,8 @@ export function onSessionDeleteError(cb: ErrorCallback) {
 
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
+  const [archivedSessions, setArchivedSessions] = useState<SessionEntry[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionNames, setSessionNames] = useState<Record<string, string>>({});
@@ -100,7 +102,7 @@ export function useSessions() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200");
+      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200&archived=false");
       // Handle both paginated response and legacy array format
       const list = Array.isArray(data) ? data : data.sessions;
       setSessions(list);
@@ -109,6 +111,16 @@ export function useSessions() {
       setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchArchivedSessions = useCallback(async () => {
+    try {
+      const data = await api.get<{ sessions: SessionEntry[]; total: number }>("/api/conversation/sessions?limit=200&archived=true");
+      const list = Array.isArray(data) ? data : data.sessions;
+      setArchivedSessions(list);
+    } catch {
+      setArchivedSessions([]);
     }
   }, []);
 
@@ -239,10 +251,31 @@ export function useSessions() {
     async (sessionId: string) => {
       try {
         await api.patch(`/api/conversation/sessions/${sessionId}/archive`, {});
-        // Remove from visible list (archived sessions are hidden by default)
-        setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+        // Move from active to archived list
+        setSessions((prev) => {
+          const session = prev.find((s) => s.session_id === sessionId);
+          if (session) setArchivedSessions((ar) => [session, ...ar]);
+          return prev.filter((s) => s.session_id !== sessionId);
+        });
       } catch {
         _onDeleteError?.("Failed to archive session.");
+      }
+    },
+    [],
+  );
+
+  const unarchiveSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        await api.patch(`/api/conversation/sessions/${sessionId}/archive`, {});
+        // Move from archived to active list
+        setArchivedSessions((prev) => {
+          const session = prev.find((s) => s.session_id === sessionId);
+          if (session) setSessions((active) => [session, ...active]);
+          return prev.filter((s) => s.session_id !== sessionId);
+        });
+      } catch {
+        _onDeleteError?.("Failed to unarchive session.");
       }
     },
     [],
@@ -292,5 +325,5 @@ export function useSessions() {
     [sessions, sessionNames, pinnedIds],
   );
 
-  return { sessions: sessionsWithNames, loading, error, fetchSessions, deleteSession, renameSession, togglePin, archiveSession };
+  return { sessions: sessionsWithNames, archivedSessions, showArchived, setShowArchived, loading, error, fetchSessions, fetchArchivedSessions, deleteSession, renameSession, togglePin, archiveSession, unarchiveSession };
 }
