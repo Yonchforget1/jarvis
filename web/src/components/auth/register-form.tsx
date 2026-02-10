@@ -78,7 +78,7 @@ export function RegisterForm() {
       setError("Username can only contain letters, numbers, underscores, and hyphens");
       return;
     }
-    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (email && !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(email)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -148,7 +148,7 @@ export function RegisterForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+              pattern="[a-zA-Z0-9.!#$%&amp;'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+"
               title="Enter a valid email address"
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />

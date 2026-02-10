@@ -20,7 +20,7 @@ function formatTokens(n: number): string {
 
 export default function DashboardPage() {
   const { stats, loading: statsLoading, refetching, error: statsError, refetch, lastUpdated } = useStats(15000);
-  const { learnings, loading: learningsLoading } = useLearnings();
+  const { learnings, loading: learningsLoading, error: learningsError } = useLearnings();
   const [lastUpdatedText, setLastUpdatedText] = useState("");
 
   // Update "last updated" text every second
@@ -204,6 +204,8 @@ export default function DashboardPage() {
           </h3>
           {learningsLoading ? (
             <Skeleton className="h-48 rounded-2xl" />
+          ) : learningsError ? (
+            <ErrorState message="Failed to load recent learnings" />
           ) : (
             <LearningsTimeline learnings={learnings.slice(-5)} />
           )}

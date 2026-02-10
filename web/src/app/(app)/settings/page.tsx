@@ -98,7 +98,12 @@ export default function SettingsPage() {
   const handleSave = async () => {
     if (saving) return;
     try {
-      const update: Record<string, unknown> = {};
+      const update: Partial<{
+        backend: string;
+        model: string;
+        api_key: string;
+        max_tokens: number;
+      }> = {};
       if (backend !== settings?.backend) update.backend = backend;
       if (model !== settings?.model) update.model = model;
       if (maxTokens !== settings?.max_tokens) update.max_tokens = maxTokens;
