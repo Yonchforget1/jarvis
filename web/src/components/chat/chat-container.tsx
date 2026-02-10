@@ -43,6 +43,7 @@ interface ChatContainerProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onSend: (message: string) => void;
+  onEditMessage?: (messageId: string, newContent: string) => void;
   onRetry?: () => void;
   onStop?: () => void;
   onClear?: () => void;
@@ -79,6 +80,7 @@ export function ChatContainer({
   messages,
   isLoading,
   onSend,
+  onEditMessage,
   onRetry,
   onStop,
   onClear,
@@ -535,7 +537,11 @@ export function ChatContainer({
                     onRetry={msg.isError ? onRetry : undefined}
                     onStop={msg.isStreaming ? onStop : undefined}
                     onEdit={msg.role === "user" && !isLoading ? (newContent) => {
-                      onSend(newContent);
+                      if (onEditMessage) {
+                        onEditMessage(msg.id, newContent);
+                      } else {
+                        onSend(newContent);
+                      }
                     } : undefined}
                     searchQuery={searchOpen ? searchQuery : ""}
                     isActiveMatch={msg.id === activeMatchMsgId}

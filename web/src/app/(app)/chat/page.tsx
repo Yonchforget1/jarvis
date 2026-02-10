@@ -88,6 +88,7 @@ export default function ChatPage() {
     isLoading,
     sessionId,
     sendMessage,
+    editMessage,
     retryLast,
     stopStreaming,
     clearChat,
@@ -166,6 +167,7 @@ export default function ChatPage() {
         messages={messages}
         isLoading={isLoading}
         onSend={sendMessage}
+        onEditMessage={editMessage}
         onRetry={retryLast}
         onStop={stopStreaming}
         onClear={clearChat}

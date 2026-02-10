@@ -240,6 +240,7 @@ export const MessageBubble = memo(function MessageBubble({
   const isStreaming = message.isStreaming;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // For user messages, highlight search terms in the plain text
   const userContent = useMemo(() => {
@@ -331,7 +332,14 @@ export const MessageBubble = memo(function MessageBubble({
                         setEditing(false);
                       }
                     }
-                    if (e.key === "Escape") setEditing(false);
+                    if (e.key === "Escape") {
+                      // If text unchanged, just close. Otherwise confirm discard.
+                      if (editValue === message.content) {
+                        setEditing(false);
+                      } else {
+                        setShowDiscardConfirm(true);
+                      }
+                    }
                   }}
                   className="w-full resize-none rounded-lg bg-primary-foreground/10 px-2 py-1.5 text-sm text-primary-foreground outline-none border border-primary-foreground/20 focus:border-primary-foreground/40"
                   rows={Math.min(editValue.split("\n").length + 1, 6)}
@@ -359,6 +367,25 @@ export const MessageBubble = memo(function MessageBubble({
                     Send
                   </button>
                 </div>
+                {showDiscardConfirm && (
+                  <div className="flex items-center justify-between rounded-lg bg-red-500/10 border border-red-500/20 px-2 py-1.5">
+                    <span className="text-[10px] text-red-400">Discard unsaved changes?</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setShowDiscardConfirm(false)}
+                        className="rounded px-1.5 py-0.5 text-[10px] text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+                      >
+                        Keep editing
+                      </button>
+                      <button
+                        onClick={() => { setShowDiscardConfirm(false); setEditing(false); }}
+                        className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
             <div>

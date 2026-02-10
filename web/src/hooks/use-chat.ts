@@ -305,6 +305,24 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     [sessionId, updateStreamingMessage],
   );
 
+  const editMessage = useCallback(
+    (messageId: string, newContent: string) => {
+      // Find the message being edited and truncate everything from that point
+      const msgs = messagesRef.current;
+      const editIdx = msgs.findIndex((m) => m.id === messageId);
+      if (editIdx === -1) return;
+
+      // Remove the edited message and all subsequent messages
+      setMessages((prev) => prev.slice(0, editIdx));
+
+      // Re-send with the new content (sendMessage will add user msg + stream)
+      // Small delay to let state update propagate
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => sendMessage(newContent), 50);
+    },
+    [sendMessage],
+  );
+
   const clearChat = useCallback(() => {
     if (abortRef.current) {
       abortRef.current.abort();
@@ -411,6 +429,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     sessionId,
     error,
     sendMessage,
+    editMessage,
     clearChat,
     retryLast,
     stopStreaming,
