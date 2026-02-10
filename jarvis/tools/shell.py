@@ -1,9 +1,34 @@
+import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
 
 from jarvis.tool_registry import ToolDef
+
+log = logging.getLogger("jarvis")
+
+# Commands that are destructive and should be logged with a warning
+_DANGEROUS_PATTERNS = [
+    r"\brm\s+-rf\s+/",          # rm -rf /
+    r"\bmkfs\b",                  # format filesystems
+    r"\bdd\b.*\bof=/dev/",       # write raw to device
+    r">\s*/dev/sd",              # redirect to raw device
+    r"\bformat\s+[a-z]:",       # Windows format drive
+    r"\bdel\s+/[sf]\b",         # Windows del /s or /f
+    r"\bshutdown\b",            # system shutdown
+    r"\breboot\b",              # system reboot
+]
+
+
+def _check_dangerous(command: str) -> str | None:
+    """Return a warning if the command matches a dangerous pattern."""
+    cmd_lower = command.lower().strip()
+    for pattern in _DANGEROUS_PATTERNS:
+        if re.search(pattern, cmd_lower):
+            return f"Warning: potentially destructive command detected: {command}"
+    return None
 
 
 def run_python(code: str) -> str:
@@ -34,6 +59,9 @@ def run_python(code: str) -> str:
 
 def run_shell(command: str) -> str:
     """Run a shell command and return stdout/stderr."""
+    warning = _check_dangerous(command)
+    if warning:
+        log.warning("Shell safety: %s", warning)
     try:
         result = subprocess.run(
             command,

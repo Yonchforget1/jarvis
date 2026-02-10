@@ -1,0 +1,421 @@
+"use client";
+
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import type { ChatMessage } from "@/lib/types";
+import { ToolCallCard } from "./tool-call-card";
+import { Tooltip } from "@/components/ui/tooltip";
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="absolute top-2 right-2 rounded-lg bg-background/80 backdrop-blur-sm p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 opacity-0 group-hover:opacity-100 border border-border/50"
+      title="Copy code"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-green-400" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
+function MessageCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+      title="Copy message"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-green-400" />
+          <span className="text-green-400">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" />
+          <span>Copy</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+type Reaction = "up" | "down" | null;
+
+function getReaction(messageId: string): Reaction {
+  try {
+    const stored = localStorage.getItem("jarvis-reactions");
+    const reactions = stored ? JSON.parse(stored) : {};
+    return reactions[messageId] || null;
+  } catch {
+    return null;
+  }
+}
+
+function setReaction(messageId: string, reaction: Reaction) {
+  try {
+    const stored = localStorage.getItem("jarvis-reactions");
+    const reactions = stored ? JSON.parse(stored) : {};
+    if (reaction) {
+      reactions[messageId] = reaction;
+    } else {
+      delete reactions[messageId];
+    }
+    localStorage.setItem("jarvis-reactions", JSON.stringify(reactions));
+  } catch {
+    // ignore
+  }
+}
+
+function MessageReactions({ messageId }: { messageId: string }) {
+  const [reaction, setReactionState] = useState<Reaction>(() => getReaction(messageId));
+
+  const toggle = useCallback(
+    (type: "up" | "down") => {
+      const next = reaction === type ? null : type;
+      setReactionState(next);
+      setReaction(messageId, next);
+    },
+    [messageId, reaction]
+  );
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <button
+        onClick={() => toggle("up")}
+        className={`flex items-center rounded-md p-0.5 transition-colors ${
+          reaction === "up"
+            ? "text-green-400"
+            : "text-muted-foreground/40 hover:text-green-400/70"
+        }`}
+        title="Helpful"
+      >
+        <ThumbsUp className="h-3 w-3" />
+      </button>
+      <button
+        onClick={() => toggle("down")}
+        className={`flex items-center rounded-md p-0.5 transition-colors ${
+          reaction === "down"
+            ? "text-red-400"
+            : "text-muted-foreground/40 hover:text-red-400/70"
+        }`}
+        title="Not helpful"
+      >
+        <ThumbsDown className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+
+function extractUrls(text: string): string[] {
+  const matches = text.match(URL_REGEX);
+  if (!matches) return [];
+  // Deduplicate
+  return [...new Set(matches)].slice(0, 3);
+}
+
+function LinkBadges({ urls }: { urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1">
+      {urls.map((url) => {
+        let domain: string;
+        try {
+          domain = new URL(url).hostname.replace("www.", "");
+        } catch {
+          domain = url.slice(0, 30);
+        }
+        return (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg bg-primary/5 border border-primary/10 px-2 py-0.5 text-[10px] text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <ExternalLink className="h-2.5 w-2.5" />
+            {domain}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+
+  const parts: React.ReactNode[] = [];
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let lastIndex = 0;
+
+  let idx = lowerText.indexOf(lowerQuery, lastIndex);
+  while (idx !== -1) {
+    if (idx > lastIndex) {
+      parts.push(text.slice(lastIndex, idx));
+    }
+    parts.push(
+      <mark key={idx} className="bg-yellow-400/30 text-inherit rounded-sm px-0.5">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+    );
+    lastIndex = idx + query.length;
+    idx = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return <>{parts}</>;
+}
+
+export function MessageBubble({
+  message,
+  onRetry,
+  onStop,
+  searchQuery = "",
+  isActiveMatch = false,
+  isGrouped = false,
+}: {
+  message: ChatMessage;
+  onRetry?: () => void;
+  onStop?: () => void;
+  searchQuery?: string;
+  isActiveMatch?: boolean;
+  isGrouped?: boolean;
+}) {
+  const isUser = message.role === "user";
+  const isError = message.isError;
+  const isStreaming = message.isStreaming;
+
+  // For user messages, highlight search terms in the plain text
+  const userContent = useMemo(() => {
+    if (!isUser || !searchQuery) return null;
+    return <HighlightedText text={message.content} query={searchQuery} />;
+  }, [isUser, message.content, searchQuery]);
+
+  const userUrls = useMemo(() => {
+    if (!isUser) return [];
+    return extractUrls(message.content);
+  }, [isUser, message.content]);
+
+  return (
+    <div
+      data-message-id={message.id}
+      role="article"
+      aria-label={`${isUser ? "Your" : "JARVIS"} message`}
+      className={`flex gap-3 px-4 animate-fade-in-up transition-colors duration-300 ${
+        isGrouped ? "py-0.5" : "py-3"
+      } ${
+        isUser ? "flex-row-reverse" : ""
+      } ${isActiveMatch ? "bg-primary/5 rounded-xl" : ""}`}
+    >
+      {/* Avatar */}
+      {isGrouped ? (
+        <div className="w-8 shrink-0" />
+      ) : (
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+          isUser
+            ? "bg-primary/20"
+            : isError
+            ? "bg-red-500/20"
+            : isStreaming
+            ? "bg-primary/20 animate-glow-pulse"
+            : "bg-secondary"
+        }`}
+      >
+        {isUser ? (
+          <User className="h-4 w-4 text-primary" />
+        ) : isError ? (
+          <AlertTriangle className="h-4 w-4 text-red-400" />
+        ) : isStreaming ? (
+          <Loader2 className="h-4 w-4 text-primary animate-spin" />
+        ) : (
+          <Bot className="h-4 w-4 text-primary" />
+        )}
+      </div>
+      )}
+
+      {/* Message content */}
+      <div
+        className={`flex flex-col gap-1 min-w-0 max-w-[85%] sm:max-w-[80%] ${
+          isUser ? "items-end" : "items-start"
+        }`}
+      >
+        {/* Tool calls shown before the response */}
+        {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
+          <div className="w-full space-y-1.5 mb-1.5">
+            {message.tool_calls.map((tc) => (
+              <ToolCallCard key={tc.id} call={tc} />
+            ))}
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div
+          className={`rounded-2xl px-4 py-2.5 transition-colors ${
+            isUser
+              ? "bg-primary text-primary-foreground rounded-br-md"
+              : isError
+              ? "bg-red-500/10 border border-red-500/20 text-foreground rounded-bl-md"
+              : isStreaming
+              ? "bg-secondary/80 backdrop-blur-sm border border-primary/20 text-secondary-foreground rounded-bl-md"
+              : "bg-secondary/80 backdrop-blur-sm border border-border/50 text-secondary-foreground rounded-bl-md"
+          }`}
+        >
+          {isUser ? (
+            <div>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                {userContent || message.content}
+              </p>
+              <LinkBadges urls={userUrls} />
+            </div>
+          ) : isStreaming && !message.content ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{message.streamStatus || "Thinking..."}</span>
+              <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm" />
+            </div>
+          ) : (
+            <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:relative prose-pre:bg-transparent prose-pre:p-0 prose-p:leading-relaxed prose-headings:text-foreground prose-a:text-primary prose-strong:text-foreground">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={{
+                  pre: ({ children, ...props }) => {
+                    let codeText = "";
+                    try {
+                      const child = children as React.ReactElement<{ children?: string }>;
+                      codeText = String(child?.props?.children || "");
+                    } catch { /* ignore */ }
+                    return (
+                      <div className="relative group my-2">
+                        <pre
+                          className="!bg-black/40 dark:!bg-black/40 !rounded-xl !border !border-border/50 overflow-x-auto"
+                          {...props}
+                        >
+                          {children}
+                        </pre>
+                        <CopyButton text={codeText} />
+                      </div>
+                    );
+                  },
+                  code: ({ className, children, ...props }) => {
+                    const isInline = !className;
+                    if (isInline) {
+                      return (
+                        <code
+                          className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-mono text-primary/90"
+                          {...props}
+                        >
+                          {children}
+                        </code>
+                      );
+                    }
+                    return (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+              {isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm ml-0.5 align-text-bottom" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: timestamp + actions */}
+        <div className="flex items-center gap-2 px-1">
+          {isStreaming ? (
+            <>
+              {message.streamStatus && (
+                <span className="text-[10px] text-primary/60 animate-pulse">
+                  {message.streamStatus}
+                </span>
+              )}
+              {onStop && (
+                <button
+                  onClick={onStop}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Square className="h-2.5 w-2.5" />
+                  Stop
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <Tooltip
+                content={new Date(message.timestamp).toLocaleString(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+                side="top"
+                delay={400}
+              >
+                <span className="text-[10px] text-muted-foreground/60 cursor-default">
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </Tooltip>
+              {message.content && (
+                <MessageCopyButton text={message.content} />
+              )}
+              {!isUser && message.content && (
+                <>
+                  <span className="text-[10px] text-muted-foreground/40">
+                    {message.content.split(/\s+/).filter(Boolean).length}w
+                  </span>
+                  <MessageReactions messageId={message.id} />
+                </>
+              )}
+              {isError && onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

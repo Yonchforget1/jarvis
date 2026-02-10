@@ -13,12 +13,25 @@ class ToolCall:
 
 
 @dataclass
+class TokenUsage:
+    """Token usage from a single API call."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
+@dataclass
 class BackendResponse:
     """What the backend returns after one API call."""
 
     text: str | None
     tool_calls: list[ToolCall] = field(default_factory=list)
     raw: object = None
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
 
 class Backend(ABC):
@@ -41,3 +54,20 @@ class Backend(ABC):
 
     @abstractmethod
     def format_tool_results(self, results: list[tuple[str, str]]) -> dict | list[dict]: ...
+
+    def ping(self) -> bool:
+        """Check backend connectivity with a minimal API call.
+
+        Returns True if the backend is reachable and authenticated.
+        Subclasses should override for efficient implementation.
+        """
+        try:
+            self.send(
+                messages=[self.format_user_message("ping")],
+                system="Respond with 'pong'.",
+                tools=[],
+                max_tokens=5,
+            )
+            return True
+        except Exception:
+            return False

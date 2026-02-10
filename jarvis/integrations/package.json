@@ -1,0 +1,18 @@
+{
+  "name": "jarvis-integrations",
+  "version": "1.0.0",
+  "description": "Jarvis WhatsApp bridge via whatsapp-web.js",
+  "main": "whatsapp_bridge.js",
+  "scripts": {
+    "whatsapp": "node whatsapp_bridge.js",
+    "start": "node whatsapp_bridge.js"
+  },
+  "keywords": [],
+  "author": "Yonatan Weintraub",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.6"
+  }
+}

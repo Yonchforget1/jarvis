@@ -1,0 +1,4 @@
+node_modules/
+dist/
+*.ico
+icons/generate-icon.html

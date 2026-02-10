@@ -63,8 +63,10 @@ pygame-ce==2.5.6
 pyparsing==3.3.2
 pyperclip==1.11.0
 python-dotenv==1.2.1
+python-multipart==0.0.22
 PyYAML==6.0.3
 regex==2026.1.15
+rich>=13.0.0
 requests==2.32.5
 requests-toolbelt==1.0.0
 screeninfo==0.8.1
@@ -82,4 +84,13 @@ urllib3==2.6.3
 ursina==8.3.0
 uuid_utils==0.14.0
 xxhash==3.6.0
+mss>=9.0
+openpyxl>=3.1.0
+pdfplumber>=0.11.0
+playwright>=1.40
+pyautogui>=0.9.54
+pypdf>=4.0
+pytesseract>=0.3.10
+pywinauto>=0.6.8
+reportlab>=4.0
 zstandard==0.25.0

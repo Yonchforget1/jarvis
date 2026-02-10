@@ -1,10 +1,53 @@
+import ipaddress
 import re
+from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 from ddgs import DDGS
 
 from jarvis.tool_registry import ToolDef
+
+
+def _is_internal_url(url: str) -> bool:
+    """Check if a URL points to an internal/private IP address (SSRF protection)."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return True
+        # Block common internal hostnames
+        if hostname in ("localhost", "0.0.0.0", "127.0.0.1", "::1"):
+            return True
+        # Block private/reserved IP ranges
+        try:
+            addr = ipaddress.ip_address(hostname)
+            return addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local
+        except ValueError:
+            # Not a raw IP — hostname is fine
+            return False
+    except Exception:
+        return True
+
+
+MAX_CONTENT_LENGTH = 20000
+
+
+def _smart_truncate(text: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
+    """Truncate text at paragraph boundaries to avoid cutting mid-sentence."""
+    if len(text) <= max_length:
+        return text
+    # Find the last paragraph break before the limit
+    truncated = text[:max_length]
+    last_para = truncated.rfind("\n\n")
+    if last_para > max_length * 0.5:  # Only use if we keep at least half
+        truncated = truncated[:last_para]
+    else:
+        # Fall back to sentence boundary
+        last_sentence = max(truncated.rfind(". "), truncated.rfind(".\n"))
+        if last_sentence > max_length * 0.5:
+            truncated = truncated[:last_sentence + 1]
+    return truncated + f"\n\n... (truncated, {len(text)} chars total)"
 
 
 def search_web(query: str) -> str:
@@ -24,6 +67,8 @@ def search_web(query: str) -> str:
 
 def fetch_url(url: str, selector: str = "") -> str:
     """Fetch a URL and extract text content, optionally filtered by CSS selector."""
+    if _is_internal_url(url):
+        return "Error: cannot fetch internal/private URLs (SSRF protection)."
     try:
         headers = {"User-Agent": "Mozilla/5.0 (compatible; Jarvis/1.0)"}
         response = httpx.get(url, headers=headers, follow_redirects=True, timeout=15)
@@ -31,7 +76,7 @@ def fetch_url(url: str, selector: str = "") -> str:
 
         content_type = response.headers.get("content-type", "")
         if "text/html" not in content_type and "application/xhtml" not in content_type:
-            text = response.text[:20000]
+            text = _smart_truncate(response.text)
             return text if text else "(empty response)"
 
         soup = BeautifulSoup(response.text, "lxml")
@@ -50,8 +95,7 @@ def fetch_url(url: str, selector: str = "") -> str:
 
         text = re.sub(r"\n{3,}", "\n\n", text)
 
-        if len(text) > 20000:
-            text = text[:20000] + f"\n\n... (truncated, {len(text)} chars total)"
+        text = _smart_truncate(text)
         return text if text else "(no readable content)"
     except Exception as e:
         return f"Error fetching URL: {e}"
@@ -68,6 +112,8 @@ def register(registry):
             "required": ["query"],
         },
         func=search_web,
+        category="web",
+        retryable=True,
     ))
     registry.register(ToolDef(
         name="fetch_url",
@@ -80,4 +126,6 @@ def register(registry):
             "required": ["url"],
         },
         func=fetch_url,
+        category="web",
+        retryable=True,
     ))

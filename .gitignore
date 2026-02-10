@@ -4,7 +4,17 @@ __pycache__/
 .env
 .idea/
 .vscode/
+.claude/
 memory/
 test_games/
 SpaceBlaster/
 _test_state.pkl
+web/node_modules/
+web/.next/
+web/.env.local
+api/data/
+jarvis/secrets/
+jarvis/integrations/node_modules/
+jarvis/integrations/.wwebjs_auth/
+jarvis/integrations/.wwebjs_cache/
+jarvis/integrations/whatsapp_images/

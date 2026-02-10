@@ -1,0 +1,27 @@
+[project]
+name = "jarvis"
+version = "1.0.0"
+description = "Jarvis AI Agent Platform - Digital workforce for real tasks"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["jarvis", "api"]
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]

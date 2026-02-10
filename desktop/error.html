@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jarvis - Startup Error</title>
+<style>
+  body {
+    margin: 0;
+    background: #0a0a0f;
+    color: #e0e0e8;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+  }
+  .container { max-width: 500px; padding: 40px; }
+  h1 {
+    font-size: 28px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  p { color: #8888a0; line-height: 1.6; margin-bottom: 12px; }
+  .steps {
+    text-align: left;
+    background: #12121a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  .steps li { margin-bottom: 8px; color: #a0a0b8; }
+  code {
+    background: #1e1e2e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  button {
+    margin-top: 24px;
+    padding: 12px 32px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:hover { background: #818cf8; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Backend Failed to Start</h1>
+  <p>Jarvis couldn't start the Python backend server. This usually means Python isn't installed or dependencies are missing.</p>
+  <div class="steps">
+    <strong>How to fix:</strong>
+    <ol>
+      <li>Install Python 3.10+ from <code>python.org</code></li>
+      <li>Open a terminal and run: <code>pip install -r requirements.txt</code></li>
+      <li>Restart Jarvis</li>
+    </ol>
+  </div>
+  <button onclick="window.location.reload()">Retry</button>
+</div>
+</body>
+</html>
