@@ -206,6 +206,38 @@ async def chat_batch(
     return {"results": results, "count": len(results)}
 
 
+class ReactionRequest(BaseModel):
+    message_id: str
+    reaction: str | None = None  # "up", "down", or null to clear
+
+
+# In-memory reaction counts for analytics (reset on restart)
+_reaction_counts = {"up": 0, "down": 0, "cleared": 0}
+
+
+@router.post("/chat/reactions", status_code=202)
+@limiter.limit("30/minute")
+async def submit_reaction(
+    request: Request,
+    body: ReactionRequest,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Record a message reaction for analytics."""
+    if body.reaction == "up":
+        _reaction_counts["up"] += 1
+    elif body.reaction == "down":
+        _reaction_counts["down"] += 1
+    else:
+        _reaction_counts["cleared"] += 1
+    log.info("Reaction user=%s msg=%s reaction=%s", user.id, body.message_id[:16], body.reaction)
+    return {"status": "recorded"}
+
+
+def get_reaction_counts() -> dict:
+    """Return reaction analytics counts."""
+    return dict(_reaction_counts)
+
+
 def _sse(event: str, data: dict) -> str:
     """Format a single SSE event."""
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"

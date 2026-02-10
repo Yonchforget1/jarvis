@@ -12,6 +12,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { TopLoader } from "@/components/top-loader";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageTransition } from "@/components/page-transition";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { ConnectionMonitor } from "@/components/connection-monitor";
 import { Onboarding } from "@/components/onboarding";
 import { PWAInstall } from "@/components/pwa-install";
@@ -177,6 +178,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {!focusMode && <Header onMenuClick={() => setSidebarOpen(true)} />}
+        {!focusMode && <Breadcrumb />}
         <main id="main-content" className={`flex-1 overflow-hidden ${focusMode ? "pb-0" : "pb-14 lg:pb-0"}`}>
           <ErrorBoundary>
             <PageTransition>{children}</PageTransition>

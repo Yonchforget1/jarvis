@@ -269,20 +269,48 @@ async def health(request: Request, deep: bool = False):
         pass
 
     if deep:
+        subsystems = {}
+        overall_status = "ok"
+
+        # Backend connectivity
         try:
             from jarvis.backends import create_backend
-
             backend = create_backend(session_manager.config)
             backend_ok = backend.ping()
         except Exception:
             backend_ok = False
-        result["backend"] = {
+        subsystems["backend"] = {
             "name": session_manager.config.backend,
             "model": session_manager.config.model,
-            "connected": backend_ok,
+            "status": "ok" if backend_ok else "unhealthy",
         }
         if not backend_ok:
-            result["status"] = "degraded"
+            overall_status = "degraded"
+
+        # Memory health
+        try:
+            import psutil
+            mem = psutil.virtual_memory()
+            mem_status = "ok" if mem.percent < 80 else "warning" if mem.percent < 95 else "unhealthy"
+            subsystems["memory"] = {"percent_used": mem.percent, "status": mem_status}
+            if mem_status == "unhealthy":
+                overall_status = "degraded"
+        except ImportError:
+            subsystems["memory"] = {"status": "unknown"}
+
+        # Sessions health
+        active = session_manager.active_session_count
+        subsystems["sessions"] = {"active": active, "status": "ok" if active < 500 else "warning"}
+
+        # Reaction analytics (if available)
+        try:
+            from api.routers.chat import get_reaction_counts
+            subsystems["reactions"] = get_reaction_counts()
+        except Exception:
+            pass
+
+        result["subsystems"] = subsystems
+        result["status"] = overall_status
     return result
 
 

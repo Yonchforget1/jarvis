@@ -119,6 +119,15 @@ function MessageReactions({ messageId }: { messageId: string }) {
       const next = reaction === type ? null : type;
       setReactionState(next);
       setReaction(messageId, next);
+      // Fire-and-forget sync to backend for analytics
+      const token = localStorage.getItem("jarvis_token");
+      if (token) {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/reactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ message_id: messageId, reaction: next }),
+        }).catch(() => {});
+      }
     },
     [messageId, reaction]
   );
