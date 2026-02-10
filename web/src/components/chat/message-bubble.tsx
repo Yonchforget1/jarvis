@@ -677,6 +677,16 @@ export const MessageBubble = memo(function MessageBubble({
                           : `${(message.responseTimeMs / 1000).toFixed(1)}s`}
                       </span>
                     )}
+                    {message.tokenUsage && message.tokenUsage.total_tokens > 0 && (
+                      <span
+                        className="text-[10px] text-muted-foreground/30 tabular-nums"
+                        title={`Input: ${message.tokenUsage.input_tokens.toLocaleString()} tokens · Output: ${message.tokenUsage.output_tokens.toLocaleString()} tokens`}
+                      >
+                        {message.tokenUsage.total_tokens >= 1000
+                          ? `${(message.tokenUsage.total_tokens / 1000).toFixed(1)}K`
+                          : message.tokenUsage.total_tokens} tok
+                      </span>
+                    )}
                     <MessageReactions messageId={message.id} />
                   </>
                 );

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X, Link2, Check, Pencil } from "lucide-react";
+import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X, Link2, Check, Pencil, ClipboardCopy } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
@@ -220,6 +220,22 @@ export default function ChatPage() {
     }).catch(() => {});
   }, [sessionId]);
 
+  // Copy entire conversation as text
+  const [convCopied, setConvCopied] = useState(false);
+  const convCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyConversation = useCallback(() => {
+    if (messages.length === 0) return;
+    const text = messages
+      .filter((m) => m.content)
+      .map((m) => `${m.role === "user" ? "You" : "JARVIS"}: ${m.content}`)
+      .join("\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setConvCopied(true);
+      if (convCopyTimerRef.current) clearTimeout(convCopyTimerRef.current);
+      convCopyTimerRef.current = setTimeout(() => setConvCopied(false), 2000);
+    }).catch(() => {});
+  }, [messages]);
+
   // Inline session rename
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -394,6 +410,20 @@ export default function ChatPage() {
                 >
                   {linkCopied ? <Check className="h-2.5 w-2.5" /> : <Link2 className="h-2.5 w-2.5" />}
                   <span className="hidden sm:inline">{linkCopied ? "Copied" : "Link"}</span>
+                </button>
+              )}
+              {messages.length > 1 && (
+                <button
+                  onClick={copyConversation}
+                  className={`flex items-center gap-1 rounded-full border border-border/30 px-2 py-0.5 text-[10px] transition-colors ${
+                    convCopied
+                      ? "bg-green-500/10 text-green-400 border-green-500/30"
+                      : "bg-muted/50 text-muted-foreground/50 hover:text-foreground hover:bg-muted"
+                  }`}
+                  title="Copy conversation to clipboard"
+                >
+                  {convCopied ? <Check className="h-2.5 w-2.5" /> : <ClipboardCopy className="h-2.5 w-2.5" />}
+                  <span className="hidden sm:inline">{convCopied ? "Copied" : "Copy"}</span>
                 </button>
               )}
               {sessionId && messages.length > 0 && (

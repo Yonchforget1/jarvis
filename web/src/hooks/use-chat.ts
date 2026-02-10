@@ -56,6 +56,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   const abortRef = useRef<AbortController | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevTokenTotalRef = useRef<{ input: number; output: number }>({ input: 0, output: 0 });
   const optionsRef = useRef(options);
   const messagesRef = useRef(messages);
 
@@ -270,17 +271,24 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
                 receivedDone = true;
                 const doneData = data as unknown as Record<string, unknown>;
                 const responseTimeMs = Date.now() - streamStartTime;
+                // Compute per-message token usage as delta from cumulative totals
+                let msgTokenUsage: { input_tokens: number; output_tokens: number; total_tokens: number } | undefined;
+                if (doneData.token_usage) {
+                  const usage = doneData.token_usage as { input_tokens: number; output_tokens: number; total_tokens: number };
+                  const deltaIn = Math.max(0, usage.input_tokens - prevTokenTotalRef.current.input);
+                  const deltaOut = Math.max(0, usage.output_tokens - prevTokenTotalRef.current.output);
+                  msgTokenUsage = { input_tokens: deltaIn, output_tokens: deltaOut, total_tokens: deltaIn + deltaOut };
+                  prevTokenTotalRef.current = { input: usage.input_tokens, output: usage.output_tokens };
+                  setTokenUsage(usage);
+                }
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
                   isStreaming: false,
                   streamStatus: undefined,
                   timestamp: new Date().toISOString(),
                   responseTimeMs,
+                  tokenUsage: msgTokenUsage,
                 }));
-                // Update token usage from server
-                if (doneData.token_usage) {
-                  setTokenUsage(doneData.token_usage as { input_tokens: number; output_tokens: number; total_tokens: number });
-                }
                 // Propagate auto-generated title so sidebar can update
                 if (doneData.auto_title && (streamSessionId || sessionId)) {
                   window.dispatchEvent(
@@ -377,6 +385,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     setSessionId(null);
     setError(null);
     setTokenUsage(null);
+    prevTokenTotalRef.current = { input: 0, output: 0 };
   }, []);
 
   const retryLast = useCallback(() => {

@@ -16,6 +16,7 @@ export interface ChatMessage {
   isIncomplete?: boolean;
   streamStatus?: string;
   responseTimeMs?: number;
+  tokenUsage?: { input_tokens: number; output_tokens: number; total_tokens: number };
 }
 
 export interface ToolInfo {
