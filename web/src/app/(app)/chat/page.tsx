@@ -53,6 +53,18 @@ export default function ChatPage() {
     }
   }, [sessionId, selectedSessionId, selectSession]);
 
+  // Dynamic page title based on first user message
+  useEffect(() => {
+    const firstUserMsg = messages.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      const preview = firstUserMsg.content.slice(0, 50).trim();
+      document.title = `${preview}${firstUserMsg.content.length > 50 ? "..." : ""} - JARVIS`;
+    } else {
+      document.title = "Chat - JARVIS";
+    }
+    return () => { document.title = "JARVIS"; };
+  }, [messages]);
+
   return (
     <ChatContainer
       messages={messages}

@@ -184,7 +184,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           )}
         </div>
         {onClose && !collapsed && (
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 lg:hidden">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close sidebar" className="h-8 w-8 lg:hidden">
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -542,6 +542,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               variant="ghost"
               size="icon"
               onClick={logout}
+              aria-label="Log out"
               className="h-8 w-8 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
             >
               <LogOut className="h-4 w-4" />

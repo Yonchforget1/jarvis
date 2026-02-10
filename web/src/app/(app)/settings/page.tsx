@@ -476,7 +476,7 @@ export default function SettingsPage() {
               variant="outline"
               className={`w-full justify-start gap-2 h-11 rounded-xl transition-all duration-200 ${
                 confirmClear
-                  ? "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                  ? "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 animate-pulse"
                   : "border-red-500/20 text-muted-foreground hover:text-red-400 hover:border-red-500/30"
               }`}
               onClick={handleClearAllSessions}

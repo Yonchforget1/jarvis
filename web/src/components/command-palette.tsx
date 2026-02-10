@@ -223,6 +223,9 @@ export function CommandPalette() {
       {/* Dialog */}
       <div className="relative flex justify-center pt-[20vh]">
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
           className="w-full max-w-lg mx-4 rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-scale-in"
           style={{ animationDuration: "0.15s" }}
         >
@@ -235,6 +238,7 @@ export function CommandPalette() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleInputKeyDown}
               placeholder="Type a command or search..."
+              aria-label="Command search"
               className="flex-1 bg-transparent py-4 text-sm outline-none placeholder:text-muted-foreground/50"
             />
             <kbd className="hidden sm:inline-flex rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
