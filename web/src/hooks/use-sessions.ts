@@ -11,6 +11,7 @@ interface SessionEntry {
   preview: string;
   custom_name?: string | null;
   auto_title?: string | null;
+  pinned?: boolean;
 }
 
 // Generate a short title from a message preview
@@ -106,6 +107,15 @@ export function useSessions() {
       // Handle both paginated response and legacy array format
       const list = Array.isArray(data) ? data : (data?.sessions || []);
       setSessions(list);
+      // Merge server-side pins into local pin set
+      const serverPins = new Set(list.filter((s) => s.pinned).map((s) => s.session_id));
+      if (serverPins.size > 0) {
+        setPinnedIds((prev) => {
+          const merged = new Set([...prev, ...serverPins]);
+          savePinnedSessions(merged);
+          return merged;
+        });
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sessions");
@@ -257,6 +267,8 @@ export function useSessions() {
         savePinnedSessions(next);
         return next;
       });
+      // Sync to server for cross-device persistence
+      api.patch(`/api/conversation/sessions/${sessionId}/pin`, {}).catch(() => {});
     },
     [],
   );

@@ -84,6 +84,7 @@ async def list_sessions(
                 "preview": s.conversation.get_first_user_message(),
                 "custom_name": s.custom_name or None,
                 "auto_title": s.auto_title or None,
+                "pinned": getattr(s, "pinned", False),
             }
             for s in page
         ],
@@ -156,6 +157,23 @@ async def archive_session(
     current = getattr(session, "archived", False)
     session.archived = not current
     return {"status": "archived" if session.archived else "unarchived", "session_id": session_id}
+
+
+@router.patch("/sessions/{session_id}/pin")
+@_limiter.limit("20/minute")
+async def pin_session(
+    request: Request,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Toggle pin status on a session."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+    session = _session_manager.get_session(session_id, user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.pinned = not session.pinned
+    return {"status": "pinned" if session.pinned else "unpinned", "session_id": session_id}
 
 
 @router.post("/sessions/{session_id}/duplicate")
