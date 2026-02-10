@@ -154,6 +154,8 @@ export default function SettingsPage() {
   const [newKeyLabel, setNewKeyLabel] = useState("");
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
+  const [confirmRevokeKeyId, setConfirmRevokeKeyId] = useState<string | null>(null);
+  const confirmRevokeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchApiKeys = useCallback(async () => {
     setApiKeysLoading(true);
@@ -241,13 +243,24 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRevokeApiKey = async (keyId: string) => {
-    try {
-      await api.delete(`/api/auth/api-keys/${keyId}`);
-      setApiKeys((prev) => prev.filter((k) => k.id !== keyId));
-      toast.success("Revoked", "API key has been revoked.");
-    } catch {
-      toast.error("Failed", "Could not revoke API key.");
+  const handleRevokeApiKey = (keyId: string) => {
+    if (confirmRevokeKeyId === keyId) {
+      // Second click - actually revoke
+      if (confirmRevokeTimerRef.current) clearTimeout(confirmRevokeTimerRef.current);
+      setConfirmRevokeKeyId(null);
+      api.delete(`/api/auth/api-keys/${keyId}`)
+        .then(() => {
+          setApiKeys((prev) => prev.filter((k) => k.id !== keyId));
+          toast.success("Revoked", "API key has been revoked.");
+        })
+        .catch(() => {
+          toast.error("Failed", "Could not revoke API key.");
+        });
+    } else {
+      // First click - enter confirm state
+      setConfirmRevokeKeyId(keyId);
+      if (confirmRevokeTimerRef.current) clearTimeout(confirmRevokeTimerRef.current);
+      confirmRevokeTimerRef.current = setTimeout(() => setConfirmRevokeKeyId(null), 5000);
     }
   };
 
@@ -264,6 +277,8 @@ export default function SettingsPage() {
   const [newWebhookEvents, setNewWebhookEvents] = useState<Set<string>>(new Set(["*"]));
   const [newWebhookSecret, setNewWebhookSecret] = useState("");
   const [creatingWebhook, setCreatingWebhook] = useState(false);
+  const [confirmDeleteWebhookId, setConfirmDeleteWebhookId] = useState<string | null>(null);
+  const confirmDeleteWebhookTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const WEBHOOK_EVENTS = [
     { value: "*", label: "All Events" },
@@ -299,13 +314,24 @@ export default function SettingsPage() {
     } finally { setCreatingWebhook(false); }
   };
 
-  const handleDeleteWebhook = async (id: string) => {
-    try {
-      await api.delete(`/api/webhooks/${id}`);
-      setWebhooks((prev) => prev.filter((w) => w.id !== id));
-      toast.success("Deleted", "Webhook removed.");
-    } catch {
-      toast.error("Failed", "Could not delete webhook.");
+  const handleDeleteWebhook = (id: string) => {
+    if (confirmDeleteWebhookId === id) {
+      // Second click - actually delete
+      if (confirmDeleteWebhookTimerRef.current) clearTimeout(confirmDeleteWebhookTimerRef.current);
+      setConfirmDeleteWebhookId(null);
+      api.delete(`/api/webhooks/${id}`)
+        .then(() => {
+          setWebhooks((prev) => prev.filter((w) => w.id !== id));
+          toast.success("Deleted", "Webhook removed.");
+        })
+        .catch(() => {
+          toast.error("Failed", "Could not delete webhook.");
+        });
+    } else {
+      // First click - enter confirm state
+      setConfirmDeleteWebhookId(id);
+      if (confirmDeleteWebhookTimerRef.current) clearTimeout(confirmDeleteWebhookTimerRef.current);
+      confirmDeleteWebhookTimerRef.current = setTimeout(() => setConfirmDeleteWebhookId(null), 5000);
     }
   };
 
@@ -347,10 +373,12 @@ export default function SettingsPage() {
     }
   };
 
-  // Cleanup confirmClear timer on unmount
+  // Cleanup confirm timers on unmount
   useEffect(() => {
     return () => {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      if (confirmRevokeTimerRef.current) clearTimeout(confirmRevokeTimerRef.current);
+      if (confirmDeleteWebhookTimerRef.current) clearTimeout(confirmDeleteWebhookTimerRef.current);
     };
   }, []);
 
@@ -926,11 +954,15 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={() => handleRevokeApiKey(k.id)}
-                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                      aria-label={`Revoke key ${k.label}`}
-                      title="Revoke"
+                      className={`shrink-0 rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                        confirmRevokeKeyId === k.id
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30 font-medium"
+                          : "text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10"
+                      }`}
+                      aria-label={confirmRevokeKeyId === k.id ? `Confirm revoke key ${k.label}` : `Revoke key ${k.label}`}
+                      title={confirmRevokeKeyId === k.id ? "Click again to confirm" : "Revoke"}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      {confirmRevokeKeyId === k.id ? "Confirm?" : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 ))}
@@ -1222,10 +1254,14 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={() => handleDeleteWebhook(wh.id)}
-                      className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0 ml-2"
-                      aria-label="Delete webhook"
+                      className={`px-2 py-1.5 rounded-lg text-xs transition-colors shrink-0 ml-2 ${
+                        confirmDeleteWebhookId === wh.id
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30 font-medium"
+                          : "text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10"
+                      }`}
+                      aria-label={confirmDeleteWebhookId === wh.id ? "Confirm delete webhook" : "Delete webhook"}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      {confirmDeleteWebhookId === wh.id ? "Confirm?" : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 ))}
