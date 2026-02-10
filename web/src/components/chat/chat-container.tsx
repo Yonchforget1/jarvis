@@ -228,6 +228,18 @@ export function ChatContainer({
     }
   }, [messages, toast]);
 
+  // Auto-suggest retry when connection recovers after a failed message
+  useEffect(() => {
+    const handleReconnect = () => {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.isError && onRetry) {
+        toast.info("Connection restored", "You can retry your last message.");
+      }
+    };
+    window.addEventListener("jarvis-reconnected", handleReconnect);
+    return () => window.removeEventListener("jarvis-reconnected", handleReconnect);
+  }, [messages, onRetry, toast]);
+
   // Track messages length + last error in refs so keyboard handler stays stable
   const messagesLenRef = useRef(messages.length);
   const lastMsgErrorRef = useRef(false);

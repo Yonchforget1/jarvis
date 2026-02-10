@@ -25,8 +25,12 @@ export function useConnection() {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
+        const wasDisconnected = statusRef.current === "disconnected";
         setStatus("connected");
         setLatency(Date.now() - start);
+        if (wasDisconnected) {
+          window.dispatchEvent(new CustomEvent("jarvis-reconnected"));
+        }
       } else {
         setStatus("disconnected");
         setLatency(null);

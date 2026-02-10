@@ -16,6 +16,9 @@ import {
   Maximize,
   Keyboard,
   Monitor,
+  Trash2,
+  FileText,
+  FileJson,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
@@ -125,6 +128,39 @@ export function CommandPalette() {
       icon: Keyboard,
       action: () => {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", ctrlKey: true }));
+        close();
+      },
+      category: "Actions",
+    },
+    {
+      id: "search-messages",
+      label: "Search Messages",
+      description: "Find text in current conversation",
+      icon: Search,
+      action: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true }));
+        close();
+      },
+      category: "Actions",
+    },
+    {
+      id: "export-md",
+      label: "Export as Markdown",
+      description: "Download conversation as .md file",
+      icon: FileText,
+      action: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "E", ctrlKey: true, shiftKey: true }));
+        close();
+      },
+      category: "Actions",
+    },
+    {
+      id: "clear-chat",
+      label: "Clear Chat",
+      description: "Remove all messages from current conversation",
+      icon: Trash2,
+      action: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "l", ctrlKey: true }));
         close();
       },
       category: "Actions",
