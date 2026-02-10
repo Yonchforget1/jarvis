@@ -109,6 +109,14 @@ export const api = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** Clear a cached in-flight GET so the next call fetches fresh data. */
+  invalidate: (path: string) => {
+    inflightGets.delete(path);
+  },
+  /** Clear all cached in-flight GETs. */
+  invalidateAll: () => {
+    inflightGets.clear();
+  },
 };
 
 export { ApiError };

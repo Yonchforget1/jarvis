@@ -5,7 +5,10 @@
  * Strategy: Network-first for API calls, Cache-first for static assets.
  */
 
-const CACHE_NAME = "jarvis-v1";
+// Cache version — update on each deploy or use build hash
+// The activate handler automatically cleans caches that don't match
+const CACHE_VERSION = "2";
+const CACHE_NAME = `jarvis-v${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   "/offline.html",
   "/icon.svg",
@@ -76,5 +79,12 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data === "skipWaiting") {
     self.skipWaiting();
+  }
+  if (event.data === "clearCache") {
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => caches.delete(k)))
+    ).then(() => {
+      event.source?.postMessage("cacheCleared");
+    });
   }
 });
