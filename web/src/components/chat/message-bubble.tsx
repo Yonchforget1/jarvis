@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -203,7 +203,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
   return <>{parts}</>;
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   message,
   onRetry,
   onStop,
@@ -514,4 +514,4 @@ export function MessageBubble({
       </div>
     </div>
   );
-}
+});

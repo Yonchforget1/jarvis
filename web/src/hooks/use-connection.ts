@@ -50,9 +50,20 @@ export function useConnection() {
       }
     }, RETRY_INTERVAL);
 
+    // Detect browser online/offline for instant feedback
+    const handleOnline = () => checkConnection();
+    const handleOffline = () => {
+      setStatus("disconnected");
+      setLatency(null);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       clearInterval(statusCheck);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, [checkConnection, status]);
 

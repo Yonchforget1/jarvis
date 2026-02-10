@@ -25,6 +25,7 @@ import { TypingIndicator } from "./typing-indicator";
 import { ChatInput } from "./chat-input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ShortcutsDialog } from "@/components/ui/shortcuts-dialog";
+import { useConnection } from "@/hooks/use-connection";
 
 function getDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
@@ -81,6 +82,7 @@ export function ChatContainer({
   onStop,
   onClear,
 }: ChatContainerProps) {
+  const { status: connectionStatus, retry: retryConnection } = useConnection();
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -335,6 +337,20 @@ export function ChatContainer({
           </button>
         </div>
       </div>
+
+      {/* Offline banner */}
+      {connectionStatus === "disconnected" && (
+        <div className="flex items-center justify-center gap-2 bg-red-500/10 border-b border-red-500/20 px-4 py-2 animate-fade-in">
+          <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-xs text-red-400">Unable to reach the server</span>
+          <button
+            onClick={retryConnection}
+            className="text-xs text-red-400 underline underline-offset-2 hover:text-red-300 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Chat actions bar */}
       {messages.length > 0 && !searchOpen && (
