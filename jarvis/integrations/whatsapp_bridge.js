@@ -299,22 +299,30 @@ async function sendChunkedReply(msg, text) {
     const chunks = smartChunk(text, 4000);
     for (let i = 0; i < chunks.length; i++) {
       const prefix = chunks.length > 1 ? `(${i + 1}/${chunks.length}) ` : "";
-      await msg.reply(prefix + chunks[i]);
+      const sent = await msg.reply(prefix + chunks[i]);
+      if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
       await new Promise((r) => setTimeout(r, 500));
     }
   } else {
-    await msg.reply(text);
+    const sent = await msg.reply(text);
+    if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
   }
 }
 
 // ---------------------------------------------------------------------------
 // Bridge commands (intercepted, not sent to Claude)
 // ---------------------------------------------------------------------------
+async function trackReply(msg, text) {
+  const sent = await msg.reply(text);
+  if (sent?.id?._serialized) bridgeSentIds.add(sent.id._serialized);
+  return sent;
+}
+
 const BRIDGE_COMMANDS = {
   "!reset": async (msg, phone) => {
     delete sessions[phone];
     debouncedSave();
-    await msg.reply("Session reset. Starting fresh conversation.");
+    await trackReply(msg, "Session reset. Starting fresh conversation.");
   },
   "!status": async (msg, phone) => {
     const session = sessions[phone];
@@ -324,10 +332,11 @@ const BRIDGE_COMMANDS = {
       `Initialized: ${session?.initialized || false}`,
       `Working dir: ${WORK_DIR}`,
     ];
-    await msg.reply(`Bridge status:\n${info.join("\n")}`);
+    await trackReply(msg, `Bridge status:\n${info.join("\n")}`);
   },
   "!help": async (msg) => {
-    await msg.reply(
+    await trackReply(
+      msg,
       "Commands:\n" +
         "!reset - Start a new conversation\n" +
         "!status - Show bridge status\n" +
@@ -341,10 +350,20 @@ const BRIDGE_COMMANDS = {
 // Message handlers
 // ---------------------------------------------------------------------------
 const busyPhones = new Set();
+// Track message IDs sent by the bridge to avoid infinite loops with self-chat
+const bridgeSentIds = new Set();
+// Periodically clean up old IDs (keep set from growing forever)
+setInterval(() => {
+  if (bridgeSentIds.size > 500) {
+    const excess = bridgeSentIds.size - 200;
+    const iter = bridgeSentIds.values();
+    for (let i = 0; i < excess; i++) bridgeSentIds.delete(iter.next().value);
+  }
+}, 60_000);
 
 async function handleClaudeCodeMessage(msg, phone, name, messageText) {
   if (busyPhones.has(phone)) {
-    await msg.reply("Still working on your previous request... please wait.");
+    await trackReply(msg, "Still working on your previous request... please wait.");
     return;
   }
 
@@ -467,18 +486,45 @@ client.on("disconnected", (reason) => {
 
 // --- Message handling -----------------------------------------------------
 
-client.on("message", async (msg) => {
-  // Skip group messages, status updates, and self-sent messages
-  if (msg.from.endsWith("@g.us")) return;
-  if (msg.from === "status@broadcast") return;
-  if (msg.fromMe) return;
+client.on("message_create", async (msg) => {
+  // Log EVERY message for debugging
+  const msgId = msg.id?._serialized || "unknown";
+  console.log(
+    `[jarvis-wa] RAW MSG | from=${msg.from} | fromMe=${msg.fromMe} | ` +
+      `type=${msg.type} | id=${msgId} | body=${(msg.body || "").slice(0, 80)}`
+  );
 
-  const phone = msg.from.replace("@c.us", "");
-  const contact = await msg.getContact();
-  const name = contact.pushname || contact.name || phone;
+  // Skip group messages and status updates
+  if (msg.from?.endsWith("@g.us") || msg.to?.endsWith("@g.us")) return;
+  if (msg.from === "status@broadcast") return;
+
+  // Skip messages the bridge itself sent (prevent infinite loop)
+  if (bridgeSentIds.has(msgId)) {
+    console.log("[jarvis-wa] Skipping bridge-sent message.");
+    return;
+  }
+
+  // For self-chat (Message yourself): msg.fromMe is true for both user AND bridge
+  // We allow fromMe messages but skip if the bridge is currently busy with this phone
+  // (the busyPhones guard in handleClaudeCodeMessage handles this)
+
+  // For non-self chats, skip fromMe (those are our own replies)
+  const selfChat = msg.from === msg.to;
+  if (msg.fromMe && !selfChat) return;
+
+  const phone = (msg.from || msg.to || "").replace("@c.us", "");
+  if (!phone) return;
+
+  let name = phone;
+  try {
+    const contact = await msg.getContact();
+    name = contact.pushname || contact.name || phone;
+  } catch {
+    /* use phone as name */
+  }
 
   console.log(
-    `[jarvis-wa] Message from ${name} (${phone}): ${msg.body?.slice(0, 100) || "(media)"}`
+    `[jarvis-wa] Processing message from ${name} (${phone}): ${msg.body?.slice(0, 100) || "(media)"}`
   );
 
   try {
