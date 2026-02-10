@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, Keyboard } from "lucide-react";
+import { FocusTrap } from "@/components/ui/focus-trap";
 
 const SHORTCUTS = [
   {
@@ -52,7 +53,7 @@ export function KeyboardShortcuts() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      if ((e.ctrlKey || e.metaKey) && e.key === "?") {
         e.preventDefault();
         setOpen((prev) => !prev);
       }
@@ -72,12 +73,13 @@ export function KeyboardShortcuts() {
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => setOpen(false)}
       />
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <FocusTrap>
+      <div role="dialog" aria-modal="true" aria-labelledby="kbd-shortcuts-title" className="relative w-full max-w-lg mx-4 rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
           <div className="flex items-center gap-2.5">
             <Keyboard className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Keyboard Shortcuts</h2>
+            <h2 id="kbd-shortcuts-title" className="text-base font-semibold">Keyboard Shortcuts</h2>
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -127,10 +129,11 @@ export function KeyboardShortcuts() {
         {/* Footer */}
         <div className="px-6 py-3 border-t border-border/50 bg-muted/30">
           <p className="text-[10px] text-muted-foreground/40 text-center">
-            Press <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-mono border border-border/50">Ctrl+/</kbd> to toggle this dialog
+            Press <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-mono border border-border/50">Ctrl+?</kbd> to toggle this dialog
           </p>
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }

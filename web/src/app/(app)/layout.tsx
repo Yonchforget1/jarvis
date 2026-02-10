@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { SessionProvider, useSessionContext } from "@/lib/session-context";
@@ -32,13 +32,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const toggleSidebarCollapse = () => {
+  const toggleSidebarCollapse = useCallback(() => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem("jarvis-sidebar-collapsed", String(next));
       return next;
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight, MessageSquare } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
 import { useSessionContext } from "@/lib/session-context";
