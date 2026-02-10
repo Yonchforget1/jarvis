@@ -1,9 +1,13 @@
 """Tools endpoint: list available tools with categories."""
 
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_current_user
 from api.models import ToolInfo, ToolsResponse, UserInfo
+
+log = logging.getLogger("jarvis.api.tools")
 
 router = APIRouter()
 
@@ -61,17 +65,21 @@ def set_session_manager(sm):
 
 @router.get("/tools", response_model=ToolsResponse)
 async def list_tools(user: UserInfo = Depends(get_current_user)):
-    session = _session_manager.get_or_create(None, user.id)
-    tools = session.conversation.registry.all_tools()
+    try:
+        session = _session_manager.get_or_create(None, user.id)
+        tools = session.conversation.registry.all_tools()
 
-    tool_list = [
-        ToolInfo(
-            name=t.name,
-            description=t.description,
-            parameters=t.parameters,
-            category=TOOL_CATEGORIES.get(t.name, "other"),
-        )
-        for t in tools
-    ]
+        tool_list = [
+            ToolInfo(
+                name=t.name,
+                description=t.description,
+                parameters=t.parameters,
+                category=TOOL_CATEGORIES.get(t.name, "other"),
+            )
+            for t in tools
+        ]
 
-    return ToolsResponse(tools=tool_list, count=len(tool_list))
+        return ToolsResponse(tools=tool_list, count=len(tool_list))
+    except Exception as e:
+        log.exception("Failed to list tools for user %s", user.id)
+        raise HTTPException(status_code=500, detail="Failed to list tools")

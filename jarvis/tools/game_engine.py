@@ -19,8 +19,38 @@ from jarvis.tool_registry import ToolDef
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-GODOT_PATH = os.environ.get("GODOT_PATH", r"C:\Godot\godot.exe")
 GODOT_VERSION = 4  # Major version for compatibility checks
+
+
+def _find_godot() -> str:
+    """Locate the Godot executable, checking env var, common paths, and PATH."""
+    # 1. Environment variable (highest priority)
+    env_path = os.environ.get("GODOT_PATH")
+    if env_path and os.path.isfile(env_path):
+        return env_path
+
+    # 2. Common install locations
+    candidates = [
+        r"C:\Godot\godot.exe",
+        r"C:\Program Files\Godot\godot.exe",
+        r"C:\Program Files (x86)\Godot\godot.exe",
+        os.path.expanduser("~/Godot/godot.exe"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    # 3. Check if godot is on PATH
+    from shutil import which
+    on_path = which("godot")
+    if on_path:
+        return on_path
+
+    # Fallback: return the env var value (even if not found) or default
+    return env_path or r"C:\Godot\godot.exe"
+
+
+GODOT_PATH = _find_godot()
 
 
 # ---------------------------------------------------------------------------
@@ -2233,6 +2263,8 @@ def generate_godot_project(
     if os.path.exists(project_path):
         return f"Error: Directory '{project_path}' already exists."
 
+    godot_available = os.path.isfile(GODOT_PATH)
+
     try:
         # Create directory structure
         dirs = [
@@ -2296,16 +2328,24 @@ def generate_godot_project(
                "# Jarvis-generated project\n")
 
         file_count = len(scripts) + len(scenes) + 2
-        return (
-            f"Generated Godot 4 project '{project_name}' at {project_path}\n"
-            f"Type: {game_type}\n"
-            f"Files created: {file_count}\n"
-            f"Scenes: {', '.join(scenes.keys())}\n"
-            f"Scripts: {len(scripts)} GDScript files\n"
+        lines = [
+            f"Generated Godot 4 project '{project_name}' at {project_path}",
+            f"Type: {game_type}",
+            f"Files created: {file_count}",
+            f"Scenes: {', '.join(scenes.keys())}",
+            f"Scripts: {len(scripts)} GDScript files",
             f"Systems: GameManager, Combat, Enemy AI, Boss, Wave Spawner, "
-            f"HUD, Save/Load, Audio, Inventory, Dialogue\n\n"
-            f"To open: {GODOT_PATH} --path {project_path} --editor"
-        )
+            f"HUD, Save/Load, Audio, Inventory, Dialogue",
+            "",
+        ]
+        if godot_available:
+            lines.append(f"To open: {GODOT_PATH} --path {project_path} --editor")
+        else:
+            lines.append(
+                f"WARNING: Godot not found at '{GODOT_PATH}'. "
+                f"Set GODOT_PATH env var or install Godot 4.3+ to open this project."
+            )
+        return "\n".join(lines)
     except Exception as e:
         # Cleanup on failure
         if os.path.exists(project_path):

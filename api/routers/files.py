@@ -1,5 +1,6 @@
 """File upload endpoint: accept files for processing."""
 
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -8,6 +9,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from api.deps import get_current_user
 from api.models import UserInfo
+
+log = logging.getLogger("jarvis.api.files")
 
 router = APIRouter()
 
@@ -68,9 +71,14 @@ async def upload_file(
     safe_name = f"{file_id}_{file.filename}"
     file_path = os.path.join(user_dir, safe_name)
 
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    try:
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except OSError as e:
+        log.exception("Failed to save uploaded file %s for user %s", file.filename, user.id)
+        raise HTTPException(status_code=500, detail="Failed to save file")
 
+    log.info("User %s uploaded %s (%d bytes)", user.id, file.filename, len(contents))
     return {
         "status": "uploaded",
         "filename": file.filename,
