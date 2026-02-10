@@ -147,7 +147,7 @@ export default function LearningsPage() {
 
       {/* Quick Stats */}
       {total > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-xl border border-border/50 bg-card/30 p-3 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-400/10">
               <TrendingUp className="h-4 w-4 text-purple-400" />
@@ -178,6 +178,69 @@ export default function LearningsPage() {
               </p>
               <p className="text-[10px] text-muted-foreground/50">Latest Entry</p>
             </div>
+          </div>
+          {/* Top category */}
+          {(() => {
+            const counts: Record<string, number> = {};
+            for (const l of allLearnings) counts[l.category] = (counts[l.category] || 0) + 1;
+            const top = Object.entries(counts).sort(([, a], [, b]) => b - a)[0];
+            if (!top) return null;
+            const style = getCatStyle(top[0]);
+            return (
+              <div className="rounded-xl border border-border/50 bg-card/30 p-3 flex items-center gap-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${style.bg}`}>
+                  <Brain className={`h-4 w-4 ${style.text}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold truncate">{top[0].replace(/_/g, " ")}</p>
+                  <p className="text-[10px] text-muted-foreground/50">Top Category ({top[1]})</p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Category distribution bar */}
+      {allLearnings.length > 0 && categories.length > 1 && (
+        <div className="rounded-xl border border-border/50 bg-card/30 p-3 space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Category Distribution</p>
+          <div className="flex h-2 rounded-full overflow-hidden gap-[1px]">
+            {(() => {
+              const counts: Record<string, number> = {};
+              for (const l of allLearnings) counts[l.category] = (counts[l.category] || 0) + 1;
+              return Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([cat, count]) => {
+                  const pct = (count / allLearnings.length) * 100;
+                  const style = getCatStyle(cat);
+                  return (
+                    <div
+                      key={cat}
+                      className={`h-full ${style.bg} border ${style.text.replace("text-", "border-")}/20`}
+                      style={{ width: `${pct}%`, minWidth: "4px" }}
+                      title={`${cat.replace(/_/g, " ")}: ${count} (${pct.toFixed(0)}%)`}
+                    />
+                  );
+                });
+            })()}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {(() => {
+              const counts: Record<string, number> = {};
+              for (const l of allLearnings) counts[l.category] = (counts[l.category] || 0) + 1;
+              return Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([cat, count]) => {
+                  const style = getCatStyle(cat);
+                  return (
+                    <span key={cat} className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+                      <span className={`inline-block h-2 w-2 rounded-full ${style.bg} border ${style.text.replace("text-", "border-")}/30`} />
+                      {cat.replace(/_/g, " ")} ({count})
+                    </span>
+                  );
+                });
+            })()}
           </div>
         </div>
       )}
