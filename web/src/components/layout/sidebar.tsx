@@ -303,6 +303,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                   value={sessionSearch}
                   onChange={(e) => setSessionSearch(e.target.value)}
                   placeholder="Search chats..."
+                  aria-label="Search conversations"
                   className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
                 />
               </div>
@@ -320,9 +321,11 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 ))}
               </div>
             ) : sessions.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-muted-foreground/40">
-                No conversations yet
-              </p>
+              <div className="px-3 py-4 text-center">
+                <MessageCircle className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground/50 font-medium">No conversations yet</p>
+                <p className="text-[10px] text-muted-foreground/30 mt-0.5">Start chatting to see your history here</p>
+              </div>
             ) : (
               sessions
                 .filter((s) => {
@@ -346,12 +349,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     </p>
                   )}
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open conversation: ${session.customName || session.autoTitle || session.preview || "New conversation"}`}
                   className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
                   }`}
                   onClick={() => handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation"); } }}
                 >
                   <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -403,6 +410,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                           ? "text-primary/70 hover:bg-primary/10 hover:text-primary"
                           : "hover:bg-primary/10 hover:text-primary"
                       }`}
+                      aria-label={session.pinned ? "Unpin conversation" : "Pin conversation"}
                       title={session.pinned ? "Unpin" : "Pin"}
                     >
                       {session.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
@@ -413,6 +421,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                           e.stopPropagation();
                           finishRename();
                         }}
+                        aria-label="Confirm rename"
                         className="p-1 rounded-md hover:bg-green-400/10 hover:text-green-400"
                       >
                         <Check className="h-3 w-3" />
@@ -423,6 +432,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                           e.stopPropagation();
                           startRename(session.session_id, session.customName || session.preview || "");
                         }}
+                        aria-label="Rename conversation"
                         className="p-1 rounded-md hover:bg-primary/10 hover:text-primary"
                       >
                         <Pencil className="h-3 w-3" />
@@ -433,6 +443,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                         e.stopPropagation();
                         setDeletingSessionId(session.session_id);
                       }}
+                      aria-label="Delete conversation"
                       className="p-1 rounded-md hover:bg-red-400/10 hover:text-red-400"
                     >
                       <Trash2 className="h-3 w-3" />

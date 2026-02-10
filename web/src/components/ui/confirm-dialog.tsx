@@ -59,7 +59,7 @@ export function ConfirmDialog({
         onClick={onClose}
       />
       {/* Dialog */}
-      <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl animate-fade-in-up">
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card p-6 shadow-2xl animate-fade-in-up">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 rounded-lg p-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
@@ -74,7 +74,7 @@ export function ConfirmDialog({
             </div>
           )}
           <div>
-            <h3 className="text-sm font-semibold">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-sm font-semibold">{title}</h3>
             <p className="text-xs text-muted-foreground/70 mt-1 leading-relaxed">
               {description}
             </p>

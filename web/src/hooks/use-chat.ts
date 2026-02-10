@@ -119,7 +119,14 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
             if (!eventType || !eventData) continue;
 
-            const data = JSON.parse(eventData);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let data: any;
+            try {
+              data = JSON.parse(eventData);
+            } catch {
+              console.warn("Skipping malformed SSE event:", eventData);
+              continue;
+            }
 
             switch (eventType) {
               case "session":
