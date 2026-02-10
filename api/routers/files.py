@@ -72,7 +72,11 @@ async def upload_file(
         raise HTTPException(status_code=400, detail="Invalid filename")
     file_id = str(uuid.uuid4())[:8]
     safe_name = f"{file_id}_{base_name}"
-    file_path = os.path.join(user_dir, safe_name)
+    file_path = os.path.normpath(os.path.join(user_dir, safe_name))
+
+    # Final path traversal guard: ensure resolved path stays inside user_dir
+    if not file_path.startswith(os.path.normpath(user_dir) + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid filename")
 
     try:
         with open(file_path, "wb") as f:

@@ -7,7 +7,9 @@ import queue
 import threading
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+
+from api.auth import decode_token, get_user_by_id, validate_api_key
 
 log = logging.getLogger("jarvis.api.ws")
 router = APIRouter()
@@ -20,9 +22,25 @@ def set_session_manager(sm):
     _session_manager = sm
 
 
+async def _authenticate_ws(websocket: WebSocket, token: str | None) -> dict | None:
+    """Validate JWT or API key from query param. Returns user dict or None."""
+    if not token:
+        return None
+    # API key auth
+    if token.startswith("jrv_"):
+        return validate_api_key(token)
+    # JWT auth
+    payload = decode_token(token)
+    if payload is None:
+        return None
+    return get_user_by_id(payload["sub"])
+
+
 @router.websocket("/ws/chat")
-async def websocket_chat(websocket: WebSocket):
+async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
     """WebSocket endpoint for real-time chat.
+
+    Requires authentication via ?token=<jwt_or_api_key> query parameter.
 
     Client sends JSON: {"message": "...", "session_id": "..."}
     Server sends JSON events:
@@ -33,8 +51,16 @@ async def websocket_chat(websocket: WebSocket):
         {"type": "response", "text": "...", "timestamp": "..."}
         {"type": "error", "message": "..."}
     """
+    # Authenticate before accepting the connection
+    user = await _authenticate_ws(websocket, token or None)
+    if user is None:
+        await websocket.close(code=4001, reason="Authentication required")
+        log.warning("WebSocket connection rejected: invalid or missing token")
+        return
+
+    user_id = user["id"]
     await websocket.accept()
-    log.info("WebSocket client connected")
+    log.info("WebSocket client connected: user=%s", user_id)
 
     session = None
     try:
@@ -48,7 +74,6 @@ async def websocket_chat(websocket: WebSocket):
 
             message = data.get("message", "").strip()
             session_id = data.get("session_id")
-            user_id = data.get("user_id", "ws-user")
 
             if not message:
                 await websocket.send_json({"type": "error", "message": "Empty message"})
@@ -68,7 +93,8 @@ async def websocket_chat(websocket: WebSocket):
                 try:
                     session.conversation.send_stream(message, event_queue)
                 except Exception as e:
-                    event_queue.put({"event": "error", "data": {"message": str(e)}})
+                    log.error("WebSocket stream error for user=%s: %s", user_id, e)
+                    event_queue.put({"event": "error", "data": {"message": "An error occurred processing your request."}})
                     event_queue.put({"event": "done", "data": {}})
 
             thread = threading.Thread(target=run, daemon=True)
@@ -105,10 +131,10 @@ async def websocket_chat(websocket: WebSocket):
                     break
 
     except WebSocketDisconnect:
-        log.info("WebSocket client disconnected")
+        log.info("WebSocket client disconnected: user=%s", user_id)
     except Exception as e:
-        log.exception("WebSocket error: %s", e)
+        log.exception("WebSocket error for user=%s: %s", user_id, e)
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "An unexpected error occurred."})
         except Exception:
             pass

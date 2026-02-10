@@ -110,6 +110,11 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
       abortRef.current = new AbortController();
 
+      // 5-minute overall timeout for the stream
+      const streamTimeout = setTimeout(() => {
+        abortRef.current?.abort();
+      }, 5 * 60 * 1000);
+
       try {
         const token =
           typeof window !== "undefined"
@@ -292,6 +297,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
           }));
         }
       } finally {
+        clearTimeout(streamTimeout);
         setIsLoading(false);
         abortRef.current = null;
       }
