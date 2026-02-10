@@ -98,14 +98,23 @@ export function ChatContainer({
 
   const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
 
-  // Find matching message indices
+  // Debounce search query to avoid recomputing matches on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchQuery]);
+
+  // Find matching message indices (uses debounced query)
   const matchingIndices = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
+    if (!debouncedSearch.trim()) return [];
+    const q = debouncedSearch.toLowerCase();
     return messages
       .map((msg, i) => (msg.content.toLowerCase().includes(q) ? i : -1))
       .filter((i) => i !== -1);
-  }, [messages, searchQuery]);
+  }, [messages, debouncedSearch]);
 
   // Scroll to active match
   useEffect(() => {

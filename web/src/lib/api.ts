@@ -25,6 +25,9 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Deduplicate in-flight GET requests to the same path
+const inflightGets = new Map<string, Promise<unknown>>();
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
 
@@ -87,7 +90,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string): Promise<T> => {
+    const existing = inflightGets.get(path);
+    if (existing) return existing as Promise<T>;
+    const promise = request<T>(path).finally(() => inflightGets.delete(path));
+    inflightGets.set(path, promise);
+    return promise;
+  },
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>

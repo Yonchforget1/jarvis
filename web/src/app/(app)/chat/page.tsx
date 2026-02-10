@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -160,13 +161,15 @@ export default function ChatPage() {
   }, [messages]);
 
   return (
-    <ChatContainer
-      messages={messages}
-      isLoading={isLoading}
-      onSend={sendMessage}
-      onRetry={retryLast}
-      onStop={stopStreaming}
-      onClear={clearChat}
-    />
+    <ErrorBoundary>
+      <ChatContainer
+        messages={messages}
+        isLoading={isLoading}
+        onSend={sendMessage}
+        onRetry={retryLast}
+        onStop={stopStreaming}
+        onClear={clearChat}
+      />
+    </ErrorBoundary>
   );
 }
