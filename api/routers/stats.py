@@ -32,12 +32,13 @@ async def get_stats(user: UserInfo = Depends(get_current_user)):
         total_output = sum(s.conversation.total_output_tokens for s in sessions)
         total_tools = sum(s.conversation.total_tool_calls for s in sessions)
 
-        # Get tool count from any session or create one
+        # Get tool count from an existing session (don't create one just for stats)
         if sessions:
             tool_count = len(sessions[0].conversation.registry.all_tools())
         else:
-            session = _session_manager.get_or_create(None, user.id)
-            tool_count = len(session.conversation.registry.all_tools())
+            # Fall back to checking all sessions or reporting 0
+            all_sessions = _session_manager.get_all_sessions()
+            tool_count = len(all_sessions[0].conversation.registry.all_tools()) if all_sessions else 0
 
         return StatsResponse(
             backend=config.backend,

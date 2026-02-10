@@ -1,13 +1,17 @@
 """Admin endpoints: system management, user listing, config reload."""
 
+import logging
 import os
 import platform
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.audit import audit_log
 from api.deps import get_current_user
 from api.models import UserInfo
+
+log = logging.getLogger("jarvis.api.admin")
 
 router = APIRouter()
 
@@ -24,6 +28,7 @@ def set_session_manager(sm):
 
 def _require_admin(user: UserInfo):
     if user.username not in ADMIN_USERS:
+        log.warning("Non-admin user '%s' attempted admin access", user.username)
         raise HTTPException(403, "Admin access required")
 
 
@@ -99,6 +104,10 @@ async def reload_config(user: UserInfo = Depends(get_current_user)):
         new_config = Config.load()
         if _session_manager:
             _session_manager.config = new_config
+        audit_log(user_id=user.id, username=user.username, action="config_reload",
+                  detail=f"backend={new_config.backend} model={new_config.model}")
+        log.info("Config reloaded by admin '%s': backend=%s model=%s",
+                 user.username, new_config.backend, new_config.model)
         return {
             "status": "reloaded",
             "config": {
@@ -108,7 +117,8 @@ async def reload_config(user: UserInfo = Depends(get_current_user)):
             },
         }
     except Exception as e:
-        raise HTTPException(500, f"Config reload failed: {e}")
+        log.error("Config reload failed: %s", e)
+        raise HTTPException(500, "Configuration reload failed. Check server logs.")
 
 
 @router.get("/admin/tools/stats")
