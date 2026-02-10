@@ -28,7 +28,7 @@ const API_BASE = (() => {
   if (eqArg) return eqArg.split("=")[1];
   const idx = process.argv.indexOf("--api");
   if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
-  return "http://localhost:8000";
+  return "http://localhost:3000";
 })();
 
 const PAIR_PHONE = (() => {
