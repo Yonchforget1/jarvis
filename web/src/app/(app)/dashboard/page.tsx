@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -11,6 +11,7 @@ import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
+import { api } from "@/lib/api";
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -37,6 +38,14 @@ export default function DashboardPage() {
   const { learnings, loading: learningsLoading, error: learningsError } = useLearnings();
   const [lastUpdatedText, setLastUpdatedText] = useState("");
   const [isStale, setIsStale] = useState(false);
+  const [sessionStats, setSessionStats] = useState<{ session_id: string; title: string; cost_estimate_usd: number; input_tokens: number; output_tokens: number; message_count: number }[]>([]);
+
+  // Fetch session cost breakdown
+  useEffect(() => {
+    api.get<{ sessions: typeof sessionStats }>("/api/stats/sessions?limit=5")
+      .then((res) => setSessionStats(res.sessions || []))
+      .catch(() => {});
+  }, []);
 
   // Update "last updated" text every second and detect stale data
   useEffect(() => {
@@ -250,6 +259,33 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Session Cost Breakdown */}
+      {sessionStats.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
+            <DollarSign className="h-3 w-3" /> Session Costs
+          </h3>
+          <div className="rounded-2xl border border-border/50 bg-card/30 overflow-hidden">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 border-b border-border/30">
+              <span>Session</span>
+              <span>Tokens</span>
+              <span>Est. Cost</span>
+            </div>
+            {sessionStats.map((s) => (
+              <Link
+                key={s.session_id}
+                href={`/chat?session=${s.session_id}`}
+                className="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-2.5 text-xs hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
+              >
+                <span className="truncate text-foreground/80">{s.title}</span>
+                <span className="text-muted-foreground/60 tabular-nums">{formatTokens(s.input_tokens + s.output_tokens)}</span>
+                <span className="text-primary/80 font-medium tabular-nums">${s.cost_estimate_usd.toFixed(4)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
