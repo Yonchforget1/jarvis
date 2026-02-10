@@ -110,6 +110,8 @@ export function RegisterForm() {
               placeholder="Choose a username"
               required
               autoFocus
+              autoComplete="username"
+              enterKeyHint="next"
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
@@ -134,6 +136,8 @@ export function RegisterForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a password"
                 required
+                autoComplete="new-password"
+                enterKeyHint="next"
                 className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
               />
               <button
@@ -157,6 +161,8 @@ export function RegisterForm() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 required
+                autoComplete="new-password"
+                enterKeyHint="go"
                 className={`h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10 ${
                   confirmPassword && !passwordsMatch ? "border-red-500/50" : ""
                 }`}

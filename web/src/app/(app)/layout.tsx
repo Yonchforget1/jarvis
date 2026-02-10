@@ -97,6 +97,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Skip to main content (a11y) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:rounded-xl focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       <TopLoader />
       {/* Desktop sidebar */}
       <div
@@ -140,7 +147,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {!focusMode && <Header onMenuClick={() => setSidebarOpen(true)} />}
-        <main className={`flex-1 overflow-hidden ${focusMode ? "pb-0" : "pb-14 lg:pb-0"}`}>
+        <main id="main-content" className={`flex-1 overflow-hidden ${focusMode ? "pb-0" : "pb-14 lg:pb-0"}`}>
           <ErrorBoundary>
             <PageTransition>{children}</PageTransition>
           </ErrorBoundary>

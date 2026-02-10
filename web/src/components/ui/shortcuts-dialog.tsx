@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { X, Keyboard } from "lucide-react";
+import { FocusTrap } from "@/components/ui/focus-trap";
 
 interface ShortcutsDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
+      <FocusTrap>
       <div
         role="dialog"
         aria-modal="true"
@@ -122,6 +124,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
           ))}
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }

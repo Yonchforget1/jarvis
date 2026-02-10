@@ -22,6 +22,7 @@ import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
+import { FocusTrap } from "@/components/ui/focus-trap";
 
 interface CommandItem {
   id: string;
@@ -237,6 +238,7 @@ export function CommandPalette() {
       />
 
       {/* Dialog */}
+      <FocusTrap>
       <div className="relative flex justify-center pt-[20vh]">
         <div
           role="dialog"
@@ -326,6 +328,7 @@ export function CommandPalette() {
           </div>
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }

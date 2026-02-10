@@ -65,6 +65,8 @@ export function LoginForm() {
               placeholder="Enter your username"
               required
               autoFocus
+              autoComplete="username"
+              enterKeyHint="next"
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
@@ -78,6 +80,8 @@ export function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
+                autoComplete="current-password"
+                enterKeyHint="go"
                 className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
               />
               <button
