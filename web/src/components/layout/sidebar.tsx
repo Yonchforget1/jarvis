@@ -605,7 +605,17 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               </div>
             )}
           </div>
-          {!collapsed && (
+          {collapsed ? (
+            <Tooltip content="Log out" side="right">
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                aria-label="Log out"
+                className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          ) : (
             <Button
               variant="ghost"
               size="icon"

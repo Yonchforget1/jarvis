@@ -18,7 +18,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -85,9 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Blacklist the token server-side, then clear local state
+    try {
+      await api.post("/api/auth/logout", {});
+    } catch {
+      // Network failure shouldn't block local logout
+    }
     localStorage.removeItem("jarvis_token");
     localStorage.removeItem("jarvis_user");
+    api.invalidateAll();
     setUser(null);
   }, []);
 

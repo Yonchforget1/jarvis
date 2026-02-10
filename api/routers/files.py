@@ -5,7 +5,9 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import UserInfo
@@ -13,8 +15,17 @@ from api.models import UserInfo
 log = logging.getLogger("jarvis.api.files")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
+
+# MIME types that are allowed (validated against content_type header)
+ALLOWED_MIME_PREFIXES = {
+    "text/", "application/json", "application/xml", "application/pdf",
+    "application/zip", "application/gzip", "application/x-tar",
+    "application/vnd.openxmlformats-officedocument",
+    "image/png", "image/jpeg", "image/gif", "image/svg+xml",
+}
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "uploads")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -34,7 +45,9 @@ def set_session_manager(sm):
 
 
 @router.post("/upload")
+@_limiter.limit("30/hour")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     user: UserInfo = Depends(get_current_user),
 ):
@@ -53,6 +66,15 @@ async def upload_file(
             status_code=400,
             detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
         )
+
+    # Validate MIME type if provided
+    if file.content_type:
+        mime_ok = any(file.content_type.startswith(prefix) for prefix in ALLOWED_MIME_PREFIXES)
+        if not mime_ok and file.content_type != "application/octet-stream":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Content type '{file.content_type}' not allowed",
+            )
 
     # Read file with size limit
     contents = await file.read()
@@ -113,3 +135,34 @@ async def list_uploads(user: UserInfo = Depends(get_current_user)):
         })
 
     return {"files": files, "count": len(files)}
+
+
+@router.delete("/uploads/{filename}")
+async def delete_upload(
+    filename: str,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Delete an uploaded file."""
+    # Validate filename (prevent path traversal)
+    safe_name = os.path.basename(filename)
+    if not safe_name or safe_name != filename or safe_name.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    user_dir = os.path.join(UPLOAD_DIR, user.id)
+    file_path = os.path.normpath(os.path.join(user_dir, safe_name))
+
+    # Path traversal guard
+    if not file_path.startswith(os.path.normpath(user_dir) + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        os.remove(file_path)
+    except OSError:
+        log.exception("Failed to delete file %s for user %s", filename, user.id)
+        raise HTTPException(status_code=500, detail="Failed to delete file")
+
+    log.info("User %s deleted file %s", user.id, filename)
+    return {"status": "deleted", "filename": filename}
