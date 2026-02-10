@@ -2,7 +2,9 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import ToolInfo, ToolsResponse, UserInfo
@@ -10,6 +12,7 @@ from api.models import ToolInfo, ToolsResponse, UserInfo
 log = logging.getLogger("jarvis.api.tools")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 TOOL_CATEGORIES = {
     "read_file": "filesystem",
@@ -64,7 +67,8 @@ def set_session_manager(sm):
 
 
 @router.get("/tools", response_model=ToolsResponse)
-async def list_tools(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def list_tools(request: Request, user: UserInfo = Depends(get_current_user)):
     try:
         session = _session_manager.get_or_create(None, user.id)
         tools = session.conversation.registry.all_tools()

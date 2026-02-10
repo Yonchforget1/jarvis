@@ -6,10 +6,13 @@ No external dependency required — generates the text format directly.
 
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 _start_time = time.time()
@@ -36,7 +39,8 @@ def increment(metric: str, value: int = 1):
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
-async def prometheus_metrics():
+@_limiter.limit("5/minute")
+async def prometheus_metrics(request: Request):
     """Prometheus-compatible metrics endpoint.
 
     Returns metrics in text exposition format:

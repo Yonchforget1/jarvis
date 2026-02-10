@@ -2,7 +2,9 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import LearningEntry, LearningsResponse, UserInfo
@@ -10,6 +12,7 @@ from api.models import LearningEntry, LearningsResponse, UserInfo
 log = logging.getLogger("jarvis.api.learnings")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 
@@ -20,7 +23,9 @@ def set_session_manager(sm):
 
 
 @router.get("/learnings", response_model=LearningsResponse)
+@_limiter.limit("30/minute")
 async def get_learnings(
+    request: Request,
     topic: str | None = Query(None, description="Semantic topic search"),
     search: str | None = Query(None, max_length=200, description="Full-text search across insight, context, task"),
     sort: str = Query("newest", description="Sort order: newest, oldest, category"),

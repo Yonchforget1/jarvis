@@ -18,7 +18,8 @@
     .container {
       text-align: center;
       padding: 2rem;
-      max-width: 400px;
+      max-width: 440px;
+      width: 100%;
     }
     .logo {
       width: 64px;
@@ -45,7 +46,7 @@
       line-height: 1.6;
       margin-bottom: 1.5rem;
     }
-    button {
+    .btn {
       background: #6C3AED;
       color: white;
       border: none;
@@ -55,17 +56,20 @@
       font-weight: 500;
       cursor: pointer;
       transition: opacity 0.2s;
+      display: inline-block;
+      text-decoration: none;
     }
-    button:hover { opacity: 0.9; }
+    .btn:hover { opacity: 0.9; }
     .dot {
       display: inline-block;
       width: 8px;
       height: 8px;
-      background: #ef4444;
       border-radius: 50%;
       margin-right: 8px;
       animation: pulse 2s infinite;
     }
+    .dot-red { background: #ef4444; }
+    .dot-green { background: #22c55e; }
     .status {
       display: flex;
       align-items: center;
@@ -78,21 +82,141 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
+    .cached-sessions {
+      margin-top: 2rem;
+      text-align: left;
+    }
+    .cached-sessions h2 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+      margin-bottom: 0.75rem;
+    }
+    .session-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      margin-bottom: 0.5rem;
+    }
+    .session-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(108, 58, 237, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: #6C3AED;
+    }
+    .session-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .session-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-meta {
+      font-size: 0.65rem;
+      color: #555;
+      margin-top: 2px;
+    }
+    .reconnect-timer {
+      font-size: 0.7rem;
+      color: #6C3AED;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">J</div>
     <h1>You're offline</h1>
-    <p>JARVIS needs an internet connection to communicate with the AI backend. Please check your connection and try again.</p>
-    <button onclick="window.location.reload()">Try Again</button>
-    <div class="status">
-      <span class="dot"></span>
-      Waiting for connection...
+    <p>JARVIS needs an internet connection to communicate with the AI backend. Your conversations are safe and will sync when you're back online.</p>
+    <button class="btn" onclick="window.location.reload()">Try Again</button>
+    <div class="status" id="status">
+      <span class="dot dot-red"></span>
+      <span id="statusText">Waiting for connection...</span>
+    </div>
+    <div id="reconnectTimer" class="reconnect-timer" style="display:none"></div>
+    <div id="cachedSessions" class="cached-sessions" style="display:none">
+      <h2>Recent Conversations</h2>
+      <div id="sessionList"></div>
     </div>
   </div>
   <script>
-    window.addEventListener('online', () => window.location.reload());
+    // Auto-reconnect with exponential backoff
+    let retryCount = 0;
+    let retryTimer = null;
+    function tryReconnect() {
+      fetch('/api/health', { method: 'HEAD' })
+        .then(r => { if (r.ok) window.location.reload(); else scheduleRetry(); })
+        .catch(() => scheduleRetry());
+    }
+    function scheduleRetry() {
+      retryCount++;
+      const delay = Math.min(5000 * Math.pow(1.5, retryCount - 1), 60000);
+      const secs = Math.ceil(delay / 1000);
+      const el = document.getElementById('reconnectTimer');
+      el.style.display = 'block';
+      let remaining = secs;
+      clearInterval(retryTimer);
+      retryTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(retryTimer);
+          el.textContent = 'Checking connection...';
+          tryReconnect();
+        } else {
+          el.textContent = `Auto-retry in ${remaining}s`;
+        }
+      }, 1000);
+      el.textContent = `Auto-retry in ${secs}s`;
+    }
+
+    // Instant reconnect when online event fires
+    window.addEventListener('online', () => {
+      document.getElementById('statusText').textContent = 'Connection detected, reconnecting...';
+      document.querySelector('.dot').className = 'dot dot-green';
+      setTimeout(() => window.location.reload(), 500);
+    });
+
+    // Show cached sessions from localStorage
+    try {
+      const stored = localStorage.getItem('jarvis-session-names');
+      const names = stored ? JSON.parse(stored) : {};
+      const entries = Object.entries(names);
+      if (entries.length > 0) {
+        document.getElementById('cachedSessions').style.display = 'block';
+        const list = document.getElementById('sessionList');
+        entries.slice(0, 5).forEach(([id, name]) => {
+          const item = document.createElement('div');
+          item.className = 'session-item';
+          item.innerHTML = `
+            <div class="session-icon">&#128172;</div>
+            <div class="session-info">
+              <div class="session-name">${name}</div>
+              <div class="session-meta">Saved locally</div>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+      }
+    } catch(e) {}
+
+    // Start auto-reconnect after 5s
+    setTimeout(() => tryReconnect(), 5000);
   </script>
 </body>
 </html>

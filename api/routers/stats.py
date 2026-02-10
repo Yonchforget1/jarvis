@@ -2,7 +2,9 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import StatsResponse, UserInfo
@@ -10,6 +12,7 @@ from api.models import StatsResponse, UserInfo
 log = logging.getLogger("jarvis.api.stats")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 
@@ -20,7 +23,8 @@ def set_session_manager(sm):
 
 
 @router.get("/stats", response_model=StatsResponse)
-async def get_stats(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def get_stats(request: Request, user: UserInfo = Depends(get_current_user)):
     try:
         config = _session_manager.config
         memory = _session_manager.memory

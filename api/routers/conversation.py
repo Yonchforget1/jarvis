@@ -4,9 +4,11 @@ import json
 import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import ClearRequest, SessionInfo, UserInfo
@@ -19,6 +21,7 @@ class SessionRenameRequest(BaseModel):
 _SESSION_NAME_RE = re.compile(r"^[\w\s\-.,!?()'\"\u00C0-\u024F\u0400-\u04FF]*$")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 
@@ -29,18 +32,22 @@ def set_session_manager(sm):
 
 
 @router.post("/clear")
+@_limiter.limit("10/minute")
 async def clear_conversation(
-    request: ClearRequest,
+    request: Request,
+    body: ClearRequest,
     user: UserInfo = Depends(get_current_user),
 ):
-    success = _session_manager.clear_session(request.session_id, user.id)
+    success = _session_manager.clear_session(body.session_id, user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
-    return {"status": "cleared", "session_id": request.session_id}
+    return {"status": "cleared", "session_id": body.session_id}
 
 
 @router.get("/sessions")
+@_limiter.limit("30/minute")
 async def list_sessions(
+    request: Request,
     user: UserInfo = Depends(get_current_user),
     limit: int = Query(default=50, ge=1, le=200, description="Max sessions to return"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
@@ -78,7 +85,9 @@ async def list_sessions(
 
 
 @router.get("/sessions/{session_id}/messages")
+@_limiter.limit("20/minute")
 async def get_session_messages(
+    request: Request,
     session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     user: UserInfo = Depends(get_current_user),
 ):
@@ -93,7 +102,9 @@ async def get_session_messages(
 
 
 @router.patch("/sessions/{session_id}")
+@_limiter.limit("20/minute")
 async def rename_session(
+    request: Request,
     body: SessionRenameRequest,
     session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     user: UserInfo = Depends(get_current_user),
@@ -110,7 +121,9 @@ async def rename_session(
 
 
 @router.delete("/sessions/{session_id}")
+@_limiter.limit("10/minute")
 async def delete_session(
+    request: Request,
     session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     user: UserInfo = Depends(get_current_user),
 ):
@@ -122,7 +135,9 @@ async def delete_session(
 
 
 @router.get("/sessions/{session_id}/export")
+@_limiter.limit("10/minute")
 async def export_session(
+    request: Request,
     session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     format: str = Query("json", pattern="^(json|markdown)$"),
     user: UserInfo = Depends(get_current_user),
@@ -181,7 +196,9 @@ async def export_session(
 
 
 @router.get("/search")
+@_limiter.limit("15/minute")
 async def search_conversations(
+    request: Request,
     q: str = Query(..., min_length=1, max_length=200, description="Search query"),
     user: UserInfo = Depends(get_current_user),
 ):
@@ -231,7 +248,8 @@ async def search_conversations(
 
 
 @router.get("/list", response_model=list[SessionInfo])
-async def list_conversations(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def list_conversations(request: Request, user: UserInfo = Depends(get_current_user)):
     """Legacy endpoint - use GET /sessions instead."""
     sessions = _session_manager.get_user_sessions(user.id)
     return [
