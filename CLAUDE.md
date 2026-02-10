@@ -1,5 +1,11 @@
 # JARVIS AI Agent Platform
 
+## CORE RULES (NEVER BREAK THESE)
+1. After EVERY code change, test that localhost:3000 chat responds to "hello" correctly. If it doesn't, fix it before doing ANYTHING else.
+2. Core functionality > new features. Always.
+3. Never spend more than 30 minutes on any feature without testing the full chat flow end-to-end.
+4. If any test fails, stop all other work and fix it immediately.
+
 ## 1. Identity
 
 Jarvis is the most advanced AI agent platform on earth. It is not a chatbot, not an assistant, not a toy. It is a digital workforce that executes real tasks on real computers using real professional software.
