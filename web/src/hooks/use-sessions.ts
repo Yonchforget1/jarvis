@@ -10,6 +10,7 @@ interface SessionEntry {
   message_count: number;
   preview: string;
   custom_name?: string | null;
+  auto_title?: string | null;
 }
 
 // Generate a short title from a message preview
@@ -221,7 +222,7 @@ export function useSessions() {
       .map((s) => ({
         ...s,
         customName: sessionNames[s.session_id] || s.custom_name || undefined,
-        autoTitle: generateTitle(s.preview),
+        autoTitle: s.auto_title || generateTitle(s.preview),
         pinned: pinnedIds.has(s.session_id),
       }))
       .sort((a, b) => {

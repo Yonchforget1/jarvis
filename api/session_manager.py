@@ -22,6 +22,18 @@ from jarvis.tools.memory_tools import register as register_memory_tools
 from api.enhanced_conversation import WebConversation
 
 
+def _generate_auto_title(text: str) -> str:
+    """Generate a concise title from the first user message."""
+    if not text:
+        return ""
+    clean = " ".join(text.split()).strip()
+    # Take first sentence or first 50 chars
+    sentence = clean.split(".")[0].split("?")[0].split("!")[0].strip()
+    if len(sentence) <= 50:
+        return sentence
+    return sentence[:47].rstrip() + "..."
+
+
 @dataclass
 class JarvisSession:
     session_id: str
@@ -30,10 +42,19 @@ class JarvisSession:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     custom_name: str = ""
+    auto_title: str = ""
 
     @property
     def message_count(self) -> int:
         return len(self.conversation.messages)
+
+    def ensure_auto_title(self):
+        """Set auto_title from first user message if not already set."""
+        if self.auto_title:
+            return
+        first_msg = self.conversation.get_first_user_message()
+        if first_msg:
+            self.auto_title = _generate_auto_title(first_msg)
 
 
 class SessionManager:
@@ -112,6 +133,7 @@ class SessionManager:
                 session = self._sessions.get(session_id)
             if session and session.user_id == user_id:
                 session.last_active = datetime.now(timezone.utc)
+                session.ensure_auto_title()
                 return session
         # Enforce per-user session limit — evict oldest if at cap
         with self._lock:

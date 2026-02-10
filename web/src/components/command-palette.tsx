@@ -25,6 +25,7 @@ import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
 import { FocusTrap } from "@/components/ui/focus-trap";
+import { api } from "@/lib/api";
 
 interface CommandItem {
   id: string;
@@ -50,10 +51,19 @@ function recordAction(id: string) {
   localStorage.setItem("jarvis-cmd-recents", JSON.stringify(Object.fromEntries(entries)));
 }
 
+interface SearchResult {
+  session_id: string;
+  preview: string;
+  match_count: number;
+  matches: { snippet: string; role: string }[];
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -61,6 +71,21 @@ export function CommandPalette() {
   const { logout } = useAuth();
   const { selectSession } = useSessionContext();
   const { sessions } = useSessions();
+
+  // Global cross-session search (debounced)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!query || query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+    searchTimerRef.current = setTimeout(() => {
+      api.get<{ sessions: SearchResult[] }>(`/api/conversation/search?q=${encodeURIComponent(query)}`)
+        .then((res) => setSearchResults(res.sessions?.slice(0, 5) || []))
+        .catch(() => setSearchResults([]));
+    }, 400);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [query]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -216,7 +241,17 @@ export function CommandPalette() {
     action: () => { recordAction(cmd.id); cmd.action(); },
   }));
 
-  const allCommands = [...wrappedCommands, ...sessionCommands];
+  // Cross-session search results
+  const globalSearchCommands: CommandItem[] = searchResults.map((r) => ({
+    id: `search-${r.session_id}`,
+    label: r.matches[0]?.snippet?.slice(0, 60) || r.preview || "Match",
+    description: `${r.match_count} match${r.match_count > 1 ? "es" : ""} in conversation`,
+    icon: Search,
+    action: () => { selectSession(r.session_id); router.push("/chat"); close(); },
+    category: "Search Results",
+  }));
+
+  const allCommands = [...wrappedCommands, ...sessionCommands, ...globalSearchCommands];
 
   const filtered = useMemo(() => {
     if (query) {

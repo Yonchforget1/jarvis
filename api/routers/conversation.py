@@ -75,6 +75,7 @@ async def list_sessions(
                 "message_count": s.message_count,
                 "preview": s.conversation.get_first_user_message(),
                 "custom_name": s.custom_name or None,
+                "auto_title": s.auto_title or None,
             }
             for s in page
         ],
@@ -193,6 +194,54 @@ async def export_session(
             "messages": messages,
         }
         return export
+
+
+@router.get("/sessions/{session_id}/analytics")
+@_limiter.limit("20/minute")
+async def session_analytics(
+    request: Request,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Per-session analytics: token costs, tool usage, message stats."""
+    session = _session_manager.get_session(session_id, user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    convo = session.conversation
+    input_tokens = convo.total_input_tokens
+    output_tokens = convo.total_output_tokens
+
+    # Estimate cost (Claude Sonnet pricing as default: $3/$15 per 1M tokens)
+    cost_estimate = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+
+    # Tool stats
+    tool_stats = convo.registry.get_stats()
+    tool_calls = sum(s.call_count for s in tool_stats.values())
+    unique_tools = len([s for s in tool_stats.values() if s.call_count > 0])
+    tool_breakdown = {
+        name: {"calls": s.call_count, "errors": s.error_count, "duration_ms": round(s.total_duration_ms, 1)}
+        for name, s in sorted(tool_stats.items())
+        if s.call_count > 0
+    }
+
+    # Duration
+    duration_secs = (session.last_active - session.created_at).total_seconds()
+
+    return {
+        "session_id": session_id,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+        "cost_estimate_usd": round(cost_estimate, 4),
+        "message_count": session.message_count,
+        "tool_calls": tool_calls,
+        "unique_tools_used": unique_tools,
+        "tool_breakdown": tool_breakdown,
+        "duration_seconds": round(duration_secs, 1),
+        "created_at": session.created_at.isoformat(),
+        "last_active": session.last_active.isoformat(),
+    }
 
 
 @router.get("/search")
