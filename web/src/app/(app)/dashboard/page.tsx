@@ -106,7 +106,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (statsError) {
+  if (statsError && !stats) {
     return (
       <div className="h-full overflow-y-auto p-4 sm:p-6">
         <ErrorState message={statsError} onRetry={refetch} />
@@ -144,8 +144,23 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Connection error with stale data */}
+      {statsError && stats && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2.5 animate-fade-in">
+          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+          <span className="text-xs text-red-400">Showing cached data &mdash; {statsError}</span>
+          <button
+            onClick={refetch}
+            disabled={refetching}
+            className="ml-auto text-xs text-red-400 underline underline-offset-2 hover:text-red-300 transition-colors"
+          >
+            {refetching ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      )}
+
       {/* Stale data warning */}
-      {isStale && (
+      {isStale && !statsError && (
         <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-2.5 animate-fade-in">
           <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
           <span className="text-xs text-yellow-400">Data may be outdated (last update {lastUpdatedText})</span>

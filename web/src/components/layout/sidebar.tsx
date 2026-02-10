@@ -446,10 +446,23 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 </button>
               </div>
             ) : sessions.length === 0 ? (
-              <div className="px-3 py-4 text-center">
-                <MessageCircle className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground/50 font-medium">No conversations yet</p>
-                <p className="text-[10px] text-muted-foreground/30 mt-0.5">Start chatting to see your history here</p>
+              <div className="px-3 py-6 text-center space-y-3">
+                <div className="flex justify-center gap-2 mb-1">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-green-400/10"><Terminal className="h-3.5 w-3.5 text-green-400" /></div>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-400/10"><Globe className="h-3.5 w-3.5 text-orange-400" /></div>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-400/10"><Gamepad2 className="h-3.5 w-3.5 text-purple-400" /></div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground/60 font-medium">No conversations yet</p>
+                  <p className="text-[10px] text-muted-foreground/30 mt-0.5 leading-relaxed">Code, browse the web, build games &mdash; start a chat to begin.</p>
+                </div>
+                <button
+                  onClick={() => onSessionSelect?.("new")}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  New Chat
+                </button>
               </div>
             ) : filteredSessions.length === 0 && debouncedSearch.trim() ? (
               <div className="px-3 py-4 text-center">

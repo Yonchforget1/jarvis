@@ -5,7 +5,7 @@ import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Brain, Download, ArrowUpDown, TrendingUp, Calendar, Tag } from "lucide-react";
+import { Search, Brain, Download, ArrowUpDown, TrendingUp, Calendar, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -28,14 +28,24 @@ export default function LearningsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+
+  // Reset page when filters change
+  const handleSearch = useCallback((v: string) => { setSearch(v); setPage(1); }, []);
+  const handleCategory = useCallback((c: string | null) => { setCategoryFilter(c); setPage(1); }, []);
+  const handleSort = useCallback(() => { setSortOrder((s) => s === "newest" ? "oldest" : "newest"); setPage(1); }, []);
 
   // Server-side search, sort, and filtering via hook
   const { learnings, total, loading, error, refetch } = useLearnings({
     search: search || undefined,
     sort: sortOrder,
     category: categoryFilter || undefined,
-    pageSize: 200,
+    page,
+    pageSize: PAGE_SIZE,
   });
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Also fetch unfiltered to get all categories
   const { learnings: allLearnings } = useLearnings({ pageSize: 200 });
@@ -108,7 +118,7 @@ export default function LearningsPage() {
           {learnings.length > 0 && (
             <>
               <button
-                onClick={() => setSortOrder(sortOrder === "newest" ? "oldest" : "newest")}
+                onClick={handleSort}
                 className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title={`Sort by ${sortOrder === "newest" ? "oldest" : "newest"} first`}
               >
@@ -172,7 +182,7 @@ export default function LearningsPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search insights, context, or tasks..."
           className="pl-9 h-10 rounded-xl bg-secondary/50 border-border"
         />
@@ -183,7 +193,7 @@ export default function LearningsPage() {
         <button
           role="tab"
           aria-selected={!categoryFilter}
-          onClick={() => setCategoryFilter(null)}
+          onClick={() => handleCategory(null)}
           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
             !categoryFilter
               ? "bg-primary/20 text-primary border border-primary/30"
@@ -201,7 +211,7 @@ export default function LearningsPage() {
               aria-selected={categoryFilter === cat}
               key={cat}
               onClick={() =>
-                setCategoryFilter(categoryFilter === cat ? null : cat)
+                handleCategory(categoryFilter === cat ? null : cat)
               }
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                 categoryFilter === cat
@@ -238,7 +248,35 @@ export default function LearningsPage() {
           </p>
         </div>
       ) : (
-        <LearningsTimeline learnings={filtered} />
+        <>
+          <LearningsTimeline learnings={filtered} />
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Prev
+              </button>
+              <span className="text-xs text-muted-foreground/60 tabular-nums">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                aria-label="Next page"
+              >
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </>
       )}
       </div>
     </div>
