@@ -13,6 +13,11 @@ class WebConversation(Conversation):
         super().__init__(*args, **kwargs)
         self._pending_tool_calls: list[dict] = []
 
+    def clear(self) -> None:
+        """Reset conversation history and pending tool calls."""
+        super().clear()
+        self._pending_tool_calls = []
+
     def _truncate_result(self, result: str) -> str:
         """Truncate tool result for web display."""
         display = result[:2000]

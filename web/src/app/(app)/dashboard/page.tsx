@@ -39,12 +39,18 @@ export default function DashboardPage() {
   const [lastUpdatedText, setLastUpdatedText] = useState("");
   const [isStale, setIsStale] = useState(false);
   const [sessionStats, setSessionStats] = useState<{ session_id: string; title: string; cost_estimate_usd: number; input_tokens: number; output_tokens: number; message_count: number }[]>([]);
+  const [sessionStatsError, setSessionStatsError] = useState<string | null>(null);
 
   // Fetch session cost breakdown
   useEffect(() => {
     api.get<{ sessions: typeof sessionStats }>("/api/stats/sessions?limit=5")
-      .then((res) => setSessionStats(res.sessions || []))
-      .catch(() => {});
+      .then((res) => {
+        setSessionStats(res.sessions || []);
+        setSessionStatsError(null);
+      })
+      .catch((err) => {
+        setSessionStatsError(err instanceof Error ? err.message : "Failed to load sessions");
+      });
   }, []);
 
   // Update "last updated" text every second and detect stale data
@@ -278,6 +284,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Session Cost Breakdown */}
+      {sessionStatsError && (
+        <p className="text-xs text-red-400">Failed to load session costs</p>
+      )}
       {sessionStats.length > 0 && (() => {
         const totalCost = sessionStats.reduce((sum, s) => sum + s.cost_estimate_usd, 0);
         const maxCost = Math.max(...sessionStats.map((s) => s.cost_estimate_usd));

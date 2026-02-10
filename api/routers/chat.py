@@ -103,17 +103,20 @@ async def chat_stream(
     def run_conversation():
         try:
             session.conversation.send_stream(body.message, event_queue)
-            # Auto-save and fire webhooks after successful stream
-            session.auto_save()
-            session.ensure_auto_title()
-            fire_event(user.id, "chat.complete", {
-                "session_id": session.session_id,
-                "streaming": True,
-            })
         except Exception as e:
-            log.error("Stream error for user=%s session=%s: %s", user.id, session.session_id, e)
+            log.error("Stream error for user=%s session=%s: %s", user.id, session.session_id, e, exc_info=True)
             event_queue.put({"event": "error", "data": {"message": "An error occurred processing your request."}})
             event_queue.put({"event": "done", "data": {}})
+        finally:
+            try:
+                session.auto_save()
+                session.ensure_auto_title()
+                fire_event(user.id, "chat.complete", {
+                    "session_id": session.session_id,
+                    "streaming": True,
+                })
+            except Exception as cleanup_err:
+                log.error("Stream cleanup error session=%s: %s", session.session_id, cleanup_err)
 
     thread = threading.Thread(target=run_conversation, daemon=True)
     thread.start()

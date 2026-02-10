@@ -108,7 +108,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       {/* Progress bar */}
       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/10">
         <div
-          className={`h-full transition-none ${PROGRESS_COLORS[toast.type]}`}
+          className={`h-full transition-[width] duration-100 ease-linear ${PROGRESS_COLORS[toast.type]}`}
           style={{ width: `${progress}%` }}
         />
       </div>
