@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageSquare, Brain, Wrench, Zap, X, ArrowRight } from "lucide-react";
+import { FocusTrap } from "@/components/ui/focus-trap";
 
 const STEPS = [
   {
@@ -49,18 +50,34 @@ export function Onboarding() {
     }
   }, []);
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     setVisible(false);
     localStorage.setItem(STORAGE_KEY, "true");
-  };
+  }, []);
 
-  const next = () => {
+  const next = useCallback(() => {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
       dismiss();
     }
-  };
+  }, [step, dismiss]);
+
+  const prev = useCallback(() => {
+    if (step > 0) setStep(step - 1);
+  }, [step]);
+
+  // Keyboard: Escape to dismiss, Arrow keys to navigate
+  useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismiss();
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") next();
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") prev();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [visible, dismiss, next, prev]);
 
   if (!visible) return null;
 
@@ -70,7 +87,8 @@ export function Onboarding() {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center animate-fade-in">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={dismiss} />
-      <div className="relative w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden animate-fade-in-up">
+      <FocusTrap>
+      <div role="dialog" aria-modal="true" aria-label="Welcome to JARVIS" className="relative w-full max-w-sm mx-4 rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden animate-fade-in-up">
         {/* Close button */}
         <button
           onClick={dismiss}
@@ -124,6 +142,7 @@ export function Onboarding() {
           </div>
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }

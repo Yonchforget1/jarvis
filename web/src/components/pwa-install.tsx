@@ -60,10 +60,11 @@ export function PWAInstall() {
 
   // Register service worker and detect updates
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").then((registration) => {
         // Check for updates every 60 seconds
-        const interval = setInterval(() => registration.update(), 60000);
+        interval = setInterval(() => registration.update(), 60000);
 
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
@@ -76,10 +77,9 @@ export function PWAInstall() {
             });
           }
         });
-
-        return () => clearInterval(interval);
       }).catch(() => {});
     }
+    return () => { if (interval) clearInterval(interval); };
   }, []);
 
   const handleUpdate = useCallback(() => {
