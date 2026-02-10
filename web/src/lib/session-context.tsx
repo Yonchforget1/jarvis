@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useMemo } from "react";
 
 interface SessionContextType {
   selectedSessionId: string | null;
@@ -58,10 +58,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUnreadCount(0);
   }, []);
 
+  const value = useMemo(() => ({
+    selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread, isProcessing, setProcessing,
+  }), [selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread, isProcessing, setProcessing]);
+
   return (
-    <SessionContext.Provider
-      value={{ selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread, isProcessing, setProcessing }}
-    >
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );

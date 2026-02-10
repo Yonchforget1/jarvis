@@ -54,10 +54,15 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const optionsRef = useRef(options);
+  const messagesRef = useRef(messages);
 
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const updateStreamingMessage = useCallback(
     (msgId: string, updater: (msg: ChatMessage) => ChatMessage) => {
@@ -293,16 +298,17 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   }, []);
 
   const retryLast = useCallback(() => {
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    const msgs = messagesRef.current;
+    const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
-      const lastUserIdx = messages.lastIndexOf(lastUserMsg);
+      const lastUserIdx = msgs.lastIndexOf(lastUserMsg);
       const content = lastUserMsg.content;
       // Remove last user message and everything after it (error responses)
       // sendMessage will re-add the user message
       setMessages((prev) => prev.slice(0, lastUserIdx));
       setTimeout(() => sendMessage(content), 50);
     }
-  }, [messages, sendMessage]);
+  }, [sendMessage]);
 
   const stopStreaming = useCallback(() => {
     if (abortRef.current) {

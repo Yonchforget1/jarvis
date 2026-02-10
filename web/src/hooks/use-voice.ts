@@ -37,6 +37,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
+  const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check microphone availability
   useEffect(() => {
@@ -58,6 +59,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    if (recoveryTimerRef.current) {
+      clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -111,7 +116,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         setState("error");
         onError?.(msg);
         // Auto-recover after 3 seconds
-        setTimeout(() => {
+        recoveryTimerRef.current = setTimeout(() => {
           setState("idle");
           setError(null);
         }, 3000);
@@ -199,7 +204,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       setError(msg);
       setState("error");
       onError?.(msg);
-      setTimeout(() => {
+      recoveryTimerRef.current = setTimeout(() => {
         setState("idle");
         setError(null);
       }, 3000);
