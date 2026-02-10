@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Shield,
   Server,
@@ -21,6 +21,7 @@ import {
   X,
   Lock,
   Loader2,
+  Timer,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -115,6 +116,9 @@ export default function AdminPage() {
   const [reloading, setReloading] = useState(false);
   const [reloadError, setReloadError] = useState<string | null>(null);
   const [reloadSuccess, setReloadSuccess] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0); // 0 = off
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -144,12 +148,26 @@ export default function AdminPage() {
       }
     } finally {
       setLoading(false);
+      setLastRefreshed(new Date());
     }
   }, []);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    if (autoRefreshInterval > 0) {
+      autoRefreshRef.current = setInterval(() => {
+        fetchAll();
+      }, autoRefreshInterval * 1000);
+    }
+    return () => {
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    };
+  }, [autoRefreshInterval, fetchAll]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -250,17 +268,52 @@ export default function AdminPage() {
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
                 <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
+                {autoRefreshInterval > 0 && (
+                  <span className="flex items-center gap-1 rounded-full bg-green-400/10 border border-green-400/20 px-2 py-0.5 text-[9px] text-green-400">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+                    </span>
+                    Live
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground/60 mt-0.5">System management and monitoring</p>
+              <p className="text-sm text-muted-foreground/60 mt-0.5">
+                System management and monitoring
+                {lastRefreshed && (
+                  <span className="ml-2 text-[10px] text-muted-foreground/30">
+                    Updated {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                )}
+              </p>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Auto-refresh selector */}
+              <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 px-1 py-0.5">
+                <Timer className="h-3 w-3 text-muted-foreground/50 ml-1.5" />
+                {[0, 10, 30, 60].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setAutoRefreshInterval(s)}
+                    className={`px-1.5 py-0.5 text-[10px] rounded-md transition-colors ${
+                      autoRefreshInterval === s
+                        ? "bg-primary/20 text-primary font-medium"
+                        : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {s === 0 ? "Off" : `${s}s`}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
