@@ -28,7 +28,7 @@ import {
   PinOff,
   Search,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
@@ -126,6 +126,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [sessionLimit, setSessionLimit] = useState(15);
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredSessions = useMemo(() => {
+    if (!sessionSearch.trim()) return sessions;
+    const q = sessionSearch.toLowerCase();
+    return sessions.filter((s) =>
+      s.customName?.toLowerCase().includes(q) ||
+      s.autoTitle?.toLowerCase().includes(q) ||
+      s.preview?.toLowerCase().includes(q)
+    );
+  }, [sessions, sessionSearch]);
 
   useEffect(() => {
     if (editingSessionId && editInputRef.current) {
@@ -305,7 +315,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
                 <input
                   value={sessionSearch}
-                  onChange={(e) => setSessionSearch(e.target.value)}
+                  onChange={(e) => { setSessionSearch(e.target.value); setSessionLimit(15); }}
                   placeholder="Search chats..."
                   aria-label="Search conversations"
                   className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
@@ -341,16 +351,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 <p className="text-[10px] text-muted-foreground/30 mt-0.5">Start chatting to see your history here</p>
               </div>
             ) : (
-              sessions
-                .filter((s) => {
-                  if (!sessionSearch.trim()) return true;
-                  const q = sessionSearch.toLowerCase();
-                  return (
-                    (s.customName?.toLowerCase().includes(q)) ||
-                    (s.autoTitle?.toLowerCase().includes(q)) ||
-                    (s.preview?.toLowerCase().includes(q))
-                  );
-                })
+              filteredSessions
                 .slice(0, sessionLimit).map((session, idx, arr) => {
                 const group = sessionDateGroup(session.last_active);
                 const prevGroup = idx > 0 ? sessionDateGroup(arr[idx - 1].last_active) : null;
@@ -395,7 +396,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                         className="text-xs truncate flex items-center gap-1"
                         onDoubleClick={(e) => {
                           e.stopPropagation();
-                          startRename(session.session_id, session.customName || session.autoTitle || session.preview || "");
+                          startRename(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation");
                         }}
                       >
                         <span className="truncate">{session.customName || session.autoTitle || session.preview || "New conversation"}</span>
@@ -456,7 +457,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          startRename(session.session_id, session.customName || session.preview || "");
+                          startRename(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation");
                         }}
                         aria-label="Rename conversation"
                         className="p-1 rounded-md hover:bg-primary/10 hover:text-primary"
@@ -481,25 +482,14 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               })
             )}
             {/* Load more sessions button */}
-            {(() => {
-              const filteredCount = sessions.filter((s) => {
-                if (!sessionSearch.trim()) return true;
-                const q = sessionSearch.toLowerCase();
-                return (
-                  (s.customName?.toLowerCase().includes(q)) ||
-                  (s.autoTitle?.toLowerCase().includes(q)) ||
-                  (s.preview?.toLowerCase().includes(q))
-                );
-              }).length;
-              return filteredCount > sessionLimit ? (
-                <button
-                  onClick={() => setSessionLimit((prev) => prev + 15)}
-                  className="w-full py-2 text-[10px] text-primary/60 hover:text-primary transition-colors"
-                >
-                  Show more ({filteredCount - sessionLimit} remaining)
-                </button>
-              ) : null;
-            })()}
+            {filteredSessions.length > sessionLimit && (
+              <button
+                onClick={() => setSessionLimit((prev) => prev + 15)}
+                className="w-full py-2 text-[10px] text-primary/60 hover:text-primary transition-colors"
+              >
+                Show more ({filteredSessions.length - sessionLimit} remaining)
+              </button>
+            )}
 
             <Separator className="!my-3 bg-muted" />
 
