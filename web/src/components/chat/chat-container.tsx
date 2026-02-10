@@ -505,9 +505,13 @@ export function ChatContainer({
                 .filter((m) => !m.isStreaming)
                 .map((m) => `${m.role === "user" ? "You" : "JARVIS"}: ${typeof m.content === "string" ? m.content : ""}`)
                 .join("\n\n");
-              navigator.clipboard.writeText(text).then(() => {
-                toast.success("Copied", "All messages copied to clipboard.");
-              });
+              navigator.clipboard.writeText(text)
+                .then(() => {
+                  toast.success("Copied", "All messages copied to clipboard.");
+                })
+                .catch(() => {
+                  toast.error("Copy failed", "Could not access clipboard.");
+                });
             }}
             aria-label="Copy all messages"
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"

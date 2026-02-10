@@ -12,8 +12,11 @@ export function useStats(pollInterval: number = 15000) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const consecutiveFailures = useRef(0);
   const consecutiveSuccesses = useRef(0);
+  const inflightRef = useRef(false);
 
   const fetchStats = useCallback(async () => {
+    if (inflightRef.current) return;
+    inflightRef.current = true;
     try {
       const data = await api.get<SystemStats>("/api/stats");
       setStats(data);
@@ -31,6 +34,7 @@ export function useStats(pollInterval: number = 15000) {
     } finally {
       setLoading(false);
       setRefetching(false);
+      inflightRef.current = false;
     }
   }, []);
 
