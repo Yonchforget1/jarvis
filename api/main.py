@@ -25,7 +25,7 @@ from slowapi.util import get_remote_address
 log = logging.getLogger("jarvis.api")
 
 from api.session_manager import SessionManager
-from api.routers import admin, auth, chat, compliance, dashboard, tools, stats, learnings, conversation, settings, files, metrics, websocket, webhook_routes, whatsapp
+from api.routers import admin, auth, chat, compliance, dashboard, tools, stats, learnings, conversation, settings, files, metrics, websocket, webhook_routes, whatsapp, logs
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 session_manager = SessionManager()
@@ -227,6 +227,7 @@ app.include_router(metrics.router, prefix="/api", tags=["monitoring"])
 app.include_router(dashboard.router, prefix="/api", tags=["monitoring"])
 app.include_router(compliance.router, prefix="/api", tags=["compliance"])
 app.include_router(whatsapp.router, prefix="/api", tags=["whatsapp"])
+app.include_router(logs.router, prefix="/api", tags=["monitoring"])
 
 # Integration routes (voice transcription, etc.)
 from jarvis.integrations import register_integration_routes

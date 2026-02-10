@@ -2,6 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second
+const SLOW_REQUEST_MS = 3000; // Warn in console if request exceeds this
 
 class ApiError extends Error {
   status: number;
@@ -43,6 +44,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   let lastError: unknown;
+  const requestStart = performance.now();
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -55,6 +57,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       });
 
       clearTimeout(timeout);
+      const elapsed = Math.round(performance.now() - requestStart);
+      if (elapsed > SLOW_REQUEST_MS) {
+        console.warn(`[api] Slow request: ${options.method || "GET"} ${path} took ${elapsed}ms`);
+      }
 
       if (res.status === 401) {
         if (typeof window !== "undefined") {
