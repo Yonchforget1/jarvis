@@ -1,7 +1,9 @@
 {
   "name": "JARVIS AI Agent Platform",
   "short_name": "JARVIS",
-  "description": "The most advanced AI agent platform. Execute real tasks on real computers with 16+ professional tools.",
+  "id": "/",
+  "lang": "en",
+  "description": "The most advanced AI agent platform. Execute real tasks on real computers with 30+ professional tools. Chat with AI, manage tools, and automate workflows.",
   "start_url": "/chat",
   "scope": "/",
   "display": "standalone",
@@ -32,7 +34,17 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "JARVIS AI Agent Platform - Chat Interface"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
   "shortcuts": [
     {
       "name": "New Chat",

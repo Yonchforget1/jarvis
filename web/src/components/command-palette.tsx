@@ -35,6 +35,21 @@ interface CommandItem {
   category: string;
 }
 
+// Recent actions tracking (frecency)
+function getRecentActions(): Record<string, { count: number; lastUsed: number }> {
+  try {
+    return JSON.parse(localStorage.getItem("jarvis-cmd-recents") || "{}");
+  } catch { return {}; }
+}
+
+function recordAction(id: string) {
+  const recents = getRecentActions();
+  recents[id] = { count: (recents[id]?.count || 0) + 1, lastUsed: Date.now() };
+  // Keep only top 20
+  const entries = Object.entries(recents).sort(([,a], [,b]) => b.lastUsed - a.lastUsed).slice(0, 20);
+  localStorage.setItem("jarvis-cmd-recents", JSON.stringify(Object.fromEntries(entries)));
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -195,15 +210,38 @@ export function CommandPalette() {
       }))
     : [];
 
-  const allCommands = [...commands, ...sessionCommands];
+  // Wrap actions to track usage
+  const wrappedCommands = commands.map((cmd) => ({
+    ...cmd,
+    action: () => { recordAction(cmd.id); cmd.action(); },
+  }));
 
-  const filtered = query
-    ? allCommands.filter(
+  const allCommands = [...wrappedCommands, ...sessionCommands];
+
+  const filtered = useMemo(() => {
+    if (query) {
+      const q = query.toLowerCase();
+      return allCommands.filter(
         (cmd) =>
-          cmd.label.toLowerCase().includes(query.toLowerCase()) ||
-          cmd.description?.toLowerCase().includes(query.toLowerCase())
-      )
-    : commands; // Don't show sessions when there's no query
+          cmd.label.toLowerCase().includes(q) ||
+          cmd.description?.toLowerCase().includes(q)
+      );
+    }
+    // No query: show recent actions first, then all commands
+    const recents = getRecentActions();
+    const recentIds = Object.entries(recents)
+      .sort(([,a], [,b]) => b.lastUsed - a.lastUsed)
+      .slice(0, 5)
+      .map(([id]) => id);
+    const recentItems = recentIds
+      .map((id) => wrappedCommands.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((cmd) => ({ ...cmd!, category: "Recent" }));
+    // Remaining commands without duplicating recents
+    const recentIdSet = new Set(recentIds);
+    const rest = wrappedCommands.filter((c) => !recentIdSet.has(c.id));
+    return [...recentItems, ...rest];
+  }, [query, allCommands, wrappedCommands]);
 
   // Pre-compute flat indexed items grouped by category (StrictMode-safe)
   const categories = [...new Set(filtered.map((c) => c.category))];
@@ -311,7 +349,7 @@ export function CommandPalette() {
           </div>
 
           {/* Results */}
-          <div ref={listRef} className="max-h-72 overflow-y-auto p-2">
+          <div ref={listRef} role="listbox" aria-label="Command results" className="max-h-72 overflow-y-auto p-2">
             {filtered.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No results found
@@ -327,6 +365,9 @@ export function CommandPalette() {
                       return (
                         <button
                           key={cmd.id}
+                          role="option"
+                          aria-selected={isSelected}
+                          aria-label={`${cmd.label}${cmd.description ? `: ${cmd.description}` : ""}`}
                           data-selected={isSelected}
                           onClick={cmd.action}
                           onMouseEnter={() => setSelectedIndex(fi)}

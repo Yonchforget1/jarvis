@@ -57,6 +57,7 @@ function MessageCopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
+      aria-label={copied ? "Copied to clipboard" : "Copy message"}
       className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
       title="Copy message"
     >
