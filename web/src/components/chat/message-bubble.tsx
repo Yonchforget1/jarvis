@@ -27,6 +27,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
+      aria-label={copied ? "Copied to clipboard" : "Copy code"}
       className="absolute top-2 right-2 rounded-lg bg-background/80 backdrop-blur-sm p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 opacity-0 group-hover:opacity-100 border border-border/50"
       title="Copy code"
     >
@@ -86,12 +87,20 @@ function getReaction(messageId: string): Reaction {
   }
 }
 
+const MAX_REACTIONS = 500;
+
 function setReaction(messageId: string, reaction: Reaction) {
   try {
     const stored = localStorage.getItem("jarvis-reactions");
-    const reactions = stored ? JSON.parse(stored) : {};
+    const reactions: Record<string, string> = stored ? JSON.parse(stored) : {};
     if (reaction) {
       reactions[messageId] = reaction;
+      // Cap storage: if over limit, remove oldest entries
+      const keys = Object.keys(reactions);
+      if (keys.length > MAX_REACTIONS) {
+        const toRemove = keys.slice(0, keys.length - MAX_REACTIONS);
+        for (const k of toRemove) delete reactions[k];
+      }
     } else {
       delete reactions[messageId];
     }

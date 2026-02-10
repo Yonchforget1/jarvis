@@ -7,6 +7,21 @@ import { useVoice } from "@/hooks/use-voice";
 const MAX_LENGTH = 50_000;
 const WARN_THRESHOLD = 45_000;
 
+function useOnlineStatus() {
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
+
 const SLASH_COMMANDS = [
   { cmd: "/clear", description: "Clear conversation", icon: Trash2, action: "clear" as const },
   { cmd: "/export", description: "Export chat as Markdown", icon: Download, action: "export" as const },
@@ -27,6 +42,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const [showSlash, setShowSlash] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isOnline = useOnlineStatus();
 
   const voice = useVoice({
     onTranscript: (text) => {
@@ -212,7 +228,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
   const isNearLimit = charCount > WARN_THRESHOLD;
   const isOverLimit = charCount > MAX_LENGTH;
-  const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
+  const canSend = value.trim().length > 0 && !disabled && !isOverLimit && isOnline;
 
   return (
     <div
@@ -371,6 +387,13 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             )}
           </button>
         </div>
+        {/* Offline indicator */}
+        {!isOnline && (
+          <div role="status" className="mt-2 flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2 animate-fade-in">
+            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="text-xs text-red-400">You&apos;re offline. Messages will send when connection is restored.</span>
+          </div>
+        )}
         {/* Paste image notification */}
         {pastedImage && (
           <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 animate-fade-in">
