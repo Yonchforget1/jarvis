@@ -3,6 +3,32 @@ const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second
 const SLOW_REQUEST_MS = 3000; // Warn in console if request exceeds this
+const TOKEN_EXPIRY_WARNING_MS = 30 * 60 * 1000; // Warn 30 min before expiry
+
+let _tokenExpiryWarned = false;
+
+/** Check if JWT is near expiry and dispatch a warning event. */
+function checkTokenExpiry() {
+  if (_tokenExpiryWarned || typeof window === "undefined") return;
+  const token = localStorage.getItem("jarvis_token");
+  if (!token) return;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (payload.exp) {
+      const expiresAt = payload.exp * 1000;
+      const remaining = expiresAt - Date.now();
+      if (remaining < 0) {
+        // Already expired — clear and redirect
+        localStorage.removeItem("jarvis_token");
+        localStorage.removeItem("jarvis_user");
+        window.location.href = "/login";
+      } else if (remaining < TOKEN_EXPIRY_WARNING_MS) {
+        _tokenExpiryWarned = true;
+        window.dispatchEvent(new CustomEvent("token-expiry-warning", { detail: { remainingMs: remaining } }));
+      }
+    }
+  } catch { /* invalid token format */ }
+}
 
 class ApiError extends Error {
   status: number;
@@ -32,6 +58,7 @@ async function sleep(ms: number): Promise<void> {
 const inflightGets = new Map<string, Promise<unknown>>();
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  checkTokenExpiry();
   const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
 
   const headers: Record<string, string> = {

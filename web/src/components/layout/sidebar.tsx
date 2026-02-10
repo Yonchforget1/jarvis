@@ -439,9 +439,21 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 const group = sessionDateGroup(session.last_active);
                 const prevGroup = idx > 0 ? sessionDateGroup(arr[idx - 1].last_active) : null;
                 const showGroupHeader = group !== prevGroup;
+                const isPinnedSection = session.pinned;
+                const prevPinned = idx > 0 ? arr[idx - 1].pinned : undefined;
+                const showPinnedHeader = isPinnedSection && idx === 0;
+                const showPinnedDivider = !isPinnedSection && prevPinned;
                 return (
                 <div key={session.session_id}>
-                  {showGroupHeader && (
+                  {showPinnedHeader && (
+                    <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-primary/50 flex items-center gap-1.5">
+                      <Pin className="h-2.5 w-2.5" /> Pinned
+                    </p>
+                  )}
+                  {showPinnedDivider && (
+                    <div className="mx-3 my-1.5 h-px bg-border/50" />
+                  )}
+                  {showGroupHeader && !isPinnedSection && (
                     <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
                       {group}
                     </p>

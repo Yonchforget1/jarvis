@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
 import { useSessionContext } from "@/lib/session-context";
+import { useToast } from "@/components/ui/toast";
 
 const PAGE_TITLES: Record<string, string> = {
   "/chat": "Chat",
@@ -24,7 +26,19 @@ export function Header({ onMenuClick }: HeaderProps) {
   const title = PAGE_TITLES[pathname] || "Jarvis";
   const { status, latency } = useConnection();
   const { theme, setTheme } = useTheme();
-  const { selectedSessionName, isProcessing } = useSessionContext();
+  const { selectedSessionName, isProcessing, unreadCount, clearUnread } = useSessionContext();
+  const toast = useToast();
+
+  // Listen for token expiry warnings
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { remainingMs } = (e as CustomEvent<{ remainingMs: number }>).detail;
+      const mins = Math.round(remainingMs / 60000);
+      toast.warning(`Session expires in ${mins} minute${mins !== 1 ? "s" : ""}. Please save your work and log in again.`);
+    };
+    window.addEventListener("token-expiry-warning", handler);
+    return () => window.removeEventListener("token-expiry-warning", handler);
+  }, [toast]);
 
   return (
     <header role="banner" className="flex h-14 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
@@ -112,6 +126,22 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Search className="h-4 w-4" />
           <span className="sr-only">Search</span>
         </Button>
+
+        {/* Notification bell */}
+        {unreadCount > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={clearUnread}
+            className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+            aria-label={`${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`}
+          >
+            <Bell className="h-4 w-4" />
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          </Button>
+        )}
 
         {/* Theme toggle */}
         <Button
