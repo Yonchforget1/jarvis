@@ -6,7 +6,8 @@ type ConnectionStatus = "connected" | "degraded" | "disconnected" | "checking";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const POLL_INTERVAL = 30000; // 30 seconds
-const RETRY_INTERVAL = 5000; // 5 seconds when disconnected
+const INITIAL_RETRY_INTERVAL = 5000; // 5 seconds on first disconnect
+const MAX_RETRY_INTERVAL = 60000; // Cap at 60 seconds
 
 // Add ±10% jitter to prevent thundering herd across multiple tabs
 function jitter(interval: number): number {
@@ -22,6 +23,7 @@ export function useConnection() {
   const statusRef = useRef<ConnectionStatus>("checking");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slowStreakRef = useRef(0);
+  const failCountRef = useRef(0);
 
   // Keep statusRef in sync without causing re-renders in the effect
   statusRef.current = status;
@@ -47,15 +49,18 @@ export function useConnection() {
         } else {
           setStatus("connected");
         }
+        failCountRef.current = 0;
         if (wasDisconnected) {
           window.dispatchEvent(new CustomEvent("jarvis-reconnected"));
         }
       } else {
+        failCountRef.current++;
         setStatus("disconnected");
         setLatency(null);
         slowStreakRef.current = 0;
       }
     } catch {
+      failCountRef.current++;
       setStatus("disconnected");
       setLatency(null);
       slowStreakRef.current = 0;
@@ -65,16 +70,20 @@ export function useConnection() {
   useEffect(() => {
     checkConnection();
 
-    // Adaptive polling with jitter: faster when disconnected
+    // Adaptive polling with jitter and exponential backoff when disconnected
     const poll = () => {
-      const baseInterval = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
+      let baseInterval: number;
+      if (statusRef.current === "disconnected") {
+        baseInterval = Math.min(INITIAL_RETRY_INTERVAL * Math.pow(2, failCountRef.current - 1), MAX_RETRY_INTERVAL);
+      } else {
+        baseInterval = POLL_INTERVAL;
+      }
       const interval = jitter(baseInterval);
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
         checkConnection().then(() => {
           // Re-adjust interval if status changed
-          const newBase = statusRef.current === "disconnected" ? RETRY_INTERVAL : POLL_INTERVAL;
-          if (newBase !== baseInterval) poll();
+          poll();
         });
       }, interval);
     };
