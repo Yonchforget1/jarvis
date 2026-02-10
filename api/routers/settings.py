@@ -1,15 +1,19 @@
 """Settings endpoint: user preferences for backend, model, API keys, tools."""
 
 import json
+import logging
 import os
 import threading
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from api.crypto import decrypt, encrypt
 from api.deps import get_current_user
 from api.models import UserInfo
 from jarvis.templates import list_templates
+
+log = logging.getLogger("jarvis.api.settings")
 
 router = APIRouter()
 
@@ -116,15 +120,27 @@ class ModelsResponse(BaseModel):
 
 # --- Routes ---
 
+def _get_decrypted_api_key(user_settings: dict, fallback: str = "") -> str:
+    """Decrypt stored API key. Handles both encrypted and legacy plain-text values."""
+    stored = user_settings.get("api_key", "")
+    if not stored:
+        return fallback
+    # Fernet tokens start with 'gAAAAA' - if it doesn't, it's a legacy plain-text key
+    if stored.startswith("gAAAAA"):
+        return decrypt(stored) or fallback
+    return stored
+
+
 @router.get("/settings", response_model=SettingsResponse)
 async def get_settings(user: UserInfo = Depends(get_current_user)):
     user_settings = _get_user_settings(user.id)
     config = _session_manager.config
+    has_key = bool(_get_decrypted_api_key(user_settings, config.api_key))
 
     return SettingsResponse(
         backend=user_settings.get("backend", config.backend),
         model=user_settings.get("model", config.model),
-        has_api_key=bool(user_settings.get("api_key", config.api_key)),
+        has_api_key=has_key,
         max_tokens=user_settings.get("max_tokens", config.max_tokens),
         disabled_tools=user_settings.get("disabled_tools", []),
     )
@@ -144,11 +160,18 @@ async def update_settings(
         user_settings["backend"] = update.backend
 
     if update.model is not None:
+        # Validate model exists for the current backend
+        current_backend = update.backend or user_settings.get("backend", config.backend)
+        valid_models = [m["id"] for m in AVAILABLE_MODELS.get(current_backend, [])]
+        if valid_models and update.model not in valid_models:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Invalid model '{update.model}' for backend '{current_backend}'",
+            )
         user_settings["model"] = update.model
 
     if update.api_key is not None:
-        # Store the API key (in production, encrypt this)
-        user_settings["api_key"] = update.api_key
+        user_settings["api_key"] = encrypt(update.api_key)
 
     if update.max_tokens is not None:
         if not (256 <= update.max_tokens <= 32768):
@@ -159,11 +182,12 @@ async def update_settings(
         user_settings["disabled_tools"] = update.disabled_tools
 
     _set_user_settings(user.id, user_settings)
+    has_key = bool(_get_decrypted_api_key(user_settings, config.api_key))
 
     return SettingsResponse(
         backend=user_settings.get("backend", config.backend),
         model=user_settings.get("model", config.model),
-        has_api_key=bool(user_settings.get("api_key", config.api_key)),
+        has_api_key=has_key,
         max_tokens=user_settings.get("max_tokens", config.max_tokens),
         disabled_tools=user_settings.get("disabled_tools", []),
     )
