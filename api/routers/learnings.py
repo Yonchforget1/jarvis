@@ -36,6 +36,8 @@ async def get_learnings(
     user: UserInfo = Depends(get_current_user),
 ):
     response.headers["Cache-Control"] = "private, max-age=300"
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     try:
         memory = _session_manager.memory
 

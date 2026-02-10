@@ -78,9 +78,13 @@ def delete_session(session_id: str) -> bool:
     """Delete a saved session from disk."""
     path = _session_path(session_id)
     if os.path.exists(path):
-        os.remove(path)
-        log.info("Session %s deleted from disk", session_id)
-        return True
+        try:
+            os.remove(path)
+            log.info("Session %s deleted from disk", session_id)
+            return True
+        except Exception as e:
+            log.error("Failed to delete session %s: %s", session_id, e)
+            return False
     return False
 
 

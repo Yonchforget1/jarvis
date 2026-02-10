@@ -108,7 +108,7 @@ def _deliver(hook: dict, event: str, data: dict) -> None:
     if hook.get("secret"):
         import hashlib
         import hmac
-        sig = hmac.new(hook["secret"].encode(), json.dumps(payload).encode(), hashlib.sha256).hexdigest()
+        sig = hmac.new(hook["secret"].encode(), json.dumps(payload, sort_keys=True).encode(), hashlib.sha256).hexdigest()
         headers["X-Jarvis-Signature"] = sig
 
     for attempt in range(_MAX_RETRIES):

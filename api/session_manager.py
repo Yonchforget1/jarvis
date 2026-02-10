@@ -244,6 +244,8 @@ class SessionManager:
         """Persist all sessions to disk, then clean up."""
         if hasattr(self, "_shutdown_event"):
             self._shutdown_event.set()
+        if hasattr(self, "_cleanup_thread"):
+            self._cleanup_thread.join(timeout=5)
         with self._lock:
             for s in self._sessions.values():
                 try:
