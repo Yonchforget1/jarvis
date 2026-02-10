@@ -209,19 +209,20 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
               case "tool_call": {
                 const d = data as SSEToolCallEvent;
-                updateStreamingMessage(assistantMsgId, (m) => ({
-                  ...m,
-                  streamStatus: `Running ${d.name}...`,
-                  tool_calls: [
+                updateStreamingMessage(assistantMsgId, (m) => {
+                  const toolCalls = [
                     ...(m.tool_calls || []),
-                    {
-                      id: d.id,
-                      name: d.name,
-                      args: d.args,
-                      result: "",
-                    } as ToolCallDetail,
-                  ],
-                }));
+                    { id: d.id, name: d.name, args: d.args, result: "" } as ToolCallDetail,
+                  ];
+                  const count = toolCalls.length;
+                  return {
+                    ...m,
+                    streamStatus: count > 1
+                      ? `Running ${d.name} (${count} tools)...`
+                      : `Running ${d.name}...`,
+                    tool_calls: toolCalls,
+                  };
+                });
                 break;
               }
 

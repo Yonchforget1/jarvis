@@ -13,16 +13,20 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const { selectedSessionId, selectedSessionName, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
 
-  // Fetch model info once for header badge
-  const [modelLabel, setModelLabel] = useState<string | null>(null);
+  // Fetch model info once for header badge (cached in sessionStorage)
+  const [modelLabel, setModelLabel] = useState<string | null>(() => {
+    try { return sessionStorage.getItem("jarvis_model_label"); } catch { return null; }
+  });
   useEffect(() => {
+    if (modelLabel) return; // Already have it
     api.get<{ backend: string; model: string }>("/api/stats")
       .then((res) => {
         const short = res.model?.split("-").slice(0, 3).join("-") || res.backend;
         setModelLabel(short);
+        try { sessionStorage.setItem("jarvis_model_label", short); } catch { /* ignore */ }
       })
       .catch(() => {});
-  }, []);
+  }, [modelLabel]);
 
   // Deep-link: load session from ?session=<id> query parameter
   const deepLinkHandled = useRef(false);
@@ -220,12 +224,19 @@ export default function ChatPage() {
                 {selectedSessionName}
               </span>
             )}
-            {modelLabel && (
-              <span className="ml-auto flex items-center gap-1 rounded-full bg-muted/50 border border-border/30 px-2 py-0.5 text-[10px] font-mono text-muted-foreground/50">
-                <Cpu className="h-2.5 w-2.5" />
-                {modelLabel}
-              </span>
-            )}
+            <span className="ml-auto flex items-center gap-2">
+              {messages.length > 0 && (
+                <span className="text-[10px] text-muted-foreground/30 tabular-nums hidden sm:inline">
+                  {messages.length} msg{messages.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {modelLabel && (
+                <span className="flex items-center gap-1 rounded-full bg-muted/50 border border-border/30 px-2 py-0.5 text-[10px] font-mono text-muted-foreground/50">
+                  <Cpu className="h-2.5 w-2.5" />
+                  {modelLabel}
+                </span>
+              )}
+            </span>
           </div>
         )}
         <div className="flex-1 min-h-0">
