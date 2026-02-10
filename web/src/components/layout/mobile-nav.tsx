@@ -8,15 +8,16 @@ import {
   Wrench,
   Brain,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { useSessionContext } from "@/lib/session-context";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard", label: "Board", icon: LayoutDashboard },
+  { href: "/analytics", label: "Stats", icon: BarChart3 },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/learnings", label: "Learn", icon: Brain },
-  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function MobileNav() {

@@ -19,6 +19,9 @@ export function LoginForm() {
   const rateLimitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    try { return localStorage.getItem("jarvis_remember_me") === "true"; } catch { return false; }
+  });
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -42,7 +45,8 @@ export function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      await login(username, password);
+      try { localStorage.setItem("jarvis_remember_me", String(rememberMe)); } catch { /* ignore */ }
+      await login(username, password, rememberMe);
       router.replace("/chat");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed";
@@ -153,6 +157,15 @@ export function LoginForm() {
               </button>
             </div>
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-border/50 bg-secondary/50 text-primary focus:ring-primary/30 accent-primary"
+            />
+            <span className="text-xs text-muted-foreground/70">Remember me for 30 days</span>
+          </label>
           <Button
             type="submit"
             className="w-full h-11 rounded-xl gap-2 text-sm font-medium"

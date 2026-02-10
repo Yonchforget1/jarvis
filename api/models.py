@@ -20,6 +20,7 @@ _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_.-]+$")
 class AuthRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=6, max_length=128)
+    remember_me: bool = False
 
 
 class RegisterRequest(BaseModel):

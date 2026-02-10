@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (username: string, password: string, email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -67,8 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; controller.abort(); };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<AuthResponse>("/api/auth/login", { username, password });
+  const login = useCallback(async (username: string, password: string, rememberMe?: boolean) => {
+    const res = await api.post<AuthResponse>("/api/auth/login", { username, password, remember_me: !!rememberMe });
     localStorage.setItem("jarvis_token", res.access_token);
     localStorage.setItem("jarvis_user", JSON.stringify(res.user));
     resetTokenExpiryWarning();

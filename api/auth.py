@@ -221,9 +221,15 @@ def change_password(user_id: str, old_password: str, new_password: str) -> bool:
     return False
 
 
-def create_token(user: dict) -> str:
+REMEMBER_ME_EXPIRY_DAYS = 30
+
+
+def create_token(user: dict, remember_me: bool = False) -> str:
     """Create a JWT token for a user with a unique JTI for revocation support."""
-    expires = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)
+    if remember_me:
+        expires = datetime.now(timezone.utc) + timedelta(days=REMEMBER_ME_EXPIRY_DAYS)
+    else:
+        expires = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)
     payload = {
         "sub": user["id"],
         "username": user["username"],

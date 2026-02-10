@@ -53,10 +53,11 @@ async def login(request: AuthRequest, req: Request):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    token = create_token(user)
+    token = create_token(user, remember_me=request.remember_me)
     audit_log(
         user_id=user["id"], username=user["username"], action="login",
         ip=req.client.host if req.client else "",
+        detail="remember_me=true" if request.remember_me else "",
     )
     return AuthResponse(
         access_token=token,
