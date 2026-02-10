@@ -411,7 +411,9 @@ export default function SettingsPage() {
   if (settingsError && !settings) {
     return (
       <div className="h-full overflow-y-auto p-4 sm:p-6">
-        <ErrorState message={settingsError} onRetry={refetch} />
+        <div className="mx-auto max-w-2xl">
+          <ErrorState message={settingsError} onRetry={refetch} />
+        </div>
       </div>
     );
   }
@@ -768,7 +770,10 @@ export default function SettingsPage() {
                 ))}
               </div>
             ) : apiKeys.length === 0 ? (
-              <p className="text-xs text-muted-foreground/50 text-center py-3">No API keys created yet</p>
+              <div className="rounded-xl border border-dashed border-border/50 bg-muted/20 p-6 text-center">
+                <p className="text-xs text-muted-foreground/60">No API keys created yet</p>
+                <p className="text-[10px] text-muted-foreground/40 mt-1">Create one above to use the API programmatically</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {apiKeys.map((k) => (
@@ -926,6 +931,7 @@ export default function SettingsPage() {
               variant="outline"
               className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
               onClick={handleExportLearnings}
+              aria-label="Export all learnings as JSON file"
             >
               <Download className="h-4 w-4 text-primary" />
               Export Learnings ({learnings.length} entries)
@@ -934,6 +940,7 @@ export default function SettingsPage() {
               variant="outline"
               className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
               onClick={handleExportSettings}
+              aria-label="Export current settings as JSON file"
             >
               <Download className="h-4 w-4 text-primary" />
               Export Current Settings
@@ -942,6 +949,7 @@ export default function SettingsPage() {
               variant="outline"
               className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
               onClick={() => importFileRef.current?.click()}
+              aria-label="Import settings from JSON file"
             >
               <Upload className="h-4 w-4 text-primary" />
               Import Settings from File

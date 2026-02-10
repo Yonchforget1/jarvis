@@ -414,12 +414,12 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         )}
         {/* Expandable tips panel */}
         {showTips && (
-          <div className="mt-2 rounded-xl border border-border/30 bg-muted/30 p-3 animate-fade-in text-[11px] text-muted-foreground/60 space-y-1.5">
-            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> Send message</div>
-            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> New line</div>
-            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> Focus input</div>
-            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">/</kbd> Slash commands (/clear, /export, /new, /help)</div>
-            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">&uarr; &darr;</kbd> Navigate input history</div>
+          <div role="note" aria-label="Keyboard shortcuts" className="mt-2 rounded-xl border border-border/30 bg-muted/30 p-3 animate-fade-in text-[11px] text-muted-foreground/60 space-y-1.5">
+            <div className="flex items-center gap-2"><kbd aria-label="Enter key" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> Send message</div>
+            <div className="flex items-center gap-2"><kbd aria-label="Shift plus Enter" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> New line</div>
+            <div className="flex items-center gap-2"><kbd aria-label="Control plus slash" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> Focus input</div>
+            <div className="flex items-center gap-2"><kbd aria-label="Forward slash" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">/</kbd> Slash commands (/clear, /export, /new, /help)</div>
+            <div className="flex items-center gap-2"><kbd aria-label="Up and down arrows" className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">&uarr; &darr;</kbd> Navigate input history</div>
             <div className="text-[10px] text-muted-foreground/40 pt-1">Drafts are auto-saved and restored on next visit.</div>
           </div>
         )}

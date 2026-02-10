@@ -263,7 +263,7 @@ export default function ToolsPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveCategory(null)}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] ${
             !activeCategory
               ? "bg-primary/20 text-primary border border-primary/30"
               : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
@@ -280,7 +280,7 @@ export default function ToolsPage() {
               onClick={() =>
                 setActiveCategory(activeCategory === cat ? null : cat)
               }
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] ${
                 activeCategory === cat
                   ? `${meta.bg} ${meta.color} border border-current/30`
                   : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
