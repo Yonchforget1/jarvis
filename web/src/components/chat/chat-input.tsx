@@ -404,7 +404,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
       <div className="mx-auto max-w-3xl p-3 sm:p-4">
         <div className="relative flex items-end gap-2">
           {/* Attachment button */}
-          <div className="hidden sm:flex shrink-0">
+          <div className="flex shrink-0">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || uploading}

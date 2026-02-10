@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, RefreshCw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X, WifiOff } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, RefreshCw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X, WifiOff, Volume2, VolumeX } from "lucide-react";
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -158,6 +158,66 @@ function MessageReactions({ messageId }: { messageId: string }) {
         <span className="text-[9px] text-yellow-500/70 ml-0.5" title="Feedback saved locally but failed to sync">!</span>
       )}
     </div>
+  );
+}
+
+function ReadAloudButton({ text }: { text: string }) {
+  const [speaking, setSpeaking] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const toggle = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    // Strip markdown formatting for cleaner speech
+    const clean = text
+      .replace(/```[\s\S]*?```/g, " code block omitted ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/#{1,6}\s+/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[|][-]+[|]/g, "")
+      .replace(/\n{2,}/g, ". ")
+      .replace(/\n/g, " ")
+      .trim();
+    if (!clean) return;
+    const utterance = new SpeechSynthesisUtterance(clean.slice(0, 10000));
+    utterance.rate = 1.0;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    utteranceRef.current = utterance;
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  }, [text, speaking]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (speaking) window.speechSynthesis?.cancel();
+    };
+  }, [speaking]);
+
+  // Only render if speech synthesis is available
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label={speaking ? "Stop reading" : "Read aloud"}
+      className={`flex items-center gap-1 text-[10px] transition-colors ${
+        speaking
+          ? "text-primary"
+          : "text-muted-foreground/60 hover:text-foreground"
+      }`}
+      title={speaking ? "Stop reading" : "Read aloud"}
+    >
+      {speaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+      <span>{speaking ? "Stop" : "Listen"}</span>
+    </button>
   );
 }
 
@@ -585,6 +645,9 @@ export const MessageBubble = memo(function MessageBubble({
               </Tooltip>
               {message.content && (
                 <MessageCopyButton text={message.content} />
+              )}
+              {!isUser && message.content && !isError && (
+                <ReadAloudButton text={message.content} />
               )}
               {isUser && onEdit && !editing && (
                 <button
