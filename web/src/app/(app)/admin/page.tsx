@@ -62,6 +62,15 @@ interface ToolStat {
   avg_ms: number;
 }
 
+interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  created_at: string;
+  active_sessions: number;
+  is_admin: boolean;
+}
+
 interface AuditEntry {
   timestamp: string;
   user_id: string;
@@ -106,9 +115,10 @@ export default function AdminPage() {
   const [sessionsTotal, setSessionsTotal] = useState(0);
   const [tools, setTools] = useState<ToolStat[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "tools" | "audit">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "sessions" | "tools" | "audit">("overview");
   const [refreshing, setRefreshing] = useState(false);
   const [auditExpanded, setAuditExpanded] = useState<Set<number>>(new Set());
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
@@ -125,11 +135,12 @@ export default function AdminPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [sysRes, sessRes, toolRes, auditRes] = await Promise.allSettled([
+      const [sysRes, sessRes, toolRes, auditRes, usersRes] = await Promise.allSettled([
         api.get<SystemInfo>("/api/admin/system"),
         api.get<{ sessions: AdminSession[]; total: number }>("/api/admin/sessions?limit=50"),
         api.get<{ tools: ToolStat[] }>("/api/admin/tools/stats"),
         api.get<{ entries: AuditEntry[] }>("/api/admin/audit-logs?limit=100"),
+        api.get<{ users: AdminUser[]; total: number }>("/api/admin/users"),
       ]);
 
       if (sysRes.status === "fulfilled") setSystem(sysRes.value);
@@ -139,6 +150,7 @@ export default function AdminPage() {
       }
       if (toolRes.status === "fulfilled") setTools(toolRes.value.tools);
       if (auditRes.status === "fulfilled") setAuditLogs(auditRes.value.entries);
+      if (usersRes.status === "fulfilled") setUsers(usersRes.value.users);
 
       setAuthorized(true);
       setError(null);
@@ -292,7 +304,8 @@ export default function AdminPage() {
 
   const tabs = [
     { id: "overview" as const, label: "Overview", icon: Server },
-    { id: "sessions" as const, label: "Sessions", icon: Users },
+    { id: "users" as const, label: `Users (${users.length})`, icon: Users },
+    { id: "sessions" as const, label: "Sessions", icon: Activity },
     { id: "tools" as const, label: "Tools", icon: Wrench },
     { id: "audit" as const, label: "Audit Log", icon: ScrollText },
   ];
@@ -532,6 +545,41 @@ export default function AdminPage() {
                     <p className="font-mono text-muted-foreground">{system.config.tool_timeout}s</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Users Tab */}
+          {activeTab === "users" && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground/60">{users.length} registered user{users.length !== 1 ? "s" : ""}</p>
+              <div className="rounded-xl border border-border/50 overflow-hidden">
+                <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 px-4 py-2 bg-muted/30 border-b border-border/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                  <span>Username</span>
+                  <span>Email</span>
+                  <span>Sessions</span>
+                  <span>Joined</span>
+                  <span>Role</span>
+                </div>
+                {users.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-xs text-muted-foreground/40">No users found</div>
+                ) : (
+                  users.map((u) => (
+                    <div key={u.id} className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-b border-border/20 hover:bg-muted/20 transition-colors text-xs">
+                      <span className="font-medium truncate">{u.username}</span>
+                      <span className="text-muted-foreground/60 truncate">{u.email || "—"}</span>
+                      <span className="tabular-nums text-center w-16">{u.active_sessions}</span>
+                      <span className="text-muted-foreground/50 w-24 text-right">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                      </span>
+                      <span className={`w-16 text-center rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                        u.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/50"
+                      }`}>
+                        {u.is_admin ? "Admin" : "User"}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

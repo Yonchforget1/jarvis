@@ -88,6 +88,37 @@ async def system_info(request: Request, user: UserInfo = Depends(get_current_use
     return info
 
 
+@router.get("/admin/users")
+@limiter.limit("10/minute")
+async def list_users(request: Request, user: UserInfo = Depends(get_current_user)):
+    """List all registered users with session counts (admin only)."""
+    _require_admin(user, "admin_list_users", request)
+
+    from api.auth import _load_users
+    users = _load_users()
+
+    # Count active sessions per user
+    session_counts: dict[str, int] = {}
+    if _session_manager:
+        for s in _session_manager.get_all_sessions():
+            session_counts[s.user_id] = session_counts.get(s.user_id, 0) + 1
+
+    return {
+        "users": [
+            {
+                "id": u["id"],
+                "username": u["username"],
+                "email": u.get("email", ""),
+                "created_at": u.get("created_at", ""),
+                "active_sessions": session_counts.get(u["id"], 0),
+                "is_admin": u["username"] in ADMIN_USERS,
+            }
+            for u in users
+        ],
+        "total": len(users),
+    }
+
+
 @router.get("/admin/sessions")
 @limiter.limit("10/minute")
 async def list_all_sessions(
