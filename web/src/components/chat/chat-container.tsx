@@ -268,6 +268,11 @@ export function ChatContainer({
         e.preventDefault();
         onRetry();
       }
+      // Ctrl+Home to scroll to top
+      if ((e.ctrlKey || e.metaKey) && e.key === "Home" && scrollRef.current) {
+        e.preventDefault();
+        scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);

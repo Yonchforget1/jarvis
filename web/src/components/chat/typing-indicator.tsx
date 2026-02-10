@@ -16,18 +16,14 @@ export function TypingIndicator() {
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(Date.now());
 
-  // Cycle through phrases
+  // Single interval handles both elapsed time and phrase cycling
   useEffect(() => {
     const timer = setInterval(() => {
-      setPhraseIndex((prev) => (prev + 1) % THINKING_PHRASES.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Track elapsed time
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+      const secs = Math.floor((Date.now() - startRef.current) / 1000);
+      setElapsed(secs);
+      if (secs > 0 && secs % 3 === 0) {
+        setPhraseIndex((prev) => (prev + 1) % THINKING_PHRASES.length);
+      }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
