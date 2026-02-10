@@ -202,3 +202,102 @@ class TestSessionManager:
         resp = client.post("/api/conversation/clear", json={"session_id": "nonexistent"}, headers=auth_headers)
         # Should handle gracefully
         assert resp.status_code in (200, 404)
+
+
+# --- Tools Endpoint ---
+
+class TestTools:
+    def test_list_tools(self, client, auth_headers):
+        resp = client.get("/api/tools", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "tools" in data
+        assert "count" in data
+        assert data["count"] > 0
+        # Each tool should have name, description, parameters
+        tool = data["tools"][0]
+        assert "name" in tool
+        assert "description" in tool
+        assert "parameters" in tool
+        assert "category" in tool
+
+    def test_list_tools_no_auth(self, client):
+        resp = client.get("/api/tools")
+        assert resp.status_code in (401, 403)
+
+    def test_tools_have_expected_names(self, client, auth_headers):
+        resp = client.get("/api/tools", headers=auth_headers)
+        assert resp.status_code == 200
+        names = {t["name"] for t in resp.json()["tools"]}
+        # These baseline tools should always be present
+        assert "read_file" in names
+        assert "write_file" in names
+        assert "run_shell" in names
+
+
+# --- File Upload Endpoint ---
+
+class TestFileUpload:
+    def test_upload_text_file(self, client, auth_headers, tmp_path):
+        content = b"Hello, Jarvis!"
+        resp = client.post(
+            "/api/files/upload",
+            headers=auth_headers,
+            files={"file": ("test.txt", content, "text/plain")},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "uploaded"
+        assert data["filename"] == "test.txt"
+        assert data["size"] == len(content)
+
+    def test_upload_no_auth(self, client):
+        resp = client.post(
+            "/api/files/upload",
+            files={"file": ("test.txt", b"data", "text/plain")},
+        )
+        assert resp.status_code in (401, 403)
+
+    def test_upload_disallowed_extension(self, client, auth_headers):
+        resp = client.post(
+            "/api/files/upload",
+            headers=auth_headers,
+            files={"file": ("virus.exe", b"bad", "application/octet-stream")},
+        )
+        assert resp.status_code == 400
+        assert "not allowed" in resp.json()["detail"]
+
+    def test_list_uploads_empty(self, client, auth_headers):
+        resp = client.get("/api/files/uploads", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 0
+        assert data["files"] == []
+
+    def test_list_uploads_after_upload(self, client, auth_headers):
+        client.post(
+            "/api/files/upload",
+            headers=auth_headers,
+            files={"file": ("readme.md", b"# Test", "text/plain")},
+        )
+        resp = client.get("/api/files/uploads", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] >= 1
+        assert any("readme.md" in f["filename"] for f in data["files"])
+
+
+# --- Request Metadata ---
+
+class TestRequestMetadata:
+    def test_request_id_header(self, client):
+        resp = client.get("/api/health")
+        assert "x-request-id" in resp.headers
+
+    def test_api_version_header(self, client):
+        resp = client.get("/api/health")
+        assert "x-api-version" in resp.headers
+
+    def test_custom_request_id_echoed(self, client):
+        resp = client.get("/api/health", headers={"X-Request-ID": "test-123"})
+        assert resp.headers["x-request-id"] == "test-123"
