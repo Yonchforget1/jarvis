@@ -219,10 +219,13 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
                         request_id=event_data.get("request_id", req_id),
                     ))
                 elif event_type == "done":
+                    thread.join(timeout=5)
                     break
 
     except WebSocketDisconnect:
         log.info("WebSocket client disconnected: user=%s", user_id)
+        if "thread" in dir() and thread.is_alive():
+            thread.join(timeout=2)
     except Exception as e:
         log.exception("WebSocket error for user=%s: %s", user_id, e)
         try:

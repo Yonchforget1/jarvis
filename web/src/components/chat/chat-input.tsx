@@ -288,10 +288,11 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
           <div className="relative flex-1">
             {/* Slash commands dropdown */}
             {showSlash && filteredSlash.length > 0 && (
-              <div role="listbox" aria-label="Slash commands" className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl overflow-hidden z-20 animate-fade-in">
+              <div role="listbox" aria-label="Slash commands" aria-activedescendant={`slash-cmd-${slashIndex}`} className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl overflow-hidden z-20 animate-fade-in">
                 {filteredSlash.map((cmd, i) => (
                   <button
                     key={cmd.cmd}
+                    id={`slash-cmd-${i}`}
                     role="option"
                     aria-selected={i === slashIndex}
                     onMouseDown={(e) => {
