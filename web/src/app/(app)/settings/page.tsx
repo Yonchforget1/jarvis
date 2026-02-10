@@ -31,10 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ErrorState } from "@/components/ui/error-state";
 import { api } from "@/lib/api";
 
 export default function SettingsPage() {
-  const { settings, modelsData, loading, saving, updateSettings } = useSettings();
+  const { settings, modelsData, loading, saving, error: settingsError, updateSettings, refetch } = useSettings();
   const { learnings } = useLearnings();
   const toast = useToast();
   const { theme, setTheme } = useTheme();
@@ -178,6 +179,14 @@ export default function SettingsPage() {
     );
   }
 
+  if (settingsError && !settings) {
+    return (
+      <div className="h-full overflow-y-auto p-4 sm:p-6">
+        <ErrorState message={settingsError} onRetry={refetch} />
+      </div>
+    );
+  }
+
   const currentModels = modelsData?.models[backend] || [];
 
   const themeOptions = [
@@ -312,6 +321,7 @@ export default function SettingsPage() {
                   max={32768}
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(Number(e.target.value))}
+                  onBlur={() => setMaxTokens(Math.max(256, Math.min(32768, maxTokens || 4096)))}
                   className="w-32 bg-secondary/50 border-border/50"
                 />
                 <span className="text-xs text-muted-foreground">
@@ -384,7 +394,7 @@ export default function SettingsPage() {
               Tools
             </CardTitle>
             <CardDescription>
-              All 16+ tools are enabled by default. Tool management coming soon.
+              All tools are enabled by default. Installed tool groups:
             </CardDescription>
           </CardHeader>
           <CardContent>

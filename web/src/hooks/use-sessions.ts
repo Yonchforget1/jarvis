@@ -51,6 +51,7 @@ function savePinnedSessions(pinned: Set<string>) {
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sessionNames, setSessionNames] = useState<Record<string, string>>({});
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
 
@@ -64,8 +65,9 @@ export function useSessions() {
     try {
       const data = await api.get<SessionEntry[]>("/api/sessions");
       setSessions(data);
-    } catch {
-      // Silently fail - sessions are not critical
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
     }
@@ -141,5 +143,5 @@ export function useSessions() {
       return new Date(b.last_active).getTime() - new Date(a.last_active).getTime();
     });
 
-  return { sessions: sessionsWithNames, loading, fetchSessions, deleteSession, renameSession, togglePin };
+  return { sessions: sessionsWithNames, loading, error, fetchSessions, deleteSession, renameSession, togglePin };
 }

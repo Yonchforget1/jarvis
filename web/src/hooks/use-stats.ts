@@ -7,6 +7,7 @@ import type { SystemStats } from "@/lib/types";
 export function useStats(pollInterval: number = 15000) {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refetching, setRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
@@ -18,8 +19,14 @@ export function useStats(pollInterval: number = 15000) {
       setError(err instanceof Error ? err.message : "Failed to fetch stats");
     } finally {
       setLoading(false);
+      setRefetching(false);
     }
   }, []);
+
+  const refetch = useCallback(() => {
+    setRefetching(true);
+    return fetchStats();
+  }, [fetchStats]);
 
   useEffect(() => {
     fetchStats();
@@ -27,5 +34,5 @@ export function useStats(pollInterval: number = 15000) {
     return () => clearInterval(interval);
   }, [fetchStats, pollInterval]);
 
-  return { stats, loading, error, refetch: fetchStats };
+  return { stats, loading, refetching, error, refetch };
 }
