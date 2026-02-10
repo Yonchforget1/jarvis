@@ -505,6 +505,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                   role="button"
                   tabIndex={0}
                   aria-label={`Open conversation: ${session.customName || session.autoTitle || session.preview || "New conversation"}`}
+                  aria-current={activeSessionId === session.session_id ? "true" : undefined}
                   className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"

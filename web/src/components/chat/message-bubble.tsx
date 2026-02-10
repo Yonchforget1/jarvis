@@ -542,12 +542,20 @@ export const MessageBubble = memo(function MessageBubble({
                 side="top"
                 delay={400}
               >
-                <span className="text-[10px] text-muted-foreground/60 cursor-default">
-                  {new Date(message.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <time
+                  dateTime={message.timestamp}
+                  aria-label={new Date(message.timestamp).toLocaleString()}
+                  className="text-[10px] text-muted-foreground/60 cursor-default"
+                >
+                  {(() => {
+                    const elapsed = Date.now() - new Date(message.timestamp).getTime();
+                    if (elapsed < 60_000) return "just now";
+                    return new Date(message.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                  })()}
+                </time>
               </Tooltip>
               {message.content && (
                 <MessageCopyButton text={message.content} />

@@ -71,6 +71,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -109,6 +112,29 @@ export default function RootLayout({
         <meta name="color-scheme" content="light dark" />
         <link rel="preconnect" href={apiUrl} />
         <link rel="dns-prefetch" href={apiUrl} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "JARVIS AI Agent Platform",
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Web",
+              description:
+                "The most advanced AI agent platform. Execute real tasks on real computers with 16+ professional tools.",
+              offers: {
+                "@type": "Offer",
+                price: "97",
+                priceCurrency: "USD",
+              },
+              author: {
+                "@type": "Person",
+                name: "Yonatan Weintraub",
+              },
+            }),
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
