@@ -57,37 +57,65 @@ async def list_sessions(
     sort_by: str = Query(default="last_active", pattern="^(last_active|created_at|message_count)$"),
     archived: bool | None = Query(default=None, description="Filter by archived status"),
 ):
-    """List sessions for the current user with pagination and sorting."""
+    """List sessions for the current user with pagination and sorting.
+
+    Merges in-memory sessions with on-disk persisted sessions for a complete view.
+    """
     if _session_manager is None:
         raise HTTPException(status_code=503, detail="Service initializing")
-    sessions = _session_manager.get_user_sessions(user.id)
+
+    # In-memory sessions
+    live_sessions = _session_manager.get_user_sessions(user.id)
+    live_ids = {s.session_id for s in live_sessions}
+
+    # Build unified list of session dicts
+    session_dicts = []
+    for s in live_sessions:
+        session_dicts.append({
+            "session_id": s.session_id,
+            "created_at": s.created_at.isoformat(),
+            "last_active": s.last_active.isoformat(),
+            "message_count": s.message_count,
+            "preview": s.conversation.get_first_user_message(),
+            "custom_name": s.custom_name or None,
+            "auto_title": s.auto_title or None,
+            "pinned": getattr(s, "pinned", False),
+            "archived": getattr(s, "archived", False),
+        })
+
+    # Merge persisted sessions not yet in memory
+    for entry in _session_manager.get_persisted_user_sessions(user.id):
+        if entry["session_id"] in live_ids:
+            continue
+        saved_at = entry.get("saved_at", "")
+        session_dicts.append({
+            "session_id": entry["session_id"],
+            "created_at": saved_at,
+            "last_active": saved_at,
+            "message_count": entry.get("message_count", 0),
+            "preview": entry.get("preview") or None,
+            "custom_name": entry.get("custom_name") or None,
+            "auto_title": entry.get("auto_title") or None,
+            "pinned": entry.get("pinned", False),
+            "archived": entry.get("archived", False),
+        })
+
     if archived is not None:
-        sessions = [s for s in sessions if getattr(s, "archived", False) == archived]
+        session_dicts = [s for s in session_dicts if s.get("archived", False) == archived]
+
     reverse = True
     if sort_by == "message_count":
-        sessions = sorted(sessions, key=lambda s: s.message_count, reverse=reverse)
+        session_dicts.sort(key=lambda s: s.get("message_count", 0), reverse=reverse)
     elif sort_by == "created_at":
-        sessions = sorted(sessions, key=lambda s: s.created_at, reverse=reverse)
+        session_dicts.sort(key=lambda s: s.get("created_at", ""), reverse=reverse)
     else:
-        sessions = sorted(sessions, key=lambda s: s.last_active, reverse=reverse)
+        session_dicts.sort(key=lambda s: s.get("last_active", ""), reverse=reverse)
 
-    total = len(sessions)
-    page = sessions[offset:offset + limit]
+    total = len(session_dicts)
+    page = session_dicts[offset:offset + limit]
 
     return {
-        "sessions": [
-            {
-                "session_id": s.session_id,
-                "created_at": s.created_at.isoformat(),
-                "last_active": s.last_active.isoformat(),
-                "message_count": s.message_count,
-                "preview": s.conversation.get_first_user_message(),
-                "custom_name": s.custom_name or None,
-                "auto_title": s.auto_title or None,
-                "pinned": getattr(s, "pinned", False),
-            }
-            for s in page
-        ],
+        "sessions": page,
         "total": total,
         "limit": limit,
         "offset": offset,

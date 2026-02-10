@@ -117,13 +117,91 @@ class SessionManager:
         self._memory: Memory | None = None
         self._memory_lock = threading.Lock()
         self._start_time = datetime.now(timezone.utc)
+        # Lightweight index of persisted sessions (session_id -> metadata)
+        self._persisted_index: dict[str, dict] = {}
 
     def initialize(self):
-        """Load config and memory on startup."""
+        """Load config and memory on startup, then index persisted sessions."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         os.chdir(project_root)
         self._config = Config.load()
         self._memory = Memory(path=os.path.join(project_root, "memory", "learnings.json"))
+        self._index_persisted_sessions()
+
+    def _index_persisted_sessions(self):
+        """Scan disk for saved sessions and build a lightweight index with rich metadata."""
+        import json
+        from jarvis.session_persistence import DATA_DIR
+        if not os.path.isdir(DATA_DIR):
+            return
+        count = 0
+        for filename in os.listdir(DATA_DIR):
+            if not filename.endswith(".json"):
+                continue
+            try:
+                path = os.path.join(DATA_DIR, filename)
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                sid = data.get("session_id", "")
+                if not sid or sid in self._sessions:
+                    continue
+                meta = data.get("metadata", {})
+                messages = data.get("messages", [])
+                preview = ""
+                for msg in messages:
+                    if msg.get("role") == "user":
+                        preview = (msg.get("content") or "")[:100]
+                        break
+                self._persisted_index[sid] = {
+                    "session_id": sid,
+                    "user_id": data.get("user_id", ""),
+                    "message_count": len(messages),
+                    "saved_at": data.get("saved_at", ""),
+                    "custom_name": meta.get("custom_name", ""),
+                    "auto_title": meta.get("auto_title", ""),
+                    "archived": meta.get("archived", False),
+                    "pinned": meta.get("pinned", False),
+                    "preview": preview,
+                }
+                count += 1
+            except Exception:
+                continue
+        if count:
+            log.info("Indexed %d persisted session(s) from disk", count)
+
+    def _restore_session(self, session_id: str, user_id: str) -> JarvisSession | None:
+        """Restore a persisted session from disk into a live session."""
+        data = persist_load(session_id)
+        if not data or data.get("user_id") != user_id:
+            return None
+        messages = data.get("messages", [])
+        if not messages:
+            return None
+
+        session = self._create_session(user_id)
+        # Override session_id to match the persisted one
+        with self._lock:
+            del self._sessions[session.session_id]
+            session.session_id = session_id
+            self._sessions[session_id] = session
+
+        # Restore conversation state
+        session.conversation.messages = messages
+        session.conversation.total_input_tokens = data.get("total_input_tokens", 0)
+        session.conversation.total_output_tokens = data.get("total_output_tokens", 0)
+        session.conversation.total_tool_calls = data.get("total_tool_calls", 0)
+
+        # Restore metadata
+        meta = data.get("metadata", {})
+        session.custom_name = meta.get("custom_name", "")
+        session.auto_title = meta.get("auto_title", "")
+        session.archived = meta.get("archived", False)
+        session.pinned = meta.get("pinned", False)
+
+        # Remove from persisted index since it's now in memory
+        self._persisted_index.pop(session_id, None)
+        log.info("Restored session %s from disk (%d messages)", session_id, len(messages))
+        return session
 
     @property
     def config(self) -> Config:
@@ -250,11 +328,15 @@ class SessionManager:
         return new_session
 
     def get_session(self, session_id: str, user_id: str) -> JarvisSession | None:
-        """Get a session by ID if it belongs to the user."""
+        """Get a session by ID if it belongs to the user. Restores from disk if needed."""
         with self._lock:
             session = self._sessions.get(session_id)
         if session and session.user_id == user_id:
             return session
+        # Check persisted index for lazy restore
+        persisted = self._persisted_index.get(session_id)
+        if persisted and persisted.get("user_id") == user_id:
+            return self._restore_session(session_id, user_id)
         return None
 
     def clear_session(self, session_id: str, user_id: str) -> bool:
@@ -266,19 +348,33 @@ class SessionManager:
         return False
 
     def remove_session(self, session_id: str, user_id: str) -> bool:
-        """Remove a session entirely (memory + disk)."""
+        """Remove a session entirely (memory + disk + index)."""
         with self._lock:
             session = self._sessions.get(session_id)
             if session and session.user_id == user_id:
                 del self._sessions[session_id]
+                self._persisted_index.pop(session_id, None)
                 persist_delete(session_id)
                 return True
+        # Also allow deleting sessions that are only on disk
+        persisted = self._persisted_index.get(session_id)
+        if persisted and persisted.get("user_id") == user_id:
+            self._persisted_index.pop(session_id, None)
+            persist_delete(session_id)
+            return True
         return False
 
     def get_user_sessions(self, user_id: str) -> list[JarvisSession]:
-        """Get all sessions for a user."""
+        """Get all in-memory sessions for a user."""
         with self._lock:
             return [s for s in self._sessions.values() if s.user_id == user_id]
+
+    def get_persisted_user_sessions(self, user_id: str) -> list[dict]:
+        """Get metadata for on-disk sessions belonging to a user (not yet in memory)."""
+        return [
+            entry for entry in self._persisted_index.values()
+            if entry.get("user_id") == user_id
+        ]
 
     def get_all_sessions(self) -> list[JarvisSession]:
         """Get all sessions across all users (admin use)."""
