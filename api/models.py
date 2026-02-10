@@ -69,9 +69,11 @@ class ChatRequest(BaseModel):
             raise ValueError("Message cannot be empty.")
         # Strip null bytes that could cause issues downstream
         v = v.replace("\x00", "")
-        # Warn-log but don't block script-like patterns (they might be legitimate code questions)
-        # Just strip the most dangerous ones: actual script tags
+        # Strip dangerous HTML tags that could cause XSS when rendered
+        # Script tags, event handlers on HTML elements
         v = re.sub(r"<script[^>]*>.*?</script>", "[script removed]", v, flags=re.IGNORECASE | re.DOTALL)
+        v = re.sub(r"<(iframe|object|embed|applet|form)[^>]*>.*?</\1>", "[removed]", v, flags=re.IGNORECASE | re.DOTALL)
+        v = re.sub(r"<(iframe|object|embed|applet|form)[^>]*/?>", "[removed]", v, flags=re.IGNORECASE)
         return v
 
 

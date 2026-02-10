@@ -114,7 +114,7 @@ async def whatsapp_ocr(body: OCRRequest, request: Request):
         return {"text": "(OCR not available — install pytesseract)", "chars": 0}
     except Exception as e:
         log.error("OCR error: %s", e)
-        return {"text": f"(OCR error: {e})", "chars": 0}
+        return {"text": "(OCR processing failed)", "chars": 0}
 
 
 # ---------------------------------------------------------------------------
