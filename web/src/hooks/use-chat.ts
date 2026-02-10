@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ApiError } from "@/lib/api";
 import type { ChatMessage, ToolCallDetail } from "@/lib/types";
 
@@ -53,6 +53,11 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   );
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const optionsRef = useRef(options);
+
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   const updateStreamingMessage = useCallback(
     (msgId: string, updater: (msg: ChatMessage) => ChatMessage) => {
@@ -237,7 +242,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
                   streamStatus: undefined,
                   timestamp: new Date().toISOString(),
                 }));
-                options?.onAssistantMessage?.();
+                optionsRef.current?.onAssistantMessage?.();
                 break;
             }
           }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ReactNode, useState } from "react";
+import React, { Component, type ReactNode, useState } from "react";
 import { AlertTriangle, RotateCcw, Home, Copy, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -75,6 +75,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[ErrorBoundary]", {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      url: typeof window !== "undefined" ? window.location.href : "unknown",
+      timestamp: new Date().toISOString(),
+    });
   }
 
   handleReset = () => {

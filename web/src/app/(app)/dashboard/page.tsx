@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, Download, ArrowRight } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
