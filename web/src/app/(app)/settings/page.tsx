@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Cpu,
   Key,
+  Lock,
   Wrench,
   Save,
   Loader2,
@@ -55,6 +56,38 @@ export default function SettingsPage() {
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Password change
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (changingPassword) return;
+    if (newPassword.length < 8) {
+      toast.error("Too short", "New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Mismatch", "New passwords do not match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api.post("/api/auth/change-password", { old_password: oldPassword, new_password: newPassword });
+      toast.success("Password changed", "Your password has been updated.");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error("Failed", err instanceof Error ? err.message : "Could not change password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   // Notification preferences
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
@@ -347,10 +380,16 @@ export default function SettingsPage() {
     }
     setClearingAllSessions(true);
     try {
-      const sessions = await api.get<{ session_id: string }[]>("/api/sessions");
-      await Promise.all(sessions.map((s) => api.delete(`/api/sessions/${s.session_id}`)));
+      const res = await api.get<{ sessions: { session_id: string }[] }>("/api/conversation/sessions");
+      const ids = res.sessions.map((s) => s.session_id);
+      if (ids.length === 0) {
+        toast.info("No sessions", "There are no sessions to delete.");
+        setConfirmClear(false);
+        return;
+      }
+      const result = await api.post<{ deleted_count: number }>("/api/conversation/sessions/bulk-delete", { session_ids: ids });
       setConfirmClear(false);
-      toast.success("Sessions cleared", `${sessions.length} sessions deleted.`);
+      toast.success("Sessions cleared", `${result.deleted_count} sessions deleted.`);
     } catch {
       toast.error("Failed", "Could not clear all sessions.");
     } finally {
@@ -756,6 +795,88 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Change Password */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lock className="h-4 w-4 text-primary" />
+              Change Password
+            </CardTitle>
+            <CardDescription>Update your account password</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="old_password">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="old_password"
+                  type={showOldPassword ? "text" : "password"}
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  autoComplete="current-password"
+                  className="pr-10 bg-secondary/50 border-border/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword(!showOldPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new_password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="new_password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  className="pr-10 bg-secondary/50 border-border/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm_password">Confirm New Password</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                autoComplete="new-password"
+                className={`bg-secondary/50 ${confirmPassword && confirmPassword !== newPassword ? "border-red-500/50" : "border-border/50"}`}
+              />
+              {confirmPassword && confirmPassword !== newPassword && (
+                <p className="text-[10px] text-red-400 flex items-center gap-1 animate-fade-in">
+                  <AlertCircle className="h-3 w-3" />
+                  Passwords do not match
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !oldPassword || !newPassword || newPassword !== confirmPassword}
+              variant="outline"
+              className="w-full h-10 rounded-xl gap-2 mt-1"
+            >
+              {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              {changingPassword ? "Changing..." : "Change Password"}
+            </Button>
           </CardContent>
         </Card>
 
