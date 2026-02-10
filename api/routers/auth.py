@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from api.audit import audit_log
 from pydantic import BaseModel
 
-from api.auth import authenticate_user, blacklist_token, create_api_key, create_token, create_user, list_user_api_keys, revoke_api_key
+from api.auth import authenticate_user, blacklist_token, change_password, create_api_key, create_token, create_user, list_user_api_keys, revoke_api_key
 from api.deps import get_current_user
 from api.models import AuthRequest, AuthResponse, RegisterRequest, UserInfo
 
@@ -81,6 +81,33 @@ async def logout(req: Request, user: UserInfo = Depends(get_current_user)):
 @router.get("/me", response_model=UserInfo)
 async def me(user: UserInfo = Depends(get_current_user)):
     return user
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+@_limiter.limit("5/hour")
+async def change_password_endpoint(
+    request: Request,
+    body: ChangePasswordRequest,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Change the current user's password."""
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    if body.old_password == body.new_password:
+        raise HTTPException(status_code=400, detail="New password must differ from current password")
+    success = change_password(user.id, body.old_password, body.new_password)
+    if not success:
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    audit_log(
+        user_id=user.id, username=user.username, action="change_password",
+        ip=request.client.host if request.client else "",
+    )
+    return {"status": "password_changed"}
 
 
 # --- API Key Management ---

@@ -153,6 +153,19 @@ def get_user_by_id(user_id: str) -> dict | None:
     return None
 
 
+def change_password(user_id: str, old_password: str, new_password: str) -> bool:
+    """Change a user's password. Returns True if successful."""
+    users = _load_users()
+    for user in users:
+        if user["id"] == user_id:
+            if not bcrypt.checkpw(old_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+                return False
+            user["password_hash"] = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            _save_users(users)
+            return True
+    return False
+
+
 def create_token(user: dict) -> str:
     """Create a JWT token for a user with a unique JTI for revocation support."""
     expires = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)

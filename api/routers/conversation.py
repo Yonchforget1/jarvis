@@ -135,6 +135,30 @@ async def delete_session(
     return {"status": "deleted", "session_id": session_id}
 
 
+@router.post("/sessions/bulk-delete")
+@_limiter.limit("5/minute")
+async def bulk_delete_sessions(
+    request: Request,
+    body: dict,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Delete multiple sessions at once."""
+    session_ids = body.get("session_ids", [])
+    if not isinstance(session_ids, list) or len(session_ids) == 0:
+        raise HTTPException(status_code=400, detail="session_ids must be a non-empty list")
+    if len(session_ids) > 50:
+        raise HTTPException(status_code=400, detail="Cannot delete more than 50 sessions at once")
+
+    deleted = []
+    not_found = []
+    for sid in session_ids:
+        if isinstance(sid, str) and _session_manager.remove_session(sid, user.id):
+            deleted.append(sid)
+        else:
+            not_found.append(sid)
+    return {"deleted": deleted, "not_found": not_found, "deleted_count": len(deleted)}
+
+
 @router.get("/sessions/{session_id}/export")
 @_limiter.limit("10/minute")
 async def export_session(
