@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign } from "lucide-react";
+import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, ArrowRight, Clock, AlertTriangle, DollarSign, BarChart3 } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
 import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -240,11 +240,12 @@ export default function DashboardPage() {
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
           Quick Actions
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { href: "/chat", label: "New Chat", icon: MessageSquare, color: "text-primary", bg: "bg-primary/10 border-primary/20 hover:bg-primary/15" },
             { href: "/tools", label: "View Tools", icon: Wrench, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20 hover:bg-blue-400/15" },
             { href: "/learnings", label: "Learnings", icon: Brain, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20 hover:bg-purple-400/15" },
+            { href: "/analytics", label: "Analytics", icon: BarChart3, color: "text-cyan-400", bg: "bg-cyan-400/10 border-cyan-400/20 hover:bg-cyan-400/15" },
             { href: "/settings", label: "Settings", icon: Settings, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20 hover:bg-orange-400/15" },
           ].map((action) => (
             <Link

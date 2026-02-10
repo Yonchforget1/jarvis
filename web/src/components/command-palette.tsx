@@ -19,6 +19,8 @@ import {
   Trash2,
   FileText,
   AlertTriangle,
+  BarChart3,
+  Shield,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth";
@@ -136,11 +138,27 @@ export function CommandPalette() {
       category: "Navigation",
     },
     {
+      id: "nav-analytics",
+      label: "Analytics",
+      description: "Usage patterns and cost analysis",
+      icon: BarChart3,
+      action: () => { router.push("/analytics"); close(); },
+      category: "Navigation",
+    },
+    {
       id: "nav-settings",
       label: "Settings",
       description: "Configure Jarvis",
       icon: Settings,
       action: () => { router.push("/settings"); close(); },
+      category: "Navigation",
+    },
+    {
+      id: "nav-admin",
+      label: "Admin Dashboard",
+      description: "System management (admin only)",
+      icon: Shield,
+      action: () => { router.push("/admin"); close(); },
       category: "Navigation",
     },
     {
