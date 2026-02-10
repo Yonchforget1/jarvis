@@ -65,6 +65,7 @@ export function useSessions() {
   const [error, setError] = useState<string | null>(null);
   const [sessionNames, setSessionNames] = useState<Record<string, string>>({});
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const renameTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Load custom names and pinned from localStorage
   useEffect(() => {
@@ -158,6 +159,7 @@ export function useSessions() {
   const renameSession = useCallback(
     (sessionId: string, name: string) => {
       const trimmed = name.trim().slice(0, 100);
+      // Optimistic local update
       setSessionNames((prev) => {
         const next = { ...prev };
         if (trimmed) {
@@ -168,8 +170,17 @@ export function useSessions() {
         saveSessionNames(next);
         return next;
       });
-      // Sync to server (fire-and-forget)
-      api.patch(`/api/sessions/${sessionId}`, { name: trimmed }).catch(() => {});
+      // Clear previous debounce timer for this session
+      if (renameTimersRef.current[sessionId]) {
+        clearTimeout(renameTimersRef.current[sessionId]);
+      }
+      // Debounce server sync (500ms)
+      renameTimersRef.current[sessionId] = setTimeout(() => {
+        api.patch(`/api/sessions/${sessionId}`, { name: trimmed }).catch(() => {
+          _onDeleteError?.("Failed to save session name. Please try again.");
+        });
+        delete renameTimersRef.current[sessionId];
+      }, 500);
     },
     [],
   );

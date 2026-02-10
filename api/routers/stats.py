@@ -8,6 +8,7 @@ from slowapi.util import get_remote_address
 
 from api.deps import get_current_user
 from api.models import StatsResponse, UserInfo
+from api.pricing import get_cost_estimate
 
 log = logging.getLogger("jarvis.api.stats")
 
@@ -20,6 +21,14 @@ _session_manager = None
 def set_session_manager(sm):
     global _session_manager
     _session_manager = sm
+
+
+def _get_cost(input_tokens: int, output_tokens: int) -> float:
+    """Get cost estimate using the configured backend and model."""
+    return get_cost_estimate(
+        _session_manager.config.backend, _session_manager.config.model,
+        input_tokens, output_tokens,
+    )
 
 
 @router.get("/stats", response_model=StatsResponse)
@@ -92,8 +101,7 @@ async def get_session_stats(
                 "output_tokens": s.conversation.total_output_tokens,
                 "tool_calls": s.conversation.total_tool_calls,
                 "cost_estimate_usd": round(
-                    (s.conversation.total_input_tokens * 3.0 / 1_000_000)
-                    + (s.conversation.total_output_tokens * 15.0 / 1_000_000), 4
+                    _get_cost(s.conversation.total_input_tokens, s.conversation.total_output_tokens), 4
                 ),
             }
             for s in sessions

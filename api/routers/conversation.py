@@ -255,8 +255,11 @@ async def session_analytics(
     input_tokens = convo.total_input_tokens
     output_tokens = convo.total_output_tokens
 
-    # Estimate cost (Claude Sonnet pricing as default: $3/$15 per 1M tokens)
-    cost_estimate = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+    from api.pricing import get_cost_estimate
+    cost_estimate = get_cost_estimate(
+        _session_manager.config.backend, _session_manager.config.model,
+        input_tokens, output_tokens,
+    )
 
     # Tool stats
     tool_stats = convo.registry.get_stats()

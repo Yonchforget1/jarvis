@@ -86,6 +86,9 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
   const sendMessage = useCallback(
     async (content: string) => {
+      // Prevent double-send while already streaming
+      if (abortRef.current) return;
+
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "user",
