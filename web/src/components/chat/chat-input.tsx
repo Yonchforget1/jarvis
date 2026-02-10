@@ -9,6 +9,7 @@ interface UploadedFile {
   filename: string;
   saved_as: string;
   size: number;
+  previewUrl?: string;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -123,8 +124,13 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     setUploading(true);
     setUploadError(null);
     try {
+      // Create preview URL for image files
+      let previewUrl: string | undefined;
+      if (file.type.startsWith("image/")) {
+        previewUrl = URL.createObjectURL(file);
+      }
       const res = await api.upload<{ filename: string; saved_as: string; size: number }>("/api/upload", file);
-      setAttachments((prev) => [...prev, { filename: res.filename, saved_as: res.saved_as, size: res.size }]);
+      setAttachments((prev) => [...prev, { filename: res.filename, saved_as: res.saved_as, size: res.size, previewUrl }]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -133,7 +139,11 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   }, [attachments.length]);
 
   const removeAttachment = useCallback((savedAs: string) => {
-    setAttachments((prev) => prev.filter((a) => a.saved_as !== savedAs));
+    setAttachments((prev) => {
+      const removing = prev.find((a) => a.saved_as === savedAs);
+      if (removing?.previewUrl) URL.revokeObjectURL(removing.previewUrl);
+      return prev.filter((a) => a.saved_as !== savedAs);
+    });
     // Delete from server (fire-and-forget)
     api.delete(`/api/uploads/${encodeURIComponent(savedAs)}`).catch(() => {});
   }, []);
@@ -253,6 +263,10 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     try { localStorage.setItem("jarvis_input_history", JSON.stringify(historyRef.current)); } catch { /* ignore */ }
     onSend(message);
     setValue("");
+    // Revoke preview URLs before clearing attachments
+    for (const att of attachments) {
+      if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+    }
     setAttachments([]);
     try { localStorage.removeItem("jarvis_draft"); } catch { /* ignore */ }
     if (textareaRef.current) {
@@ -554,9 +568,18 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               {attachments.map((att) => (
                 <div
                   key={att.saved_as}
-                  className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-1.5 text-xs group"
+                  className={`flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 text-xs group ${
+                    att.previewUrl ? "p-1.5" : "px-3 py-1.5"
+                  }`}
                 >
-                  {isImageFile(att.filename) ? (
+                  {att.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={att.previewUrl}
+                      alt={att.filename}
+                      className="h-10 w-10 rounded-lg object-cover shrink-0 border border-border/30"
+                    />
+                  ) : isImageFile(att.filename) ? (
                     <Image className="h-3.5 w-3.5 text-purple-400 shrink-0" />
                   ) : (
                     <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
@@ -581,6 +604,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
                 <button
                   onClick={() => {
                     for (const att of attachments) {
+                      if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
                       api.delete(`/api/uploads/${encodeURIComponent(att.saved_as)}`).catch(() => {});
                     }
                     setAttachments([]);
