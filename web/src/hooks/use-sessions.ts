@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "@/lib/api";
 
 interface SessionEntry {
@@ -142,19 +142,22 @@ export function useSessions() {
   );
 
   // Merge custom names into sessions, auto-generate titles from preview
-  const sessionsWithNames = sessions
-    .map((s) => ({
-      ...s,
-      customName: sessionNames[s.session_id] || undefined,
-      autoTitle: generateTitle(s.preview),
-      pinned: pinnedIds.has(s.session_id),
-    }))
-    .sort((a, b) => {
-      // Pinned sessions first, then by last_active
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return new Date(b.last_active).getTime() - new Date(a.last_active).getTime();
-    });
+  const sessionsWithNames = useMemo(() =>
+    sessions
+      .map((s) => ({
+        ...s,
+        customName: sessionNames[s.session_id] || undefined,
+        autoTitle: generateTitle(s.preview),
+        pinned: pinnedIds.has(s.session_id),
+      }))
+      .sort((a, b) => {
+        // Pinned sessions first, then by last_active
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.last_active).getTime() - new Date(a.last_active).getTime();
+      }),
+    [sessions, sessionNames, pinnedIds],
+  );
 
   return { sessions: sessionsWithNames, loading, error, fetchSessions, deleteSession, renameSession, togglePin };
 }

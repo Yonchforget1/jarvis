@@ -156,9 +156,7 @@ export default function SettingsPage() {
     setClearingAllSessions(true);
     try {
       const sessions = await api.get<{ session_id: string }[]>("/api/sessions");
-      for (const s of sessions) {
-        await api.delete(`/api/sessions/${s.session_id}`);
-      }
+      await Promise.all(sessions.map((s) => api.delete(`/api/sessions/${s.session_id}`)));
       setConfirmClear(false);
       toast.success("Sessions cleared", `${sessions.length} sessions deleted.`);
     } catch {

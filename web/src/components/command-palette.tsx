@@ -15,7 +15,6 @@ import {
   LogOut,
   Maximize,
   Keyboard,
-  Download,
   Monitor,
 } from "lucide-react";
 import { useTheme } from "next-themes";
