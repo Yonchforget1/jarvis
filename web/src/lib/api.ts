@@ -16,6 +16,8 @@ function isRetryable(error: unknown): boolean {
   if (error instanceof TypeError && error.message.includes("fetch")) return true;
   // Retry on timeout
   if (error instanceof DOMException && error.name === "AbortError") return true;
+  // Retry on 429 rate limit (with longer backoff handled in request())
+  if (error instanceof ApiError && error.status === 429) return true;
   // Retry on 5xx server errors
   if (error instanceof ApiError && error.status >= 500) return true;
   return false;
@@ -80,7 +82,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       if (err instanceof ApiError && err.status === 401) throw err;
       if (!isRetryable(err) || attempt === MAX_RETRIES) throw err;
       // Wait before retrying with exponential backoff + jitter
-      const baseDelay = RETRY_DELAY * Math.pow(2, attempt);
+      // Use longer base delay for 429 rate limits
+      const is429 = err instanceof ApiError && err.status === 429;
+      const base = is429 ? RETRY_DELAY * 4 : RETRY_DELAY;
+      const baseDelay = Math.min(base * Math.pow(2, attempt), 30000);
       const jitter = Math.random() * baseDelay * 0.1;
       await sleep(baseDelay + jitter);
     }

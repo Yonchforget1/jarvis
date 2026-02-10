@@ -60,7 +60,7 @@ export function LoginForm() {
       <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
+            <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
               {error}
             </div>
           )}
@@ -72,6 +72,7 @@ export function LoginForm() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
               required
+              minLength={3}
               autoFocus
               autoComplete="username"
               enterKeyHint="next"
@@ -88,6 +89,7 @@ export function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
+                minLength={6}
                 autoComplete="current-password"
                 enterKeyHint="go"
                 className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"

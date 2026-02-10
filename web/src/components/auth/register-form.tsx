@@ -70,6 +70,18 @@ export function RegisterForm() {
     e.preventDefault();
     if (loading) return;
     setError("");
+    if (username.length < 3) {
+      setError("Username must be at least 3 characters");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      setError("Username can only contain letters, numbers, underscores, and hyphens");
+      return;
+    }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -105,7 +117,7 @@ export function RegisterForm() {
       <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
+            <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
               {error}
             </div>
           )}
@@ -114,9 +126,13 @@ export function RegisterForm() {
             <Input
               id="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
               placeholder="Choose a username"
               required
+              minLength={3}
+              maxLength={32}
+              pattern="[a-zA-Z0-9_-]+"
+              title="Letters, numbers, underscores, and hyphens only"
               autoFocus
               autoComplete="username"
               enterKeyHint="next"
@@ -132,6 +148,8 @@ export function RegisterForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
+              pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+              title="Enter a valid email address"
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>

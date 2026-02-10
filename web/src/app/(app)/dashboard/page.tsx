@@ -120,7 +120,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div role="region" aria-live="polite" aria-label="System statistics" className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <StatsCard
           title="Backend"
           value={stats?.backend?.toUpperCase() || "N/A"}
