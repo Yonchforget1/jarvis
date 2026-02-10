@@ -287,8 +287,12 @@ export function ChatContainer({
               if (e.key === "Enter") {
                 navigateMatch(e.shiftKey ? "prev" : "next");
               }
+              if (e.key === "Escape") {
+                closeSearch();
+              }
             }}
             placeholder="Search messages..."
+            aria-label="Search messages"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />
           {searchQuery && (

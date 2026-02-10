@@ -87,9 +87,13 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
       ? `${elapsed}ms`
       : `${(elapsed / 1000).toFixed(1)}s`;
 
-  const handleCopyResult = () => {
-    navigator.clipboard.writeText(call.result);
-    setCopied(true);
+  const handleCopyResult = async () => {
+    try {
+      await navigator.clipboard.writeText(call.result);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -120,6 +124,8 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
     >
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-label={`${expanded ? "Collapse" : "Expand"} tool call: ${call.name}`}
+        aria-expanded={expanded}
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2 shrink-0">
