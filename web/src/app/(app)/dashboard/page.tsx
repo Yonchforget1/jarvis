@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Wrench, Brain, Cpu, Users, RefreshCw, Zap, Hash, MessageSquare, Settings, Download, ArrowRight } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
@@ -18,8 +19,23 @@ function formatTokens(n: number): string {
 }
 
 export default function DashboardPage() {
-  const { stats, loading: statsLoading, refetching, error: statsError, refetch } = useStats(15000);
+  const { stats, loading: statsLoading, refetching, error: statsError, refetch, lastUpdated } = useStats(15000);
   const { learnings, loading: learningsLoading } = useLearnings();
+  const [lastUpdatedText, setLastUpdatedText] = useState("");
+
+  // Update "last updated" text every second
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const update = () => {
+      const secs = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
+      if (secs < 5) setLastUpdatedText("just now");
+      else if (secs < 60) setLastUpdatedText(`${secs}s ago`);
+      else setLastUpdatedText(`${Math.floor(secs / 60)}m ago`);
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [lastUpdated]);
 
   if (statsLoading) {
     return (
@@ -84,16 +100,23 @@ export default function DashboardPage() {
             Real-time system overview and performance metrics
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refetch}
-          disabled={refetching}
-          className="h-8 gap-1.5 text-xs rounded-lg border-border/50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refetching ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">{refetching ? "Refreshing..." : "Refresh"}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {lastUpdatedText && (
+            <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums hidden sm:inline">
+              Updated {lastUpdatedText}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={refetching}
+            className="h-8 gap-1.5 text-xs rounded-lg border-border/50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refetching ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">{refetching ? "Refreshing..." : "Refresh"}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}

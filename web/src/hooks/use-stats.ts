@@ -9,12 +9,14 @@ export function useStats(pollInterval: number = 15000) {
   const [loading, setLoading] = useState(true);
   const [refetching, setRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
       const data = await api.get<SystemStats>("/api/stats");
       setStats(data);
       setError(null);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch stats");
     } finally {
@@ -34,5 +36,5 @@ export function useStats(pollInterval: number = 15000) {
     return () => clearInterval(interval);
   }, [fetchStats, pollInterval]);
 
-  return { stats, loading, refetching, error, refetch };
+  return { stats, loading, refetching, error, refetch, lastUpdated };
 }

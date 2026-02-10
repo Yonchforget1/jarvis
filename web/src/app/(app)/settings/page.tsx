@@ -322,12 +322,23 @@ export default function SettingsPage() {
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(Number(e.target.value))}
                   onBlur={() => setMaxTokens(Math.max(256, Math.min(32768, maxTokens || 4096)))}
-                  className="w-32 bg-secondary/50 border-border/50"
+                  aria-invalid={maxTokens < 256 || maxTokens > 32768}
+                  className={`w-32 bg-secondary/50 ${
+                    maxTokens < 256 || maxTokens > 32768
+                      ? "border-red-500/50 focus:border-red-500/50"
+                      : "border-border/50"
+                  }`}
                 />
                 <span className="text-xs text-muted-foreground">
                   (256 - 32,768)
                 </span>
               </div>
+              {(maxTokens < 256 || maxTokens > 32768) && (
+                <p className="text-[10px] text-red-400 flex items-center gap-1 animate-fade-in">
+                  <AlertCircle className="h-3 w-3" />
+                  Value will be clamped to valid range on blur
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -507,7 +518,7 @@ export default function SettingsPage() {
           )}
           <Button
             onClick={handleSave}
-            disabled={!hasChanges || saving}
+            disabled={!hasChanges || saving || maxTokens < 256 || maxTokens > 32768}
             className="w-full h-11 rounded-xl gap-2"
           >
             {saving ? (
