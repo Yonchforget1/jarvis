@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Keyboard, Paperclip, Mic, MicOff, Square, Upload, Image, Trash2, Download, HelpCircle, Sparkles } from "lucide-react";
+import { Send, Loader2, Keyboard, Paperclip, Mic, MicOff, Square, Upload, Image, Trash2, Download, HelpCircle, Sparkles, Info } from "lucide-react";
 import { useVoice } from "@/hooks/use-voice";
 
 const MAX_LENGTH = 50_000;
@@ -225,6 +225,8 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     }
   }, []);
 
+  const [showTips, setShowTips] = useState(false);
+
   const charCount = value.length;
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
   const isNearLimit = charCount > WARN_THRESHOLD;
@@ -309,7 +311,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               placeholder={
                 disabled
                   ? "Jarvis is working..."
-                  : "Ask Jarvis anything..."
+                  : "Ask Jarvis anything... (type / for commands)"
               }
               disabled={disabled}
               rows={1}
@@ -402,6 +404,17 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             <span className="text-xs text-amber-500">Image attachments coming soon</span>
           </div>
         )}
+        {/* Expandable tips panel */}
+        {showTips && (
+          <div className="mt-2 rounded-xl border border-border/30 bg-muted/30 p-3 animate-fade-in text-[11px] text-muted-foreground/60 space-y-1.5">
+            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> Send message</div>
+            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> New line</div>
+            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> Focus input</div>
+            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">/</kbd> Slash commands (/clear, /export, /new, /help)</div>
+            <div className="flex items-center gap-2"><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">&uarr; &darr;</kbd> Navigate input history</div>
+            <div className="text-[10px] text-muted-foreground/40 pt-1">Drafts are auto-saved and restored on next visit.</div>
+          </div>
+        )}
         <div className="mt-1.5 flex items-center justify-between px-1">
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground/40">
             <span className="hidden sm:flex items-center gap-1">
@@ -412,6 +425,14 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               <span className="mx-1">&middot;</span>
               <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">{typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl"}+/</kbd> focus
             </span>
+            <button
+              onClick={() => setShowTips((v) => !v)}
+              className="sm:hidden flex items-center gap-1 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+              aria-label="Toggle keyboard shortcuts"
+            >
+              <Info className="h-2.5 w-2.5" />
+              <span>Tips</span>
+            </button>
           </div>
           {charCount > 0 && (
             <span

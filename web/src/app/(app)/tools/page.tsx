@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { ErrorBoundary } from "@/components/error-boundary";
 import type { ToolInfo } from "@/lib/types";
 
 const CATEGORY_META: Record<
@@ -223,6 +224,7 @@ export default function ToolsPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
       <div className="mx-auto max-w-6xl space-y-5">
       {/* Header */}
@@ -322,5 +324,6 @@ export default function ToolsPage() {
       )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

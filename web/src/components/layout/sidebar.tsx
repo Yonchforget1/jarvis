@@ -327,7 +327,8 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               >
                 <button
                   onClick={() => handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation")}
-                  className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation"); } }}
+                  className={`flex w-full items-center justify-center rounded-xl p-2.5 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
@@ -409,7 +410,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                   role="button"
                   tabIndex={0}
                   aria-label={`Open conversation: ${session.customName || session.autoTitle || session.preview || "New conversation"}`}
-                  className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 ${
+                  className={`group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 ${
                     activeSessionId === session.session_id
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"

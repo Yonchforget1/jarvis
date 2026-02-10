@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Brain, Download, ArrowUpDown } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   game_dev: { bg: "bg-purple-500/10", text: "text-purple-400" },
@@ -92,6 +93,7 @@ export default function LearningsPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
       <div className="mx-auto max-w-6xl space-y-5">
       {/* Header */}
@@ -199,5 +201,6 @@ export default function LearningsPage() {
       )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
