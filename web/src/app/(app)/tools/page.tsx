@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Folder,
   Terminal,
@@ -170,7 +170,7 @@ export default function ToolsPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [allExpanded, setAllExpanded] = useState<boolean | undefined>(undefined);
 
-  const filtered = tools.filter((t) => {
+  const filtered = useMemo(() => tools.filter((t) => {
     const matchesSearch =
       !search ||
       t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -178,12 +178,13 @@ export default function ToolsPage() {
     const matchesCategory =
       !activeCategory || (t.category || "other") === activeCategory;
     return matchesSearch && matchesCategory;
-  });
+  }), [tools, search, activeCategory]);
 
   // Get unique categories from actual tools
-  const categories = Array.from(
-    new Set(tools.map((t) => t.category || "other")),
-  ).sort();
+  const categories = useMemo(
+    () => Array.from(new Set(tools.map((t) => t.category || "other"))).sort(),
+    [tools],
+  );
 
   if (loading) {
     return (
@@ -234,7 +235,7 @@ export default function ToolsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
+      <div role="search" className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
         <Input
           value={search}

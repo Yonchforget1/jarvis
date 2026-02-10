@@ -311,7 +311,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           <>
             {/* Session search */}
             {sessions.length > 3 && (
-              <div className="relative px-1 mb-1">
+              <div role="search" className="relative px-1 mb-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
                 <input
                   value={sessionSearch}

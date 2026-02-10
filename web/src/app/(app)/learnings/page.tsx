@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
@@ -28,9 +28,12 @@ export default function LearningsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const categories = [...new Set(learnings.map((l) => l.category))].sort();
+  const categories = useMemo(
+    () => [...new Set(learnings.map((l) => l.category))].sort(),
+    [learnings],
+  );
 
-  const filtered = learnings.filter((l) => {
+  const filtered = useMemo(() => learnings.filter((l) => {
     const matchesSearch =
       !search ||
       l.insight.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,7 +41,28 @@ export default function LearningsPage() {
       l.task_description.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !categoryFilter || l.category === categoryFilter;
     return matchesSearch && matchesCategory;
-  });
+  }), [learnings, search, categoryFilter]);
+
+  const handleExport = useCallback(() => {
+    const markdown = filtered
+      .map(
+        (l) =>
+          `### ${l.category}\n> ${l.insight}\n\n${l.context ? `_Context:_ ${l.context}\n` : ""}${l.task_description ? `_Task:_ ${l.task_description}\n` : ""}\n_${new Date(l.timestamp).toLocaleString()}_\n\n---`,
+      )
+      .join("\n\n");
+    const filterNote = (search || categoryFilter)
+      ? `\n> Filtered: ${filtered.length} of ${learnings.length} learnings${categoryFilter ? ` (category: ${categoryFilter})` : ""}${search ? ` (search: "${search}")` : ""}\n`
+      : `\n> ${learnings.length} total learnings\n`;
+    const blob = new Blob([`# JARVIS Learnings Export\n${filterNote}\n${markdown}`], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [filtered, learnings.length, search, categoryFilter]);
 
   if (loading) {
     return (
@@ -78,26 +102,7 @@ export default function LearningsPage() {
         <div className="flex items-center gap-2">
           {learnings.length > 0 && (
             <button
-              onClick={() => {
-                const markdown = filtered
-                  .map(
-                    (l) =>
-                      `### ${l.category}\n> ${l.insight}\n\n${l.context ? `_Context:_ ${l.context}\n` : ""}${l.task_description ? `_Task:_ ${l.task_description}\n` : ""}\n_${new Date(l.timestamp).toLocaleString()}_\n\n---`,
-                  )
-                  .join("\n\n");
-                const filterNote = (search || categoryFilter)
-                  ? `\n> Filtered: ${filtered.length} of ${learnings.length} learnings${categoryFilter ? ` (category: ${categoryFilter})` : ""}${search ? ` (search: "${search}")` : ""}\n`
-                  : `\n> ${learnings.length} total learnings\n`;
-                const blob = new Blob([`# JARVIS Learnings Export\n${filterNote}\n${markdown}`], { type: "text/markdown" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }}
+              onClick={handleExport}
               className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
@@ -111,7 +116,7 @@ export default function LearningsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
+      <div role="search" className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
         <Input
           value={search}
