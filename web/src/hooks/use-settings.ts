@@ -110,6 +110,10 @@ export function useSettings() {
         const res = await api.put<SettingsData>("/api/settings", update);
         setSettings(res);
         setCache(SETTINGS_CACHE_KEY, res);
+        // Clear stale model label cache so chat header refreshes
+        if (update.model || update.backend) {
+          try { sessionStorage.removeItem("jarvis_model_label"); } catch { /* ignore */ }
+        }
         return res;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to save settings";

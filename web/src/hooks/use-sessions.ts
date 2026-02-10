@@ -114,13 +114,18 @@ export function useSessions() {
     // Refresh when a new session is created in chat
     const handleSessionCreated = () => fetchSessions();
 
+    // Sync immediately when window regains focus (e.g. user switches from another app)
+    const handleFocus = () => fetchSessions();
+
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("session-created", handleSessionCreated);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("session-created", handleSessionCreated);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [fetchSessions]);
 
