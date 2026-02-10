@@ -237,10 +237,8 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   const retryLast = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
-      // Remove the error/streaming message and retry
-      setMessages((prev) =>
-        prev.filter((m) => !m.isError && m.id !== lastUserMsg.id),
-      );
+      // Remove only error messages, keep the user message for context
+      setMessages((prev) => prev.filter((m) => !m.isError));
       sendMessage(lastUserMsg.content);
     }
   }, [messages, sendMessage]);
@@ -277,11 +275,12 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
 
       const data = await res.json();
       const loaded: ChatMessage[] = data.messages.map(
-        (m: { role: string; content: string }, i: number) => ({
+        (m: { role: string; content: string; tool_calls?: ChatMessage["tool_calls"]; timestamp?: string }, i: number) => ({
           id: `loaded-${i}`,
           role: m.role as "user" | "assistant",
           content: m.content,
-          timestamp: new Date().toISOString(),
+          tool_calls: m.tool_calls || undefined,
+          timestamp: m.timestamp || new Date().toISOString(),
         }),
       );
 

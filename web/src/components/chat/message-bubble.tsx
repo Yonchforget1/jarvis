@@ -12,9 +12,13 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
     setTimeout(() => setCopied(false), 2000);
   };
   return (
@@ -34,9 +38,13 @@ function CopyButton({ text }: { text: string }) {
 
 function MessageCopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
     setTimeout(() => setCopied(false), 2000);
   };
   return (
@@ -103,6 +111,8 @@ function MessageReactions({ messageId }: { messageId: string }) {
     <div className="flex items-center gap-0.5">
       <button
         onClick={() => toggle("up")}
+        aria-label="Mark as helpful"
+        aria-pressed={reaction === "up"}
         className={`flex items-center rounded-md p-0.5 transition-colors ${
           reaction === "up"
             ? "text-green-400"
@@ -114,6 +124,8 @@ function MessageReactions({ messageId }: { messageId: string }) {
       </button>
       <button
         onClick={() => toggle("down")}
+        aria-label="Mark as not helpful"
+        aria-pressed={reaction === "down"}
         className={`flex items-center rounded-md p-0.5 transition-colors ${
           reaction === "down"
             ? "text-red-400"

@@ -302,6 +302,7 @@ export function ChatContainer({
             <button
               onClick={() => navigateMatch("prev")}
               disabled={matchingIndices.length === 0}
+              aria-label="Previous match"
               className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-colors"
             >
               <ChevronUp className="h-4 w-4" />
@@ -309,6 +310,7 @@ export function ChatContainer({
             <button
               onClick={() => navigateMatch("next")}
               disabled={matchingIndices.length === 0}
+              aria-label="Next match"
               className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-colors"
             >
               <ChevronDown className="h-4 w-4" />
@@ -316,6 +318,7 @@ export function ChatContainer({
           </div>
           <button
             onClick={closeSearch}
+            aria-label="Close search"
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
@@ -328,6 +331,7 @@ export function ChatContainer({
         <div className="flex items-center justify-end gap-1 px-4 py-1.5 border-b border-border/30">
           <button
             onClick={exportChat}
+            aria-label="Export as Markdown"
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
             title="Export as Markdown"
           >
@@ -336,6 +340,7 @@ export function ChatContainer({
           </button>
           <button
             onClick={exportChatJSON}
+            aria-label="Export as JSON"
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
             title="Export as JSON"
           >
