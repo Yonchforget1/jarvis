@@ -45,7 +45,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           {pathname === "/chat" && selectedSessionName && (
             <>
               <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />
-              <span className="text-sm text-muted-foreground/60 truncate max-w-[200px]">
+              <span
+                className="text-sm text-muted-foreground/60 truncate max-w-[200px]"
+                title={selectedSessionName}
+              >
                 {selectedSessionName}
               </span>
             </>

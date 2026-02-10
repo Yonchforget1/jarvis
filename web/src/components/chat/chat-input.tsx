@@ -189,6 +189,11 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
     }
   };
 
+  const pastedImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (pastedImageTimerRef.current) clearTimeout(pastedImageTimerRef.current);
+  }, []);
+
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -196,13 +201,15 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
       if (item.type.startsWith("image/")) {
         e.preventDefault();
         setPastedImage(true);
-        setTimeout(() => setPastedImage(false), 3000);
+        if (pastedImageTimerRef.current) clearTimeout(pastedImageTimerRef.current);
+        pastedImageTimerRef.current = setTimeout(() => setPastedImage(false), 3000);
         return;
       }
     }
   }, []);
 
   const charCount = value.length;
+  const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
   const isNearLimit = charCount > WARN_THRESHOLD;
   const isOverLimit = charCount > MAX_LENGTH;
   const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
@@ -389,7 +396,7 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
             >
               {isNearLimit
                 ? `${charCount.toLocaleString()}/${MAX_LENGTH.toLocaleString()}`
-                : `${charCount.toLocaleString()} chars`}
+                : `${wordCount} word${wordCount !== 1 ? "s" : ""} · ${charCount.toLocaleString()} chars`}
             </span>
           )}
         </div>
