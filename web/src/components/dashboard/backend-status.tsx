@@ -46,6 +46,7 @@ function LiveUptime({ initialSeconds }: { initialSeconds: number }) {
 
 export function BackendStatus({ stats }: { stats: SystemStats }) {
   const [health, setHealth] = useState<HealthData | null>(null);
+  const [healthError, setHealthError] = useState(false);
   const prevMemoryRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -58,9 +59,12 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
         });
         if (res.ok && !cancelled) {
           setHealth(await res.json());
+          setHealthError(false);
+        } else if (!cancelled) {
+          setHealthError(true);
         }
       } catch {
-        // ignore
+        if (!cancelled) setHealthError(true);
       }
     };
     fetchHealth();
@@ -88,7 +92,14 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
     {
       icon: Activity,
       label: "Status",
-      value: (
+      value: healthError ? (
+        <span className="flex items-center gap-2 text-yellow-400 font-medium">
+          <span className="relative flex h-2 w-2">
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500" />
+          </span>
+          Unreachable
+        </span>
+      ) : (
         <span className="flex items-center gap-2 text-green-400 font-medium">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -97,7 +108,7 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
           Online
         </span>
       ),
-      color: "text-green-500",
+      color: healthError ? "text-yellow-500" : "text-green-500",
     },
     {
       icon: Cpu,

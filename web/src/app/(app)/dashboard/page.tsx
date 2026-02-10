@@ -241,6 +241,7 @@ export default function DashboardPage() {
             <Link
               key={action.href}
               href={action.href}
+              aria-label={action.label}
               className={`group flex items-center gap-2.5 rounded-xl border p-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${action.bg}`}
             >
               <action.icon className={`h-4 w-4 ${action.color} shrink-0`} />
@@ -266,6 +267,7 @@ export default function DashboardPage() {
             <Link
               key={p.label}
               href={`/chat?prompt=${encodeURIComponent(p.prompt)}`}
+              aria-label={`Try: ${p.label}`}
               className="group flex items-start gap-3 rounded-xl border border-border/30 bg-card/30 p-3.5 text-left transition-all duration-200 hover:border-border hover:bg-card/60 hover:scale-[1.01] active:scale-[0.99]"
             >
               <p.icon className={`h-4 w-4 ${p.color} shrink-0 mt-0.5`} />

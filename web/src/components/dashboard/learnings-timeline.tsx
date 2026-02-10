@@ -1,6 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import { Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { LearningEntry } from "@/lib/types";
+
+const TRUNCATE_LENGTH = 200;
 
 const CATEGORY_COLORS: Record<string, string> = {
   game_dev: "bg-purple-500/10 text-purple-400 border-purple-500/20",
@@ -15,6 +20,22 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category] || CATEGORY_COLORS.general;
+}
+
+function TruncatedText({ text, limit = TRUNCATE_LENGTH }: { text: string; limit?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  if (text.length <= limit) return <>{text}</>;
+  return (
+    <>
+      {expanded ? text : text.slice(0, limit) + "..."}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="ml-1 text-primary/60 hover:text-primary text-xs transition-colors"
+      >
+        {expanded ? "less" : "more"}
+      </button>
+    </>
+  );
 }
 
 export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] }) {
@@ -55,7 +76,7 @@ export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] })
               })}
             </span>
           </div>
-          <p className="text-sm leading-relaxed">{entry.insight}</p>
+          <p className="text-sm leading-relaxed"><TruncatedText text={entry.insight} /></p>
           {entry.context && (
             <p className="mt-2 text-xs text-muted-foreground/60 leading-relaxed">
               {entry.context}
