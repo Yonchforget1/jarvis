@@ -30,7 +30,7 @@ import {
   ArrowUpDown,
   Monitor,
 } from "lucide-react";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
 import { useSessions, onSessionDeleteError } from "@/hooks/use-sessions";
@@ -135,8 +135,29 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [sessionLimit, setSessionLimit] = useState(15);
   const [sortMode, setSortMode] = useState<"recent" | "name" | "messages">("recent");
   const [toolGroups, setToolGroups] = useState<{ label: string; icon: typeof Folder; count: number; color: string }[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string; sessionName: string; pinned: boolean } | null>(null);
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu on click outside or escape
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = (e: Event) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setContextMenu(null);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [contextMenu]);
 
   // Register delete error callback once
   useEffect(() => {
@@ -468,6 +489,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
                   }`}
                   onClick={() => handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation")}
+                  onContextMenu={(e: ReactMouseEvent) => {
+                    e.preventDefault();
+                    setContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      sessionId: session.session_id,
+                      sessionName: session.customName || session.autoTitle || session.preview || "New conversation",
+                      pinned: !!session.pinned,
+                    });
+                  }}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSessionClick(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation"); } }}
                 >
                   <MessageCircle className="h-3.5 w-3.5 shrink-0" />
@@ -710,6 +741,50 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
         confirmLabel="Log out"
         variant="danger"
       />
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[200] min-w-[160px] rounded-xl border border-border/50 bg-background shadow-2xl p-1 animate-scale-in"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 180),
+            top: Math.min(contextMenu.y, window.innerHeight - 160),
+          }}
+        >
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              togglePin(contextMenu.sessionId);
+              setContextMenu(null);
+            }}
+          >
+            {contextMenu.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+            {contextMenu.pinned ? "Unpin" : "Pin"}
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              startRename(contextMenu.sessionId, contextMenu.sessionName);
+              setContextMenu(null);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+            Rename
+          </button>
+          <div className="mx-2 my-1 h-px bg-border/50" />
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+            onClick={() => {
+              setDeletingSessionId(contextMenu.sessionId);
+              setContextMenu(null);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

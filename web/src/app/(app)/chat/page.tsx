@@ -109,6 +109,23 @@ export default function ChatPage() {
     loadSession,
   } = useChat(selectedSessionId, chatOptions);
 
+  // Auto-send prompt from ?prompt= query parameter (e.g., dashboard "Try These")
+  const promptHandled = useRef(false);
+  useEffect(() => {
+    if (promptHandled.current) return;
+    const promptParam = searchParams.get("prompt");
+    if (promptParam) {
+      promptHandled.current = true;
+      const timer = setTimeout(() => {
+        sendMessage(promptParam);
+        const url = new URL(window.location.href);
+        url.searchParams.delete("prompt");
+        window.history.replaceState(null, "", url.toString());
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, sendMessage]);
+
   // Update URL when session changes (without full navigation)
   useEffect(() => {
     if (sessionId) {
