@@ -31,6 +31,7 @@ import {
   ChevronUp,
   ToggleLeft,
   ToggleRight,
+  FileArchive,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -375,6 +376,36 @@ export default function SettingsPage() {
   const handleResetOnboarding = () => {
     localStorage.removeItem("jarvis-onboarding-seen");
     toast.success("Onboarding reset", "The welcome tour will show on your next page load.");
+  };
+
+  const [exportingData, setExportingData] = useState(false);
+
+  const handleExportAllData = async () => {
+    if (exportingData) return;
+    setExportingData(true);
+    try {
+      const token = localStorage.getItem("jarvis_token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/compliance/export`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jarvis-data-export-${new Date().toISOString().split("T")[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Data exported", "All your data has been downloaded as a ZIP file.");
+    } catch (err) {
+      toast.error("Export failed", err instanceof Error ? err.message : "Could not export data.");
+    } finally {
+      setExportingData(false);
+    }
   };
 
   const handleExportSettings = () => {
@@ -1082,6 +1113,20 @@ export default function SettingsPage() {
               onChange={handleImportSettings}
               className="hidden"
             />
+            <Separator className="bg-border/30" />
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
+              onClick={handleExportAllData}
+              disabled={exportingData}
+              aria-label="Download all your data as a ZIP file"
+            >
+              {exportingData ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <FileArchive className="h-4 w-4 text-primary" />}
+              {exportingData ? "Preparing export..." : "Download All My Data (GDPR)"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground/40 px-1">
+              Downloads a ZIP containing your profile, sessions, settings, and audit logs.
+            </p>
             <Separator className="bg-border/30" />
             <Button
               variant="outline"
