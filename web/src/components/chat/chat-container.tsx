@@ -18,6 +18,7 @@ import {
   FileJson,
   FileText,
   Trash2,
+  Copy,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -85,7 +86,7 @@ export function ChatContainer({
   onStop,
   onClear,
 }: ChatContainerProps) {
-  const { status: connectionStatus, retry: retryConnection } = useConnection();
+  const { status: connectionStatus, latency: connectionLatency, retry: retryConnection } = useConnection();
   const toast = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -430,7 +431,7 @@ export function ChatContainer({
         </div>
       </div>
 
-      {/* Offline banner */}
+      {/* Connection banners */}
       {connectionStatus === "disconnected" && (
         <div className="flex items-center justify-center gap-2 bg-red-500/10 border-b border-red-500/20 px-4 py-2 animate-fade-in">
           <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
@@ -438,6 +439,18 @@ export function ChatContainer({
           <button
             onClick={retryConnection}
             className="text-xs text-red-400 underline underline-offset-2 hover:text-red-300 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {connectionStatus === "degraded" && (
+        <div className="flex items-center justify-center gap-2 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 animate-fade-in">
+          <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+          <span className="text-xs text-yellow-400">Connection is slow ({connectionLatency}ms)</span>
+          <button
+            onClick={retryConnection}
+            className="text-xs text-yellow-400 underline underline-offset-2 hover:text-yellow-300 transition-colors"
           >
             Retry
           </button>
@@ -464,6 +477,23 @@ export function ChatContainer({
           >
             <FileJson className="h-3 w-3" />
             <span className="hidden sm:inline">.json</span>
+          </button>
+          <button
+            onClick={() => {
+              const text = messages
+                .filter((m) => !m.isStreaming)
+                .map((m) => `${m.role === "user" ? "You" : "JARVIS"}: ${typeof m.content === "string" ? m.content : ""}`)
+                .join("\n\n");
+              navigator.clipboard.writeText(text).then(() => {
+                toast.success("Copied", "All messages copied to clipboard.");
+              });
+            }}
+            aria-label="Copy all messages"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors"
+            title="Copy all messages"
+          >
+            <Copy className="h-3 w-3" />
+            <span className="hidden sm:inline">Copy</span>
           </button>
           {onClear && (
             <button

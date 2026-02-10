@@ -227,6 +227,30 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Quick-start Prompts */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+          Try These
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { icon: Zap, label: "Build a Godot game", prompt: "Create a simple 2D platformer game in Godot with a player character that can run and jump", color: "text-yellow-400" },
+            { icon: Brain, label: "Review my learnings", prompt: "Search my learnings and summarize key patterns and areas for improvement", color: "text-purple-400" },
+            { icon: Wrench, label: "Automate a workflow", prompt: "Help me automate a repetitive task on my computer step by step", color: "text-blue-400" },
+            { icon: MessageSquare, label: "Research a topic", prompt: "Search the web and provide a comprehensive summary about", color: "text-green-400" },
+          ].map((p) => (
+            <Link
+              key={p.label}
+              href={`/chat?prompt=${encodeURIComponent(p.prompt)}`}
+              className="group flex items-start gap-3 rounded-xl border border-border/30 bg-card/30 p-3.5 text-left transition-all duration-200 hover:border-border hover:bg-card/60 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <p.icon className={`h-4 w-4 ${p.color} shrink-0 mt-0.5`} />
+              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{p.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Two-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="md:col-span-2 lg:col-span-2 space-y-3">

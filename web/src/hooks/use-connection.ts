@@ -2,17 +2,20 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-type ConnectionStatus = "connected" | "disconnected" | "checking";
+type ConnectionStatus = "connected" | "degraded" | "disconnected" | "checking";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const POLL_INTERVAL = 30000; // 30 seconds
 const RETRY_INTERVAL = 5000; // 5 seconds when disconnected
+const DEGRADED_LATENCY_MS = 500; // Consider degraded above this
+const DEGRADED_STREAK_THRESHOLD = 3; // Consecutive slow checks to trigger degraded
 
 export function useConnection() {
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [latency, setLatency] = useState<number | null>(null);
   const statusRef = useRef<ConnectionStatus>("checking");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const slowStreakRef = useRef(0);
 
   // Keep statusRef in sync without causing re-renders in the effect
   statusRef.current = status;
@@ -25,19 +28,31 @@ export function useConnection() {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
+        const ms = Date.now() - start;
         const wasDisconnected = statusRef.current === "disconnected";
-        setStatus("connected");
-        setLatency(Date.now() - start);
+        setLatency(ms);
+        if (ms > DEGRADED_LATENCY_MS) {
+          slowStreakRef.current++;
+        } else {
+          slowStreakRef.current = 0;
+        }
+        if (slowStreakRef.current >= DEGRADED_STREAK_THRESHOLD) {
+          setStatus("degraded");
+        } else {
+          setStatus("connected");
+        }
         if (wasDisconnected) {
           window.dispatchEvent(new CustomEvent("jarvis-reconnected"));
         }
       } else {
         setStatus("disconnected");
         setLatency(null);
+        slowStreakRef.current = 0;
       }
     } catch {
       setStatus("disconnected");
       setLatency(null);
+      slowStreakRef.current = 0;
     }
   }, []);
 
