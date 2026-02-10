@@ -94,7 +94,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
     } catch {
       setCopied(false);
     }
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const argsSummary = useMemo(() => {
@@ -227,7 +227,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
                 <span>Running...</span>
               </div>
             ) : (
-              <pre className={`text-xs rounded-lg p-2.5 overflow-x-auto max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin ${
+              <pre aria-label={`Result from ${call.name}`} className={`text-xs rounded-lg p-2.5 overflow-x-auto max-h-56 overflow-y-auto font-mono leading-relaxed scrollbar-thin ${
                 isResultError
                   ? "bg-red-500/5 dark:bg-red-500/10 text-red-300"
                   : "bg-muted dark:bg-black/30 text-foreground"

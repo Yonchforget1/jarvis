@@ -146,9 +146,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         ? "audio/webm"
         : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
         ? "audio/ogg;codecs=opus"
-        : "audio/mp4";
+        : "";
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -159,7 +161,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const blob = new Blob(chunksRef.current, { type: mimeType || recorder.mimeType });
         cleanup();
         if (blob.size > 0) {
           transcribe(blob);

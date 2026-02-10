@@ -76,11 +76,11 @@ export function StatsCard({
   bgColor = "bg-muted",
 }: StatsCardProps) {
   return (
-    <div className="group rounded-2xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-border hover:bg-card/80 animate-fade-in-up">
+    <div role="region" aria-label={`${title} statistics`} className="group rounded-2xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-border hover:bg-card/80 animate-fade-in-up">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+        <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
           {title}
-        </p>
+        </h4>
         <div className={`rounded-xl ${bgColor} p-2.5 ${iconColor} transition-transform duration-300 group-hover:scale-110`}>
           <Icon className="h-4 w-4" />
         </div>
