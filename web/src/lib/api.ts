@@ -160,4 +160,9 @@ export const api = {
   },
 };
 
+/** Reset the token expiry warning flag (call after login/re-auth). */
+export function resetTokenExpiryWarning() {
+  _tokenExpiryWarned = false;
+}
+
 export { ApiError };

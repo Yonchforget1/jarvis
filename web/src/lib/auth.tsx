@@ -9,7 +9,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, resetTokenExpiryWarning } from "./api";
 import type { User } from "./types";
 
 interface AuthContextType {
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const token = localStorage.getItem("jarvis_token");
     const savedUser = localStorage.getItem("jarvis_user");
     if (token && savedUser) {
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(savedUser);
         setUser(parsed);
         // Validate token with server in background
-        api.get<{ user: User }>("/api/auth/me").then((res) => {
+        api.get<{ user: User }>("/api/auth/me", { signal: controller.signal }).then((res) => {
           if (cancelled) return;
           setUser(res.user);
           localStorage.setItem("jarvis_user", JSON.stringify(res.user));
@@ -61,13 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setIsLoading(false);
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); };
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await api.post<AuthResponse>("/api/auth/login", { username, password });
     localStorage.setItem("jarvis_token", res.access_token);
     localStorage.setItem("jarvis_user", JSON.stringify(res.user));
+    resetTokenExpiryWarning();
     setUser(res.user);
   }, []);
 
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       localStorage.setItem("jarvis_token", res.access_token);
       localStorage.setItem("jarvis_user", JSON.stringify(res.user));
+      resetTokenExpiryWarning();
       setUser(res.user);
     },
     [],
