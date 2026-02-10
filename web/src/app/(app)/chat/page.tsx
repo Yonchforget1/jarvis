@@ -36,7 +36,13 @@ export default function ChatPage() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (titleFlashRef.current) {
+        clearInterval(titleFlashRef.current);
+        titleFlashRef.current = null;
+      }
+    };
   }, []);
 
   const onAssistantMessage = useCallback(() => {
@@ -52,7 +58,7 @@ export default function ChatPage() {
         }, 1000);
       }
       // Send browser notification if permitted
-      if (Notification.permission === "granted") {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         new Notification("JARVIS", {
           body: "New response ready",
           icon: "/icon-192x192.png",

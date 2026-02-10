@@ -42,6 +42,14 @@ export function FocusTrap({ children, active = true }: FocusTrapProps) {
       }
     };
 
+    // Auto-focus the first focusable element
+    const focusable = Array.from(
+      container.querySelectorAll<HTMLElement>(focusableSelector),
+    ).filter((el) => el.offsetParent !== null);
+    if (focusable.length > 0 && !container.contains(document.activeElement)) {
+      focusable[0].focus();
+    }
+
     container.addEventListener("keydown", handleKeyDown);
     return () => container.removeEventListener("keydown", handleKeyDown);
   }, [active]);
