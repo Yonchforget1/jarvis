@@ -607,6 +607,13 @@ export const MessageBubble = memo(function MessageBubble({
                     <span className="text-[10px] text-muted-foreground/40">
                       {wordCount}w{wordCount >= 100 && ` · ${readMin} min read`}
                     </span>
+                    {message.responseTimeMs != null && (
+                      <span className="text-[10px] text-muted-foreground/30 tabular-nums" title={`Response generated in ${message.responseTimeMs}ms`}>
+                        {message.responseTimeMs < 1000
+                          ? `${message.responseTimeMs}ms`
+                          : `${(message.responseTimeMs / 1000).toFixed(1)}s`}
+                      </span>
+                    )}
                     <MessageReactions messageId={message.id} />
                   </>
                 );

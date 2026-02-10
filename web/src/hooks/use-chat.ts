@@ -112,6 +112,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
       setMessages((prev) => [...prev, streamingMsg]);
 
       abortRef.current = new AbortController();
+      const streamStartTime = Date.now();
 
       // 5-minute overall timeout for the stream
       const streamTimeout = setTimeout(() => {
@@ -267,11 +268,13 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
               case "done": {
                 receivedDone = true;
                 const doneData = data as unknown as Record<string, unknown>;
+                const responseTimeMs = Date.now() - streamStartTime;
                 updateStreamingMessage(assistantMsgId, (m) => ({
                   ...m,
                   isStreaming: false,
                   streamStatus: undefined,
                   timestamp: new Date().toISOString(),
+                  responseTimeMs,
                 }));
                 // Propagate auto-generated title so sidebar can update
                 if (doneData.auto_title && (streamSessionId || sessionId)) {

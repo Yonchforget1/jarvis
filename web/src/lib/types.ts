@@ -15,6 +15,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   isIncomplete?: boolean;
   streamStatus?: string;
+  responseTimeMs?: number;
 }
 
 export interface ToolInfo {
