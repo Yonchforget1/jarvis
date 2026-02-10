@@ -55,8 +55,9 @@ function getResultPreview(result: string): { preview: string; isError: boolean }
   return { preview, isError };
 }
 
-export function ToolCallCard({ call }: { call: ToolCallDetail }) {
+export function ToolCallCard({ call, forceCollapsed }: { call: ToolCallDetail; forceCollapsed?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const isExpanded = forceCollapsed ? false : expanded;
   const [copied, setCopied] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(Date.now());
@@ -142,13 +143,13 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
       }`}
     >
       <button
-        onClick={() => setExpanded(!expanded)}
-        aria-label={`${expanded ? "Collapse" : "Expand"} tool call: ${call.name}`}
-        aria-expanded={expanded}
+        onClick={() => setExpanded(!isExpanded)}
+        aria-label={`${isExpanded ? "Collapse" : "Expand"} tool call: ${call.name}`}
+        aria-expanded={isExpanded}
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2 shrink-0">
-          {expanded ? (
+          {isExpanded ? (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform" />
           ) : (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform" />
@@ -162,14 +163,14 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
             <span className={`font-mono text-xs font-medium ${meta.color}`}>
               {call.name}
             </span>
-            {argsSummary && !expanded && (
+            {argsSummary && !isExpanded && (
               <span className="text-xs text-muted-foreground/50 truncate">
                 {argsSummary}
               </span>
             )}
           </div>
           {/* Result preview when collapsed */}
-          {!expanded && resultPreview && (
+          {!isExpanded && resultPreview && (
             <p className={`text-[10px] mt-0.5 truncate ${
               isResultError ? "text-red-400/70" : "text-muted-foreground/40"
             }`}>
@@ -191,7 +192,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
         </div>
       </button>
 
-      {expanded && (
+      {isExpanded && (
         <div className="border-t border-border/50 animate-fade-in-up">
           {/* Arguments */}
           {Object.keys(call.args).length > 0 && (

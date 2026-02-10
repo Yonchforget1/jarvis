@@ -234,6 +234,7 @@ export const MessageBubble = memo(function MessageBubble({
   searchQuery = "",
   isActiveMatch = false,
   isGrouped = false,
+  toolsCollapsed = false,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
@@ -243,6 +244,7 @@ export const MessageBubble = memo(function MessageBubble({
   searchQuery?: string;
   isActiveMatch?: boolean;
   isGrouped?: boolean;
+  toolsCollapsed?: boolean;
 }) {
   const isUser = message.role === "user";
   const isError = message.isError;
@@ -310,7 +312,7 @@ export const MessageBubble = memo(function MessageBubble({
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
           <div className="w-full space-y-1.5 mb-1.5">
             {message.tool_calls.map((tc) => (
-              <ToolCallCard key={tc.id} call={tc} />
+              <ToolCallCard key={tc.id} call={tc} forceCollapsed={toolsCollapsed} />
             ))}
           </div>
         )}

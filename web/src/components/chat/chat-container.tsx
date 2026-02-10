@@ -26,6 +26,7 @@ import {
   PenTool,
   Bug,
   BookOpen,
+  ChevronsDownUp,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -135,6 +136,7 @@ export function ChatContainer({
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const prevMessageCountRef = useRef(messages.length);
 
@@ -146,6 +148,7 @@ export function ChatContainer({
   }, []);
 
   const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
+  const hasToolCalls = useMemo(() => messages.some((m) => m.tool_calls && m.tool_calls.length > 0), [messages]);
 
   // Message windowing: only render recent messages to avoid DOM bloat
   // When search is open, show all messages so search results can be navigated to
@@ -560,6 +563,20 @@ export function ChatContainer({
             <Copy className="h-3 w-3" />
             <span className="hidden sm:inline">Copy</span>
           </button>
+          {hasToolCalls && (
+            <button
+              onClick={() => setToolsCollapsed(!toolsCollapsed)}
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] transition-colors ${
+                toolsCollapsed
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground/50 hover:text-foreground hover:bg-muted"
+              }`}
+              title={toolsCollapsed ? "Expand tool calls" : "Collapse tool calls"}
+            >
+              <ChevronsDownUp className="h-3 w-3" />
+              <span className="hidden sm:inline">{toolsCollapsed ? "Expand Tools" : "Collapse Tools"}</span>
+            </button>
+          )}
           {onClear && (
             <button
               onClick={() => setClearConfirmOpen(true)}
@@ -707,6 +724,7 @@ export function ChatContainer({
                     searchQuery={searchOpen ? searchQuery : ""}
                     isActiveMatch={msg.id === activeMatchMsgId}
                     isGrouped={isGrouped}
+                    toolsCollapsed={toolsCollapsed}
                   />
                 </div>
               );
