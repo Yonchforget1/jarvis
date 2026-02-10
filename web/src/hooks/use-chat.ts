@@ -52,6 +52,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     initialSessionId || null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<{ input_tokens: number; output_tokens: number; total_tokens: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,6 +277,10 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
                   timestamp: new Date().toISOString(),
                   responseTimeMs,
                 }));
+                // Update token usage from server
+                if (doneData.token_usage) {
+                  setTokenUsage(doneData.token_usage as { input_tokens: number; output_tokens: number; total_tokens: number });
+                }
                 // Propagate auto-generated title so sidebar can update
                 if (doneData.auto_title && (streamSessionId || sessionId)) {
                   window.dispatchEvent(
@@ -371,6 +376,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     setMessages([]);
     setSessionId(null);
     setError(null);
+    setTokenUsage(null);
   }, []);
 
   const retryLast = useCallback(() => {
@@ -482,6 +488,7 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     isLoading,
     sessionId,
     error,
+    tokenUsage,
     sendMessage,
     editMessage,
     clearChat,

@@ -183,6 +183,7 @@ export default function ChatPage() {
     isLoading,
     sessionId,
     error: chatError,
+    tokenUsage,
     sendMessage,
     editMessage,
     retryLast,
@@ -358,6 +359,14 @@ export default function ChatPage() {
               {messages.length > 0 && (
                 <span className="text-[10px] text-muted-foreground/30 tabular-nums hidden sm:inline">
                   {messages.length} msg{messages.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {tokenUsage && tokenUsage.total_tokens > 0 && (
+                <span
+                  className="text-[10px] text-muted-foreground/30 tabular-nums hidden sm:inline"
+                  title={`In: ${tokenUsage.input_tokens.toLocaleString()} · Out: ${tokenUsage.output_tokens.toLocaleString()}`}
+                >
+                  {formatTokens(tokenUsage.total_tokens)} tokens
                 </span>
               )}
               {sessionId && messages.length > 0 && (

@@ -152,6 +152,12 @@ async def chat_stream(
                 # Enrich "done" event with session metadata for frontend
                 if event["event"] == "done":
                     event["data"]["auto_title"] = session.auto_title or ""
+                    convo = session.conversation
+                    event["data"]["token_usage"] = {
+                        "input_tokens": convo.total_input_tokens,
+                        "output_tokens": convo.total_output_tokens,
+                        "total_tokens": convo.total_input_tokens + convo.total_output_tokens,
+                    }
 
                 yield _sse(event["event"], event["data"])
 
