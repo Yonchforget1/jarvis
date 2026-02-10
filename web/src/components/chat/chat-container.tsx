@@ -209,15 +209,25 @@ export function ChatContainer({
     toast.success("Exported", "Chat saved as JSON");
   }, [messages, toast]);
 
+  // Track messages length in ref so keyboard handler doesn't re-register on every message
+  const messagesLenRef = useRef(messages.length);
+  useEffect(() => { messagesLenRef.current = messages.length; }, [messages.length]);
+
+  const searchFocusRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (searchFocusRef.current) clearTimeout(searchFocusRef.current);
+  }, []);
+
   // Ctrl+F to open search, Ctrl+Shift+E to export, Escape to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f" && messages.length > 0) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f" && messagesLenRef.current > 0) {
         e.preventDefault();
         setSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+        if (searchFocusRef.current) clearTimeout(searchFocusRef.current);
+        searchFocusRef.current = setTimeout(() => searchInputRef.current?.focus(), 50);
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "E" && messages.length > 0) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "E" && messagesLenRef.current > 0) {
         e.preventDefault();
         exportChat();
       }
@@ -228,14 +238,14 @@ export function ChatContainer({
         e.preventDefault();
         setShortcutsOpen(true);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "l" && messages.length > 0 && onClear) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "l" && messagesLenRef.current > 0 && onClear) {
         e.preventDefault();
         setClearConfirmOpen(true);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [searchOpen, closeSearch, messages.length, exportChat, onClear]);
+  }, [searchOpen, closeSearch, exportChat, onClear]);
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
