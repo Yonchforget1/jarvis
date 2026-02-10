@@ -27,6 +27,7 @@ import {
   Pin,
   PinOff,
   Search,
+  ArrowUpDown,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
@@ -124,18 +125,32 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionLimit, setSessionLimit] = useState(15);
+  const [sortMode, setSortMode] = useState<"recent" | "name" | "messages">("recent");
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
 
   const filteredSessions = useMemo(() => {
-    if (!sessionSearch.trim()) return sessions;
-    const q = sessionSearch.toLowerCase();
-    return sessions.filter((s) =>
-      s.customName?.toLowerCase().includes(q) ||
-      s.autoTitle?.toLowerCase().includes(q) ||
-      s.preview?.toLowerCase().includes(q)
-    );
-  }, [sessions, sessionSearch]);
+    let result = sessions;
+    if (sessionSearch.trim()) {
+      const q = sessionSearch.toLowerCase();
+      result = result.filter((s) =>
+        s.customName?.toLowerCase().includes(q) ||
+        s.autoTitle?.toLowerCase().includes(q) ||
+        s.preview?.toLowerCase().includes(q)
+      );
+    }
+    if (sortMode === "name") {
+      result = [...result].sort((a, b) => {
+        const aName = (a.customName || a.autoTitle || a.preview || "").toLowerCase();
+        const bName = (b.customName || b.autoTitle || b.preview || "").toLowerCase();
+        return aName.localeCompare(bName);
+      });
+    } else if (sortMode === "messages") {
+      result = [...result].sort((a, b) => b.message_count - a.message_count);
+    }
+    // "recent" uses default order from API (most recent first)
+    return result;
+  }, [sessions, sessionSearch, sortMode]);
 
   useEffect(() => {
     if (editingSessionId && editInputRef.current) {
@@ -309,17 +324,28 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           </div>
         ) : (
           <>
-            {/* Session search */}
+            {/* Session search + sort */}
             {sessions.length > 3 && (
-              <div role="search" className="relative px-1 mb-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
-                <input
-                  value={sessionSearch}
-                  onChange={(e) => { setSessionSearch(e.target.value); setSessionLimit(15); }}
-                  placeholder="Search chats..."
-                  aria-label="Search conversations"
-                  className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
-                />
+              <div className="flex items-center gap-1 px-1 mb-1">
+                <div role="search" className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
+                  <input
+                    value={sessionSearch}
+                    onChange={(e) => { setSessionSearch(e.target.value); setSessionLimit(15); }}
+                    placeholder="Search chats..."
+                    aria-label="Search conversations"
+                    className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
+                  />
+                </div>
+                <Tooltip content={`Sort: ${sortMode === "recent" ? "Recent" : sortMode === "name" ? "Name" : "Messages"}`} side="bottom">
+                  <button
+                    onClick={() => setSortMode((prev) => prev === "recent" ? "name" : prev === "name" ? "messages" : "recent")}
+                    aria-label={`Sort by ${sortMode}`}
+                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <ArrowUpDown className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               </div>
             )}
             {sessionsLoading ? (

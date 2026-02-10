@@ -113,6 +113,34 @@ export default function SettingsPage() {
     }
   };
 
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.backend) setBackend(data.backend);
+        if (data.model) setModel(data.model);
+        if (data.max_tokens && typeof data.max_tokens === "number") {
+          setMaxTokens(Math.max(256, Math.min(32768, data.max_tokens)));
+        }
+        if (data.theme) {
+          setTheme(data.theme);
+        }
+        setHasChanges(true);
+        toast.success("Settings imported", "Review the values below and click Save to apply.");
+      } catch {
+        toast.error("Import failed", "The file does not contain valid settings JSON.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be re-imported
+    e.target.value = "";
+  };
+
   const handleResetOnboarding = () => {
     localStorage.removeItem("jarvis-onboarding-seen");
     toast.success("Onboarding reset", "The welcome tour will show on your next page load.");
@@ -448,9 +476,9 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Download className="h-4 w-4 text-primary" />
-              Data Export
+              Data Management
             </CardTitle>
-            <CardDescription>Download your data for backup or analysis</CardDescription>
+            <CardDescription>Import, export, and manage your data</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -466,9 +494,24 @@ export default function SettingsPage() {
               className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
               onClick={handleExportSettings}
             >
-              <Upload className="h-4 w-4 text-primary" />
+              <Download className="h-4 w-4 text-primary" />
               Export Current Settings
             </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 h-11 rounded-xl border-border/50"
+              onClick={() => importFileRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 text-primary" />
+              Import Settings from File
+            </Button>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportSettings}
+              className="hidden"
+            />
             <Separator className="bg-border/30" />
             <Button
               variant="outline"
