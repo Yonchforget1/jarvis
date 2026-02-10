@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI):
     compliance.set_session_manager(session_manager)
     whatsapp.set_session_manager(session_manager)
 
+    session_manager.start_cleanup_timer(interval_seconds=3600)  # Cleanup expired sessions every hour
     log.info("Jarvis API ready (backend=%s, model=%s)",
              session_manager.config.backend, session_manager.config.model)
     yield

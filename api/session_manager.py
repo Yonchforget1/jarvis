@@ -162,7 +162,21 @@ class SessionManager:
             log.info("Cleaned up %d expired session(s)", len(expired))
         return len(expired)
 
+    def start_cleanup_timer(self, interval_seconds: int = 3600):
+        """Start a background timer to clean up expired sessions periodically."""
+        def _cleanup_loop():
+            while not self._shutdown_event.is_set():
+                self._shutdown_event.wait(interval_seconds)
+                if not self._shutdown_event.is_set():
+                    self.cleanup_expired()
+
+        self._shutdown_event = threading.Event()
+        self._cleanup_thread = threading.Thread(target=_cleanup_loop, daemon=True, name="session-cleanup")
+        self._cleanup_thread.start()
+
     def shutdown(self):
         """Clean up all sessions."""
+        if hasattr(self, "_shutdown_event"):
+            self._shutdown_event.set()
         with self._lock:
             self._sessions.clear()

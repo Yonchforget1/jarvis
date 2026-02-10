@@ -12,6 +12,12 @@ _DEFAULT_SECRET = "jarvis-dev-secret-change-in-production"
 JWT_SECRET = os.getenv("JWT_SECRET", _DEFAULT_SECRET)
 if JWT_SECRET == _DEFAULT_SECRET:
     import logging
+    _env = os.getenv("JARVIS_ENV", "development").lower()
+    if _env == "production":
+        raise RuntimeError(
+            "FATAL: JWT_SECRET must be set in production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+        )
     logging.getLogger("jarvis").warning(
         "JWT_SECRET not set — using insecure default. "
         "Set JWT_SECRET in your .env file for production use."
