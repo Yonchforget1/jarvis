@@ -1,24 +1,28 @@
 /**
  * Jarvis WhatsApp Bridge
  *
- * Connects to WhatsApp Web via whatsapp-web.js, forwards messages to the
- * Jarvis FastAPI server, and sends responses back as WhatsApp replies.
+ * Connects to WhatsApp Web via whatsapp-web.js and forwards messages to
+ * either Claude Code CLI (default) or the Jarvis FastAPI server (legacy).
  *
- * First run: displays a QR code in the terminal — scan it once with your phone.
- * After that, the session persists and reconnects automatically.
+ * Claude Code mode: messages invoke `claude -p` with per-phone session
+ * persistence. Images are OCR'd locally via Tesseract.
+ *
+ * Jarvis API mode: original behavior, forwards to POST /api/whatsapp/bridge.
  *
  * Usage:
- *   node whatsapp_bridge.js                           (QR code auth)
- *   node whatsapp_bridge.js --phone 13478058362       (phone number pairing)
- *   node whatsapp_bridge.js --api http://localhost:8000
+ *   node whatsapp_bridge.js --phone 13478058362               (Claude Code, default)
+ *   node whatsapp_bridge.js --phone 13478058362 --jarvis-api  (legacy API mode)
+ *   node whatsapp_bridge.js --api http://localhost:8000 --jarvis-api
  */
 
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
 const https = require("https");
+const { execFile, spawn } = require("child_process");
+const { randomUUID } = require("crypto");
 
 // ---------------------------------------------------------------------------
 // Config
@@ -39,14 +43,75 @@ const PAIR_PHONE = (() => {
   return null;
 })();
 
+// Mode: "claude-code" (default) or "jarvis-api" (legacy)
+const MODE = process.argv.includes("--jarvis-api") ? "jarvis-api" : "claude-code";
+
+// Working directory for Claude Code (defaults to project root)
+const WORK_DIR = (() => {
+  const eqArg = process.argv.find((a) => a.startsWith("--work-dir="));
+  if (eqArg) return eqArg.split("=")[1];
+  const idx = process.argv.indexOf("--work-dir");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return path.resolve(__dirname, "..", "..");
+})();
+
+// Tesseract OCR path
+const TESSERACT_PATH = String.raw`C:\Program Files\Tesseract-OCR\tesseract.exe`;
+
+// Claude Code timeout: 10 minutes (can run tests, edit files, etc.)
+const CLAUDE_TIMEOUT = 10 * 60 * 1000;
+
 const IMAGES_DIR = path.join(__dirname, "whatsapp_images");
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
-// Per-phone session tracking (phone -> Jarvis session_id)
+// ---------------------------------------------------------------------------
+// Session management
+// ---------------------------------------------------------------------------
+const SESSIONS_FILE = path.join(__dirname, "whatsapp_sessions.json");
+
+// sessions[phone] = { sessionId, initialized } (claude-code) or string (jarvis-api)
 const sessions = {};
 
+function loadSessions() {
+  try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8"));
+      Object.assign(sessions, data);
+      console.log(`[jarvis-wa] Loaded ${Object.keys(data).length} saved session(s).`);
+    }
+  } catch (err) {
+    console.warn("[jarvis-wa] Could not load sessions:", err.message);
+  }
+}
+
+function saveSessions() {
+  try {
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2));
+  } catch (err) {
+    console.warn("[jarvis-wa] Could not save sessions:", err.message);
+  }
+}
+
+let saveTimer = null;
+function debouncedSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSessions, 2000);
+}
+
+function getOrCreateSession(phone) {
+  if (MODE === "claude-code") {
+    if (!sessions[phone] || !sessions[phone].sessionId) {
+      sessions[phone] = { sessionId: randomUUID(), initialized: false };
+    }
+    return sessions[phone];
+  }
+  return sessions[phone] || null;
+}
+
+loadSessions();
+
 // ---------------------------------------------------------------------------
-// HTTP helper (no external deps)
+// HTTP helper (for legacy Jarvis API mode)
 // ---------------------------------------------------------------------------
 function apiPost(urlPath, body) {
   return new Promise((resolve, reject) => {
@@ -84,6 +149,252 @@ function apiPost(urlPath, body) {
     req.write(payload);
     req.end();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Local Tesseract OCR (no API dependency)
+// ---------------------------------------------------------------------------
+function ocrImage(imagePath) {
+  return new Promise((resolve) => {
+    execFile(
+      TESSERACT_PATH,
+      [imagePath, "stdout"],
+      { timeout: 30_000 },
+      (err, stdout) => {
+        if (err) {
+          console.error("[jarvis-wa] Tesseract error:", err.message);
+          resolve("(could not read image)");
+          return;
+        }
+        const text = stdout.trim();
+        console.log(`[jarvis-wa] OCR result (${text.length} chars): ${text.slice(0, 100)}`);
+        resolve(text || "(no text detected in image)");
+      }
+    );
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Claude Code CLI invocation
+// ---------------------------------------------------------------------------
+function invokeClaudeCode(message, phone, name) {
+  return new Promise((resolve, reject) => {
+    const session = getOrCreateSession(phone);
+
+    const args = ["-p", "--output-format", "json"];
+
+    // First message: create session; subsequent: resume
+    if (!session.initialized) {
+      args.push("--session-id", session.sessionId);
+    } else {
+      args.push("-r", session.sessionId);
+    }
+
+    // WhatsApp context so Claude keeps responses mobile-friendly
+    args.push(
+      "--append-system-prompt",
+      `The user is messaging from WhatsApp (phone: ${phone}, name: ${name}). ` +
+        `Keep responses concise and mobile-friendly. ` +
+        `Avoid large code blocks unless specifically requested. ` +
+        `Use plain text formatting since WhatsApp has limited markdown support.`
+    );
+
+    // For long messages, pipe via stdin; otherwise pass as argument
+    const useStdin = message.length > 7000;
+    if (!useStdin) {
+      args.push(message);
+    }
+
+    const child = spawn("claude", args, {
+      cwd: WORK_DIR,
+      shell: true,
+      timeout: CLAUDE_TIMEOUT,
+      env: { ...process.env },
+      windowsHide: true,
+    });
+
+    if (useStdin) {
+      child.stdin.write(message);
+      child.stdin.end();
+    }
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("error", (err) => {
+      reject(new Error(`Claude Code spawn error: ${err.message}`));
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        console.error(`[jarvis-wa] Claude Code exited with code ${code}`);
+        console.error(`[jarvis-wa] stderr: ${stderr.slice(0, 500)}`);
+        reject(
+          new Error(`Claude Code error (exit ${code}): ${stderr.slice(0, 200) || "unknown"}`)
+        );
+        return;
+      }
+
+      try {
+        const result = JSON.parse(stdout);
+        session.initialized = true;
+        if (result.session_id) {
+          session.sessionId = result.session_id;
+        }
+
+        resolve({
+          response: result.result || "(no response)",
+          sessionId: result.session_id,
+          cost: result.total_cost_usd || 0,
+          isError: result.is_error || false,
+        });
+      } catch (parseErr) {
+        console.error("[jarvis-wa] Failed to parse Claude output:", parseErr.message);
+        resolve({
+          response: stdout.trim() || "(empty response)",
+          sessionId: session.sessionId,
+          cost: 0,
+          isError: true,
+        });
+      }
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Response chunking
+// ---------------------------------------------------------------------------
+function smartChunk(text, maxLen) {
+  const chunks = [];
+  let remaining = text;
+
+  while (remaining.length > maxLen) {
+    // Try paragraph break, then line break, then space, then hard split
+    let splitIdx = remaining.lastIndexOf("\n\n", maxLen);
+    if (splitIdx < maxLen * 0.5) splitIdx = remaining.lastIndexOf("\n", maxLen);
+    if (splitIdx < maxLen * 0.3) splitIdx = remaining.lastIndexOf(" ", maxLen);
+    if (splitIdx < maxLen * 0.2) splitIdx = maxLen;
+
+    chunks.push(remaining.slice(0, splitIdx).trimEnd());
+    remaining = remaining.slice(splitIdx).trimStart();
+  }
+
+  if (remaining.trim()) chunks.push(remaining.trim());
+  return chunks;
+}
+
+async function sendChunkedReply(msg, text) {
+  if (text.length > 65000) {
+    text = text.slice(0, 64900) + "\n\n... (response truncated, too long for WhatsApp)";
+  }
+
+  if (text.length > 4000) {
+    const chunks = smartChunk(text, 4000);
+    for (let i = 0; i < chunks.length; i++) {
+      const prefix = chunks.length > 1 ? `(${i + 1}/${chunks.length}) ` : "";
+      await msg.reply(prefix + chunks[i]);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  } else {
+    await msg.reply(text);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bridge commands (intercepted, not sent to Claude)
+// ---------------------------------------------------------------------------
+const BRIDGE_COMMANDS = {
+  "!reset": async (msg, phone) => {
+    delete sessions[phone];
+    debouncedSave();
+    await msg.reply("Session reset. Starting fresh conversation.");
+  },
+  "!status": async (msg, phone) => {
+    const session = sessions[phone];
+    const info = [
+      `Mode: ${MODE}`,
+      `Session: ${session?.sessionId || "none"}`,
+      `Initialized: ${session?.initialized || false}`,
+      `Working dir: ${WORK_DIR}`,
+    ];
+    await msg.reply(`Bridge status:\n${info.join("\n")}`);
+  },
+  "!help": async (msg) => {
+    await msg.reply(
+      "Commands:\n" +
+        "!reset - Start a new conversation\n" +
+        "!status - Show bridge status\n" +
+        "!help - Show this help\n\n" +
+        "Everything else is sent to Claude Code."
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Message handlers
+// ---------------------------------------------------------------------------
+const busyPhones = new Set();
+
+async function handleClaudeCodeMessage(msg, phone, name, messageText) {
+  if (busyPhones.has(phone)) {
+    await msg.reply("Still working on your previous request... please wait.");
+    return;
+  }
+
+  busyPhones.add(phone);
+  try {
+    // Typing indicator
+    const chat = await msg.getChat();
+    chat.sendStateTyping();
+
+    console.log(
+      `[jarvis-wa] Sending to Claude Code (session: ${getOrCreateSession(phone).sessionId})`
+    );
+    const result = await invokeClaudeCode(messageText, phone, name);
+
+    if (result.cost > 0) {
+      console.log(`[jarvis-wa] Claude Code cost: $${result.cost.toFixed(4)}`);
+    }
+
+    await sendChunkedReply(msg, result.response);
+    console.log(`[jarvis-wa] Replied to ${name}: ${result.response.slice(0, 100)}...`);
+    debouncedSave();
+  } finally {
+    busyPhones.delete(phone);
+    try {
+      const chat = await msg.getChat();
+      chat.clearState();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+async function handleJarvisApiMessage(msg, phone, name, messageText) {
+  const sessionId = sessions[phone] || null;
+  const result = await apiPost("/api/whatsapp/bridge", {
+    phone,
+    name,
+    message: messageText,
+    session_id: sessionId,
+  });
+
+  if (result.status === 200 && result.body?.response) {
+    sessions[phone] = result.body.session_id || sessionId;
+    await sendChunkedReply(msg, result.body.response);
+    console.log(`[jarvis-wa] Replied to ${name}: ${result.body.response.slice(0, 100)}...`);
+    debouncedSave();
+  } else {
+    console.error("[jarvis-wa] API error:", result.status, result.body);
+    await msg.reply("Sorry, Jarvis encountered an error. Please try again.");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -139,8 +450,13 @@ client.on("auth_failure", (msg) => {
 
 client.on("ready", () => {
   console.log("[jarvis-wa] WhatsApp client is ready!");
-  console.log(`[jarvis-wa] Forwarding messages to ${API_BASE}`);
-  console.log("[jarvis-wa] Send a WhatsApp message to start chatting with Jarvis.\n");
+  if (MODE === "claude-code") {
+    console.log("[jarvis-wa] Mode: Claude Code CLI");
+    console.log(`[jarvis-wa] Working directory: ${WORK_DIR}`);
+  } else {
+    console.log(`[jarvis-wa] Mode: Jarvis API (${API_BASE})`);
+  }
+  console.log("[jarvis-wa] Send a WhatsApp message to start.\n");
 });
 
 client.on("disconnected", (reason) => {
@@ -161,7 +477,9 @@ client.on("message", async (msg) => {
   const contact = await msg.getContact();
   const name = contact.pushname || contact.name || phone;
 
-  console.log(`[jarvis-wa] Message from ${name} (${phone}): ${msg.body?.slice(0, 100) || "(media)"}`);
+  console.log(
+    `[jarvis-wa] Message from ${name} (${phone}): ${msg.body?.slice(0, 100) || "(media)"}`
+  );
 
   try {
     let messageText = msg.body || "";
@@ -176,12 +494,14 @@ client.on("message", async (msg) => {
         fs.writeFileSync(filepath, Buffer.from(media.data, "base64"));
         console.log(`[jarvis-wa] Saved image: ${filepath}`);
 
-        // OCR the image via Jarvis API
-        const ocrResult = await apiPost("/api/whatsapp/ocr", {
-          image_path: filepath,
-        });
+        let ocrText;
+        if (MODE === "claude-code") {
+          ocrText = await ocrImage(filepath);
+        } else {
+          const ocrResult = await apiPost("/api/whatsapp/ocr", { image_path: filepath });
+          ocrText = ocrResult.body?.text || "(could not read image)";
+        }
 
-        const ocrText = ocrResult.body?.text || "(could not read image)";
         messageText = messageText
           ? `${messageText}\n\n[Image received - OCR text: ${ocrText}]`
           : `[Image received - OCR text: ${ocrText}]`;
@@ -193,58 +513,45 @@ client.on("message", async (msg) => {
       return;
     }
 
-    // Send to Jarvis
-    const sessionId = sessions[phone] || null;
-    const result = await apiPost("/api/whatsapp/bridge", {
-      phone: phone,
-      name: name,
-      message: messageText,
-      session_id: sessionId,
-    });
+    // Check for bridge commands
+    const cmd = messageText.trim().toLowerCase();
+    if (BRIDGE_COMMANDS[cmd]) {
+      await BRIDGE_COMMANDS[cmd](msg, phone);
+      return;
+    }
 
-    if (result.status === 200 && result.body?.response) {
-      sessions[phone] = result.body.session_id || sessionId;
-      const reply = result.body.response;
-
-      // WhatsApp has a ~65000 char limit but keep it readable
-      if (reply.length > 4000) {
-        // Split into chunks
-        const chunks = reply.match(/[\s\S]{1,4000}/g) || [reply];
-        for (const chunk of chunks) {
-          await msg.reply(chunk);
-          await new Promise((r) => setTimeout(r, 500));
-        }
-      } else {
-        await msg.reply(reply);
-      }
-      console.log(`[jarvis-wa] Replied to ${name}: ${reply.slice(0, 100)}...`);
+    // Route to appropriate backend
+    if (MODE === "claude-code") {
+      await handleClaudeCodeMessage(msg, phone, name, messageText);
     } else {
-      console.error("[jarvis-wa] API error:", result.status, result.body);
-      await msg.reply("Sorry, Jarvis encountered an error. Please try again.");
+      await handleJarvisApiMessage(msg, phone, name, messageText);
     }
   } catch (err) {
     console.error("[jarvis-wa] Error processing message:", err.message);
-    await msg.reply("Sorry, Jarvis is temporarily unavailable. Please try again in a moment.");
+    await msg.reply("Sorry, an error occurred. Please try again in a moment.");
   }
 });
 
 // --- Graceful shutdown ----------------------------------------------------
 
-process.on("SIGINT", async () => {
+async function shutdown() {
   console.log("\n[jarvis-wa] Shutting down...");
+  saveSessions();
   await client.destroy();
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", async () => {
-  console.log("\n[jarvis-wa] Shutting down...");
-  await client.destroy();
-  process.exit(0);
-});
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 // --- Start ----------------------------------------------------------------
 
 console.log("[jarvis-wa] Jarvis WhatsApp Bridge starting...");
-console.log(`[jarvis-wa] API endpoint: ${API_BASE}`);
+console.log(`[jarvis-wa] Mode: ${MODE}`);
+if (MODE === "jarvis-api") {
+  console.log(`[jarvis-wa] API endpoint: ${API_BASE}`);
+} else {
+  console.log(`[jarvis-wa] Working directory: ${WORK_DIR}`);
+}
 console.log(`[jarvis-wa] Images dir: ${IMAGES_DIR}`);
 client.initialize();
