@@ -115,7 +115,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unreadCount } = useSessionContext();
-  const { sessions, loading: sessionsLoading, deleteSession, renameSession, togglePin } = useSessions();
+  const { sessions, loading: sessionsLoading, error: sessionsError, fetchSessions, deleteSession, renameSession, togglePin } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const avatarHue = usernameHue(user?.username || "User");
@@ -319,6 +319,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : sessionsError ? (
+              <div className="px-3 py-3 text-center">
+                <p className="text-xs text-red-400/70 mb-1.5">Failed to load sessions</p>
+                <button
+                  onClick={fetchSessions}
+                  className="text-[10px] text-primary/60 hover:text-primary transition-colors"
+                >
+                  Try again
+                </button>
               </div>
             ) : sessions.length === 0 ? (
               <div className="px-3 py-4 text-center">

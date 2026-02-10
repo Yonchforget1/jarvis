@@ -24,6 +24,7 @@ import { MessageBubble } from "./message-bubble";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatInput } from "./chat-input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ShortcutsDialog } from "@/components/ui/shortcuts-dialog";
 
 function getDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
@@ -88,6 +89,7 @@ export function ChatContainer({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const prevMessageCountRef = useRef(messages.length);
 
   // Find matching message indices
@@ -213,6 +215,10 @@ export function ChatContainer({
       }
       if (e.key === "Escape" && searchOpen) {
         closeSearch();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen(true);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -485,10 +491,13 @@ export function ChatContainer({
           else if (action === "export") exportChat();
           else if (action === "new") onSend("/new");
           else if (action === "help") {
-            document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", ctrlKey: true }));
+            setShortcutsOpen(true);
           }
         }}
       />
+
+      {/* Keyboard shortcuts dialog */}
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Clear confirmation */}
       <ConfirmDialog

@@ -128,6 +128,35 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
         return;
       }
     }
+    // Input history navigation (only when at first/last line)
+    if (e.key === "ArrowUp" && !e.shiftKey && historyRef.current.length > 0) {
+      const el = textareaRef.current;
+      const isAtStart = el && el.selectionStart === 0 && el.selectionEnd === 0;
+      if (isAtStart || !value) {
+        e.preventDefault();
+        if (historyIndexRef.current === -1) {
+          draftRef.current = value;
+          historyIndexRef.current = historyRef.current.length - 1;
+        } else if (historyIndexRef.current > 0) {
+          historyIndexRef.current--;
+        }
+        setValue(historyRef.current[historyIndexRef.current]);
+      }
+    }
+    if (e.key === "ArrowDown" && !e.shiftKey && historyIndexRef.current >= 0) {
+      const el = textareaRef.current;
+      const isAtEnd = el && el.selectionStart === el.value.length;
+      if (isAtEnd) {
+        e.preventDefault();
+        if (historyIndexRef.current < historyRef.current.length - 1) {
+          historyIndexRef.current++;
+          setValue(historyRef.current[historyIndexRef.current]);
+        } else {
+          historyIndexRef.current = -1;
+          setValue(draftRef.current);
+        }
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
