@@ -28,8 +28,39 @@ def _generate_auto_title(text: str) -> str:
     if not text:
         return ""
     clean = " ".join(text.split()).strip()
-    # Take first sentence or first 50 chars
+
+    # Strip greeting exclamations at the start (e.g. "Hello! I need..." -> "I need...")
+    import re
+    clean = re.sub(r"^(hi|hello|hey|yo|greetings)\s*[!.,]*\s*", "", clean, flags=re.IGNORECASE).strip()
+
+    # Strip common conversational prefixes (apply repeatedly for chains like "can you help me")
+    _PREFIXES = [
+        "can you ", "could you ", "would you ", "please ", "i need you to ",
+        "i want you to ", "help me ", "i'd like you to ", "i would like you to ",
+        "i need to ", "i want to ", "let's ", "jarvis, ", "jarvis ",
+    ]
+    changed = True
+    while changed:
+        changed = False
+        lower = clean.lower()
+        for prefix in _PREFIXES:
+            if lower.startswith(prefix):
+                clean = clean[len(prefix):]
+                changed = True
+                break
+
+    # Capitalize first letter after stripping
+    if clean:
+        clean = clean[0].upper() + clean[1:]
+
+    # Take first sentence
     sentence = clean.split(".")[0].split("?")[0].split("!")[0].strip()
+    # Restore question mark if original ended with one
+    if clean.rstrip().endswith("?") and not sentence.endswith("?"):
+        sentence += "?"
+
+    if not sentence:
+        return text[:50].strip()
     if len(sentence) <= 50:
         return sentence
     return sentence[:47].rstrip() + "..."
