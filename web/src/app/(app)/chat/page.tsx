@@ -1,12 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
   const { selectedSessionId, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
+
+  // Deep-link: load session from ?session=<id> query parameter
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const sessionParam = searchParams.get("session");
+    if (sessionParam && sessionParam !== selectedSessionId) {
+      deepLinkHandled.current = true;
+      selectSession(sessionParam);
+    }
+  }, [searchParams, selectedSessionId, selectSession]);
 
   // Clear unread count when visiting chat page
   useEffect(() => {
@@ -79,6 +92,17 @@ export default function ChatPage() {
     clearChat,
     loadSession,
   } = useChat(selectedSessionId, chatOptions);
+
+  // Update URL when session changes (without full navigation)
+  useEffect(() => {
+    if (sessionId) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("session") !== sessionId) {
+        url.searchParams.set("session", sessionId);
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  }, [sessionId]);
 
   const lastLoadedRef = useRef<string | null>(null);
 
