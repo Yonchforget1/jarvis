@@ -147,10 +147,10 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setValue(v);
-    if (v.startsWith("/") && !v.includes(" ") && v.length <= 10) {
+    if (v.startsWith("/") && !v.includes(" ") && v.length > 0 && v.length <= 10) {
       setShowSlash(true);
       setSlashIndex(0);
-    } else {
+    } else if (showSlash) {
       setShowSlash(false);
     }
   };

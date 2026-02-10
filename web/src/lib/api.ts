@@ -127,21 +127,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   throw lastError;
 }
 
+interface RequestOptions {
+  signal?: AbortSignal;
+}
+
 export const api = {
-  get: <T>(path: string): Promise<T> => {
+  get: <T>(path: string, opts?: RequestOptions): Promise<T> => {
+    if (opts?.signal) {
+      return request<T>(path, { signal: opts.signal });
+    }
     const existing = inflightGets.get(path);
     if (existing) return existing as Promise<T>;
     const promise = request<T>(path).finally(() => inflightGets.delete(path));
     inflightGets.set(path, promise);
     return promise;
   },
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-  put: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  post: <T>(path: string, body: unknown, opts?: RequestOptions) =>
+    request<T>(path, { method: "POST", body: JSON.stringify(body), signal: opts?.signal }),
+  put: <T>(path: string, body: unknown, opts?: RequestOptions) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(body), signal: opts?.signal }),
+  patch: <T>(path: string, body: unknown, opts?: RequestOptions) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body), signal: opts?.signal }),
+  delete: <T>(path: string, opts?: RequestOptions) =>
+    request<T>(path, { method: "DELETE", signal: opts?.signal }),
   /** Clear a cached in-flight GET so the next call fetches fresh data. */
   invalidate: (path: string) => {
     inflightGets.delete(path);
