@@ -147,6 +147,12 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
                 ))
                 continue
 
+            # Sanitize message: strip null bytes and dangerous HTML
+            message = message.replace("\x00", "")
+            message = re.sub(r"<script[^>]*>.*?</script>", "[script removed]", message, flags=re.IGNORECASE | re.DOTALL)
+            message = re.sub(r"<(iframe|object|embed|applet|form)[^>]*>.*?</\1>", "[removed]", message, flags=re.IGNORECASE | re.DOTALL)
+            message = re.sub(r"<(iframe|object|embed|applet|form)[^>]*/?>", "[removed]", message, flags=re.IGNORECASE)
+
             if _session_manager is None:
                 await websocket.send_json(_ws_error(
                     "Server not ready", code="server_not_ready", category="server", retry_after=5, request_id=req_id,

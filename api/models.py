@@ -152,6 +152,18 @@ class ClearRequest(BaseModel):
     session_id: str
 
 
+class BulkDeleteRequest(BaseModel):
+    session_ids: list[str] = Field(min_length=1, max_length=50)
+
+    @field_validator("session_ids")
+    @classmethod
+    def validate_session_ids(cls, v: list[str]) -> list[str]:
+        for sid in v:
+            if not re.match(r"^[a-zA-Z0-9_-]+$", sid):
+                raise ValueError(f"Invalid session_id format: {sid}")
+        return v
+
+
 class SessionInfo(BaseModel):
     session_id: str
     created_at: str

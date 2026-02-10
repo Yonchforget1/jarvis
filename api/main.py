@@ -109,12 +109,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Return a concise 400 for validation errors instead of leaking schema details."""
+    """Return structured 400 with field-level error details."""
     req_id = request.headers.get("X-Request-ID", "?")
     log.warning("[%s] Validation error on %s %s: %s", req_id, request.method, request.url.path, exc.errors())
+    errors = []
+    for err in exc.errors()[:5]:
+        loc = err.get("loc", ())
+        field = ".".join(str(x) for x in loc[1:]) if len(loc) > 1 else str(loc[0]) if loc else "unknown"
+        errors.append({"field": field, "message": err.get("msg", "Invalid value")})
     return JSONResponse(
         status_code=400,
-        content={"detail": "Invalid request: check required fields and data types"},
+        content={"detail": "Invalid request", "errors": errors},
     )
 
 _cors_origins = os.getenv(
