@@ -1,5 +1,6 @@
 """Jarvis AI Agent API Server."""
 
+import asyncio
 import logging
 import platform
 import sys
@@ -136,7 +137,38 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # CSP: allow self + API + inline styles (needed for Next.js) + media from self
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; "
+        "font-src 'self'; "
+        "connect-src 'self' ws: wss: http://localhost:* https://localhost:*; "
+        "media-src 'self' blob:; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["Content-Security-Policy"] = csp
     return response
+
+
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "120"))
+# Paths exempt from the general timeout (streaming, WebSocket, etc.)
+_TIMEOUT_EXEMPT = {"/api/chat/stream", "/api/chat/batch", "/api/ws/chat", "/api/compliance/export"}
+
+
+@app.middleware("http")
+async def request_timeout_middleware(request: Request, call_next):
+    """Abort non-streaming requests that exceed REQUEST_TIMEOUT seconds."""
+    path = request.url.path
+    if any(path.startswith(p) for p in _TIMEOUT_EXEMPT):
+        return await call_next(request)
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=REQUEST_TIMEOUT)
+    except asyncio.TimeoutError:
+        log.warning("Request timeout: %s %s (>%ds)", request.method, path, REQUEST_TIMEOUT)
+        return JSONResponse(status_code=504, content={"detail": "Request timed out"})
 
 
 @app.middleware("http")
@@ -187,7 +219,8 @@ register_integration_routes(app)
 
 
 @app.get("/api/health")
-async def health(deep: bool = False):
+@limiter.limit("60/minute")
+async def health(request: Request, deep: bool = False):
     """Health check endpoint.
 
     Pass ?deep=true to verify backend API connectivity (slower).
