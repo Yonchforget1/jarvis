@@ -1,6 +1,10 @@
 """Auth endpoints: register, login, me."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.audit import audit_log
 from pydantic import BaseModel
@@ -9,10 +13,13 @@ from api.auth import authenticate_user, create_api_key, create_token, create_use
 from api.deps import get_current_user
 from api.models import AuthRequest, AuthResponse, RegisterRequest, UserInfo
 
+log = logging.getLogger("jarvis.api.auth")
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=AuthResponse)
+@_limiter.limit("10/hour")
 async def register(request: RegisterRequest, req: Request):
     user = create_user(request.username, request.password, request.email)
     if user is None:
@@ -32,12 +39,15 @@ async def register(request: RegisterRequest, req: Request):
 
 
 @router.post("/login", response_model=AuthResponse)
+@_limiter.limit("5/minute")
 async def login(request: AuthRequest, req: Request):
     user = authenticate_user(request.username, request.password)
     if user is None:
+        client_ip = req.client.host if req.client else "unknown"
+        log.warning("Failed login attempt for user=%s ip=%s", request.username, client_ip)
         audit_log(
             user_id="", username=request.username, action="login_failed",
-            ip=req.client.host if req.client else "",
+            ip=client_ip,
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -66,9 +66,12 @@ async def upload_file(
     user_dir = os.path.join(UPLOAD_DIR, user.id)
     os.makedirs(user_dir, exist_ok=True)
 
-    # Generate unique filename to prevent collisions
+    # Sanitize filename to prevent path traversal
+    base_name = os.path.basename(file.filename)
+    if not base_name or base_name.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     file_id = str(uuid.uuid4())[:8]
-    safe_name = f"{file_id}_{file.filename}"
+    safe_name = f"{file_id}_{base_name}"
     file_path = os.path.join(user_dir, safe_name)
 
     try:
@@ -84,7 +87,6 @@ async def upload_file(
         "filename": file.filename,
         "saved_as": safe_name,
         "size": len(contents),
-        "path": file_path,
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -98,12 +100,11 @@ async def list_uploads(user: UserInfo = Depends(get_current_user)):
 
     files = []
     for name in sorted(os.listdir(user_dir)):
-        path = os.path.join(user_dir, name)
-        stat = os.stat(path)
+        full_path = os.path.join(user_dir, name)
+        stat = os.stat(full_path)
         files.append({
             "filename": name,
             "size": stat.st_size,
-            "path": path,
             "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         })
 

@@ -2,7 +2,7 @@
 
 import re
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 MAX_MESSAGE_LENGTH = 50_000  # Characters
 
@@ -12,18 +12,34 @@ _SCRIPT_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_.-]+$")
+
 
 # --- Auth ---
 
 class AuthRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=6, max_length=128)
 
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=32)
+    password: str = Field(min_length=6, max_length=128)
     email: str = ""
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        if not _USERNAME_RE.match(v):
+            raise ValueError("Username may only contain letters, numbers, underscores, hyphens, and periods.")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if v and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Invalid email address.")
+        return v
 
 
 class UserInfo(BaseModel):
