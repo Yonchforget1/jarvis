@@ -4,17 +4,17 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Zap,
-  Hash,
   MessageSquare,
   Wrench,
-  Calendar,
   Download,
   ArrowUpRight,
   ArrowDownRight,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -85,6 +85,7 @@ function MetricCard({ icon: Icon, label, value, sub, color }: {
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [sessions, setSessions] = useState<SessionCost[]>([]);
   const [totalCost, setTotalCost] = useState(0);
@@ -142,7 +143,10 @@ export default function AnalyticsPage() {
     const secondCost = secondHalf.reduce((s, day) => s + day.cost_usd, 0);
     const costTrend = firstCost > 0 ? ((secondCost - firstCost) / firstCost) * 100 : 0;
 
-    return { totalTokens, totalMessages, totalToolCalls, totalSessions, activeDays, avgDailyCost, costTrend };
+    const costPerMessage = totalMessages > 0 ? trends.total_cost_usd / totalMessages : 0;
+    const costPerToolCall = totalToolCalls > 0 ? trends.total_cost_usd / totalToolCalls : 0;
+
+    return { totalTokens, totalMessages, totalToolCalls, totalSessions, activeDays, avgDailyCost, costTrend, costPerMessage, costPerToolCall };
   }, [trends]);
 
   // Export analytics as CSV
@@ -345,6 +349,30 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
+          {/* Efficiency insights */}
+          {aggregates && (aggregates.costPerMessage > 0 || aggregates.costPerToolCall > 0) && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {aggregates.costPerMessage > 0 && (
+                <div className="rounded-xl border border-border/50 bg-card/30 px-4 py-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Cost / Message</p>
+                  <p className="text-sm font-bold tabular-nums">${aggregates.costPerMessage.toFixed(4)}</p>
+                </div>
+              )}
+              {aggregates.costPerToolCall > 0 && (
+                <div className="rounded-xl border border-border/50 bg-card/30 px-4 py-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Cost / Tool Call</p>
+                  <p className="text-sm font-bold tabular-nums">${aggregates.costPerToolCall.toFixed(4)}</p>
+                </div>
+              )}
+              <div className="rounded-xl border border-border/50 bg-card/30 px-4 py-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Tool Calls / Session</p>
+                <p className="text-sm font-bold tabular-nums">
+                  {aggregates.totalSessions > 0 ? (aggregates.totalToolCalls / aggregates.totalSessions).toFixed(1) : "0"}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Two-column: Session costs + Tool performance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Session costs table */}
@@ -352,56 +380,94 @@ export default function AnalyticsPage() {
               <h3 className="text-xs font-medium flex items-center gap-1.5">
                 <DollarSign className="h-3 w-3 text-green-400" />
                 Session Costs
+                {sessions.length > 0 && (
+                  <span className="ml-auto text-[10px] font-normal text-muted-foreground/40">{sessions.length} sessions</span>
+                )}
               </h3>
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {sessions.length === 0 ? (
                   <p className="text-xs text-muted-foreground/40 py-4 text-center">No session data</p>
                 ) : (
-                  sessions.slice(0, 20).map((s) => (
-                    <div key={s.session_id} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs truncate">{s.title}</p>
-                        <p className="text-[10px] text-muted-foreground/40">
-                          {formatTokens(s.input_tokens + s.output_tokens)} tokens &middot; {s.message_count} msgs
-                        </p>
-                      </div>
-                      <span className="text-xs font-mono tabular-nums text-muted-foreground/70 shrink-0 ml-2">
-                        ${s.cost_estimate_usd.toFixed(4)}
-                      </span>
-                    </div>
-                  ))
+                  sessions.slice(0, 20).map((s) => {
+                    const avgCostPerMsg = s.message_count > 0 ? s.cost_estimate_usd / s.message_count : 0;
+                    return (
+                      <button
+                        key={s.session_id}
+                        onClick={() => router.push(`/chat?session=${s.session_id}`)}
+                        className="flex items-center justify-between w-full py-1.5 px-1 -mx-1 border-b border-border/20 last:border-0 rounded-lg hover:bg-muted/30 transition-colors text-left group"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs truncate group-hover:text-primary transition-colors">{s.title}</p>
+                          <p className="text-[10px] text-muted-foreground/40">
+                            {formatTokens(s.input_tokens + s.output_tokens)} tokens &middot; {s.message_count} msgs
+                            {avgCostPerMsg > 0 && <span> &middot; ${avgCostPerMsg.toFixed(4)}/msg</span>}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <span className="text-xs font-mono tabular-nums text-muted-foreground/70">
+                            ${s.cost_estimate_usd.toFixed(4)}
+                          </span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors" />
+                        </div>
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>
 
             {/* Tool performance */}
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-3">
-              <h3 className="text-xs font-medium flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5">
                 <Wrench className="h-3 w-3 text-purple-400" />
-                Tool Performance
-              </h3>
+                <h3 className="text-xs font-medium">Tool Performance</h3>
+                {(() => {
+                  const errorTools = tools.filter((t) => t.calls > 0 && (t.errors / t.calls) * 100 > 5);
+                  return errorTools.length > 0 ? (
+                    <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400 bg-red-500/10 rounded-full px-2 py-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5" />
+                      {errorTools.length} high error
+                    </span>
+                  ) : null;
+                })()}
+              </div>
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {tools.length === 0 ? (
                   <p className="text-xs text-muted-foreground/40 py-4 text-center">No tool usage data</p>
                 ) : (
                   tools.map((t) => {
                     const errorRate = t.calls > 0 ? (t.errors / t.calls) * 100 : 0;
+                    const isHighError = errorRate > 5;
                     return (
-                      <div key={t.name} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
+                      <div
+                        key={t.name}
+                        className={`flex items-center justify-between py-1.5 border-b border-border/20 last:border-0 rounded-lg px-1 -mx-1 ${
+                          isHighError ? "bg-red-500/5" : ""
+                        }`}
+                      >
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-mono">{t.name}</p>
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground/40">
                             <span>{t.calls} calls</span>
                             {t.errors > 0 && (
-                              <span className={`${errorRate > 10 ? "text-red-400" : "text-yellow-400"}`}>
-                                {errorRate.toFixed(0)}% err
+                              <span className={`font-medium ${errorRate > 10 ? "text-red-400" : errorRate > 5 ? "text-orange-400" : "text-yellow-400"}`}>
+                                {t.errors} err ({errorRate.toFixed(0)}%)
                               </span>
                             )}
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono tabular-nums text-muted-foreground/50 shrink-0 ml-2">
-                          {t.avg_ms}ms
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          {/* Speed indicator */}
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              t.avg_ms > 2000 ? "bg-red-400 w-6" : t.avg_ms > 500 ? "bg-yellow-400 w-4" : "bg-green-400 w-2"
+                            }`}
+                            title={`${t.avg_ms}ms average`}
+                          />
+                          <span className="text-[10px] font-mono tabular-nums text-muted-foreground/50">
+                            {t.avg_ms}ms
+                          </span>
+                        </div>
                       </div>
                     );
                   })
