@@ -5,12 +5,12 @@ import os
 import platform
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from api.audit import audit_log
+from api.audit import audit_log, get_recent_entries
 from api.auth import authenticate_user
 from api.deps import get_current_user
 from api.models import UserInfo
@@ -169,3 +169,54 @@ async def tool_stats(request: Request, user: UserInfo = Depends(get_current_user
         for name, s in all_stats.items()
     ]
     return {"tools": sorted(stats_list, key=lambda x: x["calls"], reverse=True)}
+
+
+@router.get("/admin/audit-logs")
+@limiter.limit("10/minute")
+async def view_audit_logs(
+    request: Request,
+    limit: int = Query(default=100, ge=1, le=500),
+    action: str | None = Query(default=None, max_length=50),
+    username: str | None = Query(default=None, max_length=50),
+    user: UserInfo = Depends(get_current_user),
+):
+    """View recent audit log entries with optional filtering (admin only)."""
+    _require_admin(user)
+
+    entries = get_recent_entries(limit=min(limit * 2, 1000))  # Over-fetch for filtering
+    if action:
+        entries = [e for e in entries if e.get("action") == action]
+    if username:
+        entries = [e for e in entries if e.get("username") == username]
+    return {"entries": entries[:limit], "total": len(entries)}
+
+
+@router.delete("/admin/sessions/{session_id}")
+@limiter.limit("10/minute")
+async def terminate_session(
+    request: Request,
+    session_id: str = Path(..., min_length=8, max_length=64),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Force-terminate any session (admin only)."""
+    _require_admin(user)
+
+    if not _session_manager:
+        raise HTTPException(500, "Session manager not available")
+
+    # Find the session regardless of user
+    session = None
+    for s in _session_manager.get_all_sessions():
+        if s.session_id == session_id:
+            session = s
+            break
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    _session_manager.remove_session(session_id, session.user_id)
+    audit_log(
+        user_id=user.id, username=user.username, action="admin_session_terminate",
+        detail=f"session={session_id} owner={session.user_id}",
+        ip=request.client.host if request.client else "",
+    )
+    return {"status": "terminated", "session_id": session_id}

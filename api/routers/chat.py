@@ -6,6 +6,7 @@ import logging
 import os
 import queue
 import threading
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
@@ -117,11 +118,21 @@ async def chat_stream(
     thread = threading.Thread(target=run_conversation, daemon=True)
     thread.start()
 
+    STREAM_TIMEOUT = 300  # 5 minutes max per stream
+
     async def event_generator():
         # Send session ID first
         yield _sse("session", {"session_id": session.session_id})
 
+        stream_start = time.monotonic()
         while True:
+            # Check stream timeout
+            if time.monotonic() - stream_start > STREAM_TIMEOUT:
+                log.warning("Stream timeout (>%ds) for session=%s", STREAM_TIMEOUT, session.session_id)
+                yield _sse("error", {"message": "Response timed out. Please try again."})
+                yield _sse("done", {})
+                break
+
             # Check if client disconnected
             if await request.is_disconnected():
                 log.info("Client disconnected from stream session=%s", session.session_id)
