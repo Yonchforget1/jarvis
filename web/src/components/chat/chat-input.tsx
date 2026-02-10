@@ -261,10 +261,12 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
           <div className="relative flex-1">
             {/* Slash commands dropdown */}
             {showSlash && filteredSlash.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl overflow-hidden z-20 animate-fade-in">
+              <div role="listbox" aria-label="Slash commands" className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl overflow-hidden z-20 animate-fade-in">
                 {filteredSlash.map((cmd, i) => (
                   <button
                     key={cmd.cmd}
+                    role="option"
+                    aria-selected={i === slashIndex}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleSlashSelect(cmd.action);
@@ -295,6 +297,9 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
               disabled={disabled}
               rows={1}
               aria-label="Message input"
+              aria-haspopup="listbox"
+              aria-expanded={showSlash && filteredSlash.length > 0}
+              aria-autocomplete={showSlash ? "list" : "none"}
               className={`w-full resize-none rounded-2xl border bg-secondary/50 px-4 py-3 pr-4 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 ${
                 isOverLimit
                   ? "border-red-500/50 focus:border-red-500/50"

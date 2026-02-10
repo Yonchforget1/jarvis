@@ -66,6 +66,15 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
     messagesRef.current = messages;
   }, [messages]);
 
+  // Cleanup on unmount: abort any active requests and clear retry timer
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+      if (loadAbortRef.current) loadAbortRef.current.abort();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
   const updateStreamingMessage = useCallback(
     (msgId: string, updater: (msg: ChatMessage) => ChatMessage) => {
       setMessages((prev) =>
@@ -320,6 +329,8 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
   }, []);
 
   const loadSession = useCallback(async (sid: string) => {
+    // Validate session ID format to prevent invalid API calls
+    if (!sid || sid.length < 5) return;
     if (abortRef.current) {
       abortRef.current.abort();
     }
