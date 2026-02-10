@@ -1,55 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { X, Keyboard } from "lucide-react";
 import { FocusTrap } from "@/components/ui/focus-trap";
 
-const SHORTCUTS = [
-  {
-    category: "Navigation",
-    items: [
-      { keys: ["Ctrl", "K"], description: "Open command palette" },
-      { keys: ["Ctrl", "N"], description: "New chat" },
-      { keys: ["Ctrl", "B"], description: "Toggle sidebar" },
-      { keys: ["Ctrl", "Shift", "F"], description: "Toggle focus mode" },
-      { keys: ["Esc"], description: "Close sidebar / modal" },
-    ],
-  },
-  {
-    category: "Chat",
-    items: [
-      { keys: ["Enter"], description: "Send message" },
-      { keys: ["Shift", "Enter"], description: "New line in message" },
-      { keys: ["Ctrl", "/"], description: "Focus chat input" },
-      { keys: ["Ctrl", "F"], description: "Search in messages" },
-      { keys: ["Ctrl", "Shift", "E"], description: "Export chat as Markdown" },
-      { keys: ["Ctrl", "L"], description: "Clear chat" },
-    ],
-  },
-  {
-    category: "Search",
-    items: [
-      { keys: ["Enter"], description: "Next match" },
-      { keys: ["Shift", "Enter"], description: "Previous match" },
-      { keys: ["Esc"], description: "Close search" },
-    ],
-  },
-  {
-    category: "Sessions",
-    items: [
-      { keys: ["Double-click"], description: "Rename session" },
-    ],
-  },
-  {
-    category: "General",
-    items: [
-      { keys: ["Ctrl", "?"], description: "Show this help" },
-    ],
-  },
-];
+function useModKey() {
+  return typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl";
+}
+
+function buildShortcuts(mod: string) {
+  return [
+    {
+      category: "Navigation",
+      items: [
+        { keys: [mod, "K"], description: "Open command palette" },
+        { keys: [mod, "N"], description: "New chat" },
+        { keys: [mod, "B"], description: "Toggle sidebar" },
+        { keys: [mod, "Shift", "F"], description: "Toggle focus mode" },
+        { keys: ["Esc"], description: "Close sidebar / modal" },
+      ],
+    },
+    {
+      category: "Chat",
+      items: [
+        { keys: ["Enter"], description: "Send message" },
+        { keys: ["Shift", "Enter"], description: "New line in message" },
+        { keys: [mod, "/"], description: "Focus chat input" },
+        { keys: [mod, "F"], description: "Search in messages" },
+        { keys: [mod, "Shift", "E"], description: "Export chat as Markdown" },
+        { keys: [mod, "L"], description: "Clear chat" },
+      ],
+    },
+    {
+      category: "Search",
+      items: [
+        { keys: ["Enter"], description: "Next match" },
+        { keys: ["Shift", "Enter"], description: "Previous match" },
+        { keys: ["Esc"], description: "Close search" },
+      ],
+    },
+    {
+      category: "Sessions",
+      items: [
+        { keys: ["Double-click"], description: "Rename session" },
+      ],
+    },
+    {
+      category: "General",
+      items: [
+        { keys: [mod, "?"], description: "Show this help" },
+      ],
+    },
+  ];
+}
 
 export function KeyboardShortcuts() {
   const [open, setOpen] = useState(false);
+  const mod = useModKey();
+  const SHORTCUTS = useMemo(() => buildShortcuts(mod), [mod]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -129,7 +137,7 @@ export function KeyboardShortcuts() {
         {/* Footer */}
         <div className="px-6 py-3 border-t border-border/50 bg-muted/30">
           <p className="text-[10px] text-muted-foreground/40 text-center">
-            Press <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-mono border border-border/50">Ctrl+?</kbd> to toggle this dialog
+            Press <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-mono border border-border/50">{mod}+?</kbd> to toggle this dialog
           </p>
         </div>
       </div>

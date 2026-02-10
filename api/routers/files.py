@@ -17,7 +17,6 @@ log = logging.getLogger("jarvis.api.files")
 router = APIRouter()
 _limiter = Limiter(key_func=get_remote_address)
 
-_session_manager = None
 
 # MIME types that are allowed (validated against content_type header)
 ALLOWED_MIME_PREFIXES = {
@@ -50,11 +49,6 @@ _EXT_MIME_MAP: dict[str, set[str]] = {
     ".xml": {"application/xml", "text/xml"},
     ".zip": {"application/zip", "application/x-zip-compressed"},
 }
-
-
-def set_session_manager(sm):
-    global _session_manager
-    _session_manager = sm
 
 
 @router.post("/upload")
