@@ -33,7 +33,6 @@ import {
   ToggleRight,
   FileArchive,
   Webhook,
-  Globe,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -63,6 +62,9 @@ export default function SettingsPage() {
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const confirmDeleteAccountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Password change
   const [oldPassword, setOldPassword] = useState("");
@@ -379,6 +381,7 @@ export default function SettingsPage() {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       if (confirmRevokeTimerRef.current) clearTimeout(confirmRevokeTimerRef.current);
       if (confirmDeleteWebhookTimerRef.current) clearTimeout(confirmDeleteWebhookTimerRef.current);
+      if (confirmDeleteAccountTimerRef.current) clearTimeout(confirmDeleteAccountTimerRef.current);
     };
   }, []);
 
@@ -552,6 +555,27 @@ export default function SettingsPage() {
       toast.error("Failed", "Could not clear all sessions.");
     } finally {
       setClearingAllSessions(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirmDeleteAccount) {
+      setConfirmDeleteAccount(true);
+      if (confirmDeleteAccountTimerRef.current) clearTimeout(confirmDeleteAccountTimerRef.current);
+      confirmDeleteAccountTimerRef.current = setTimeout(() => setConfirmDeleteAccount(false), 5000);
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      await api.delete("/api/compliance/delete-account");
+      localStorage.removeItem("jarvis_token");
+      localStorage.removeItem("jarvis_user");
+      window.location.href = "/login";
+    } catch {
+      toast.error("Failed", "Could not delete account. Please try again.");
+      setConfirmDeleteAccount(false);
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -1364,6 +1388,29 @@ export default function SettingsPage() {
                 ? "Click again to confirm - this cannot be undone"
                 : "Delete All Chat Sessions"}
             </Button>
+            <Separator className="opacity-30" />
+            <Button
+              variant="outline"
+              className={`w-full justify-start gap-2 h-11 rounded-xl transition-all duration-200 ${
+                confirmDeleteAccount
+                  ? "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 animate-pulse"
+                  : "border-red-500/20 text-muted-foreground hover:text-red-400 hover:border-red-500/30"
+              }`}
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+            >
+              {deletingAccount ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {confirmDeleteAccount
+                ? "Click again to permanently delete everything"
+                : "Delete My Account & All Data"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground/40">
+              Permanently removes all sessions, settings, API keys, and anonymizes your account (GDPR Article 17).
+            </p>
           </CardContent>
         </Card>
 
