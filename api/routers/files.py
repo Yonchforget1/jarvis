@@ -38,6 +38,19 @@ ALLOWED_EXTENSIONS = {
     ".log", ".env", ".cfg", ".ini", ".toml",
 }
 
+# Cross-validation: MIME types that are incompatible with certain extensions
+_EXT_MIME_MAP: dict[str, set[str]] = {
+    ".png": {"image/png"},
+    ".jpg": {"image/jpeg"},
+    ".jpeg": {"image/jpeg"},
+    ".gif": {"image/gif"},
+    ".svg": {"image/svg+xml"},
+    ".pdf": {"application/pdf"},
+    ".json": {"application/json", "text/json"},
+    ".xml": {"application/xml", "text/xml"},
+    ".zip": {"application/zip", "application/x-zip-compressed"},
+}
+
 
 def set_session_manager(sm):
     global _session_manager
@@ -75,6 +88,14 @@ async def upload_file(
                 status_code=400,
                 detail=f"Content type '{file.content_type}' not allowed",
             )
+        # Cross-validate MIME against extension for known binary types
+        expected_mimes = _EXT_MIME_MAP.get(ext.lower())
+        if expected_mimes and file.content_type != "application/octet-stream":
+            if file.content_type not in expected_mimes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"MIME type '{file.content_type}' does not match extension '{ext}'",
+                )
 
     # Read file with size limit
     contents = await file.read()

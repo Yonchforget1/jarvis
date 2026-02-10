@@ -1,6 +1,7 @@
 """Stats endpoint: system information."""
 
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from slowapi import Limiter
@@ -11,6 +12,10 @@ from api.models import StatsResponse, UserInfo
 from api.pricing import get_cost_estimate
 
 log = logging.getLogger("jarvis.api.stats")
+
+# Simple TTL cache for per-user stats aggregation
+_stats_cache: dict[str, tuple[float, dict]] = {}  # user_id -> (timestamp, data)
+_STATS_CACHE_TTL = 5  # seconds
 
 router = APIRouter()
 _limiter = Limiter(key_func=get_remote_address)
@@ -39,40 +44,47 @@ async def get_stats(request: Request, response: Response, user: UserInfo = Depen
         config = _session_manager.config
         memory = _session_manager.memory
 
-        sessions = _session_manager.get_user_sessions(user.id)
-
-        # Aggregate token usage across all user sessions
-        total_input = sum(s.conversation.total_input_tokens for s in sessions)
-        total_output = sum(s.conversation.total_output_tokens for s in sessions)
-        total_tools = sum(s.conversation.total_tool_calls for s in sessions)
-
-        # Get tool count from an existing session (don't create one just for stats)
-        if sessions:
-            tool_count = len(sessions[0].conversation.registry.all_tools())
+        # Check TTL cache for user-specific aggregations
+        now = time.monotonic()
+        cached = _stats_cache.get(user.id)
+        if cached and (now - cached[0]) < _STATS_CACHE_TTL:
+            agg = cached[1]
         else:
-            # Fall back to checking all sessions or reporting 0
-            all_sessions = _session_manager.get_all_sessions()
-            tool_count = len(all_sessions[0].conversation.registry.all_tools()) if all_sessions else 0
+            sessions = _session_manager.get_user_sessions(user.id)
+            total_input = sum(s.conversation.total_input_tokens for s in sessions)
+            total_output = sum(s.conversation.total_output_tokens for s in sessions)
+            total_tools = sum(s.conversation.total_tool_calls for s in sessions)
+            total_messages = sum(len(s.conversation.messages) for s in sessions)
 
-        # Total messages across all sessions
-        total_messages = sum(len(s.conversation.messages) for s in sessions)
+            if sessions:
+                tool_count = len(sessions[0].conversation.registry.all_tools())
+            else:
+                all_sessions = _session_manager.get_all_sessions()
+                tool_count = len(all_sessions[0].conversation.registry.all_tools()) if all_sessions else 0
 
-        # Average tokens per message
-        total_tokens = total_input + total_output
-        avg_tokens = round(total_tokens / total_messages, 1) if total_messages > 0 else 0
+            total_tokens = total_input + total_output
+            agg = {
+                "total_input": total_input,
+                "total_output": total_output,
+                "total_tools": total_tools,
+                "total_messages": total_messages,
+                "tool_count": tool_count,
+                "avg_tokens": round(total_tokens / total_messages, 1) if total_messages > 0 else 0,
+            }
+            _stats_cache[user.id] = (now, agg)
 
         return StatsResponse(
             backend=config.backend,
             model=config.model,
-            tool_count=tool_count,
+            tool_count=agg["tool_count"],
             learnings_count=memory.count,
             active_sessions=_session_manager.active_session_count,
             uptime_seconds=_session_manager.uptime_seconds,
-            total_input_tokens=total_input,
-            total_output_tokens=total_output,
-            total_tool_calls=total_tools,
-            total_messages=total_messages,
-            avg_tokens_per_message=avg_tokens,
+            total_input_tokens=agg["total_input"],
+            total_output_tokens=agg["total_output"],
+            total_tool_calls=agg["total_tools"],
+            total_messages=agg["total_messages"],
+            avg_tokens_per_message=agg["avg_tokens"],
         )
     except Exception as e:
         req_id = request.headers.get("X-Request-ID", "?")
