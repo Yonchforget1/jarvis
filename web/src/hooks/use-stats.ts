@@ -30,10 +30,25 @@ export function useStats(pollInterval: number = 15000) {
     return fetchStats();
   }, [fetchStats]);
 
+  // Visibility-aware polling: pause when tab is hidden to save bandwidth
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, pollInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchStats, pollInterval);
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchStats(); // Refresh immediately when returning
+        interval = setInterval(fetchStats, pollInterval);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [fetchStats, pollInterval]);
 
   return { stats, loading, refetching, error, refetch, lastUpdated };

@@ -328,10 +328,11 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
       );
 
       if (res.status === 404) {
-        // Session was deleted or doesn't exist
+        // Session was deleted or doesn't exist - notify sidebar
         setMessages([]);
         setSessionId(null);
         setError("This conversation no longer exists.");
+        window.dispatchEvent(new CustomEvent("session-deleted", { detail: { sessionId: sid } }));
         return;
       }
       if (!res.ok) throw new Error("Failed to load session");

@@ -72,8 +72,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       // Don't retry 401s or non-retryable errors
       if (err instanceof ApiError && err.status === 401) throw err;
       if (!isRetryable(err) || attempt === MAX_RETRIES) throw err;
-      // Wait before retrying with exponential backoff
-      await sleep(RETRY_DELAY * (attempt + 1));
+      // Wait before retrying with exponential backoff + jitter
+      const baseDelay = RETRY_DELAY * Math.pow(2, attempt);
+      const jitter = Math.random() * baseDelay * 0.1;
+      await sleep(baseDelay + jitter);
     }
   }
 

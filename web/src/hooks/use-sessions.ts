@@ -61,6 +61,16 @@ export function useSessions() {
     setPinnedIds(getPinnedSessions());
   }, []);
 
+  // Listen for session-deleted events from chat (e.g., 404 on load)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { sessionId } = (e as CustomEvent<{ sessionId: string }>).detail;
+      setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+    };
+    window.addEventListener("session-deleted", handler);
+    return () => window.removeEventListener("session-deleted", handler);
+  }, []);
+
   const fetchSessions = useCallback(async () => {
     try {
       const data = await api.get<SessionEntry[]>("/api/sessions");
