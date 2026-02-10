@@ -8,6 +8,7 @@ import { useLearnings } from "@/hooks/use-learnings";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { BackendStatus } from "@/components/dashboard/backend-status";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
+import { UsageTrends } from "@/components/dashboard/usage-trends";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
@@ -40,12 +41,14 @@ export default function DashboardPage() {
   const [isStale, setIsStale] = useState(false);
   const [sessionStats, setSessionStats] = useState<{ session_id: string; title: string; cost_estimate_usd: number; input_tokens: number; output_tokens: number; message_count: number }[]>([]);
   const [sessionStatsError, setSessionStatsError] = useState<string | null>(null);
+  const [totalCostAllSessions, setTotalCostAllSessions] = useState<number>(0);
 
   // Fetch session cost breakdown
   useEffect(() => {
-    api.get<{ sessions: typeof sessionStats }>("/api/stats/sessions?limit=5")
+    api.get<{ sessions: typeof sessionStats; total_cost_usd?: number }>("/api/stats/sessions?limit=10")
       .then((res) => {
         setSessionStats(res.sessions || []);
+        setTotalCostAllSessions(res.total_cost_usd ?? res.sessions?.reduce((s, x) => s + x.cost_estimate_usd, 0) ?? 0);
         setSessionStatsError(null);
       })
       .catch((err) => {
@@ -283,12 +286,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Usage Trends Chart */}
+      <UsageTrends />
+
       {/* Session Cost Breakdown */}
       {sessionStatsError && (
         <p className="text-xs text-red-400">Failed to load session costs</p>
       )}
       {sessionStats.length > 0 && (() => {
-        const totalCost = sessionStats.reduce((sum, s) => sum + s.cost_estimate_usd, 0);
         const maxCost = Math.max(...sessionStats.map((s) => s.cost_estimate_usd));
         return (
         <div className="space-y-3">
@@ -297,7 +302,7 @@ export default function DashboardPage() {
               <DollarSign className="h-3 w-3" /> Session Costs
             </h3>
             <span className="text-xs font-medium text-primary tabular-nums">
-              Total: ${totalCost.toFixed(4)}
+              Total: ${totalCostAllSessions.toFixed(4)}
             </span>
           </div>
           <div className="rounded-2xl border border-border/50 bg-card/30 overflow-hidden">

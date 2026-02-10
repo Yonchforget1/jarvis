@@ -2,6 +2,8 @@
 
 import logging
 import time
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from slowapi import Limiter
@@ -109,6 +111,12 @@ async def get_session_stats(
     all_sessions = sorted(all_sessions, key=lambda s: s.last_active, reverse=True)
     sessions = all_sessions[offset:offset + limit]
 
+    # Compute total cost across all user sessions (not just paginated slice)
+    total_cost = sum(
+        _get_cost(s.conversation.total_input_tokens, s.conversation.total_output_tokens)
+        for s in all_sessions
+    )
+
     return {
         "sessions": [
             {
@@ -127,4 +135,58 @@ async def get_session_stats(
             for s in sessions
         ],
         "total": len(all_sessions),
+        "total_cost_usd": round(total_cost, 4),
+    }
+
+
+@router.get("/stats/usage-trends")
+@_limiter.limit("15/minute")
+async def get_usage_trends(
+    request: Request,
+    days: int = Query(default=7, ge=1, le=90),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Daily token usage and cost trends for the current user."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+
+    all_sessions = _session_manager.get_user_sessions(user.id)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=days)
+
+    # Group sessions by the date they were last active
+    daily: dict[str, dict] = defaultdict(lambda: {
+        "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+        "sessions": 0, "messages": 0, "tool_calls": 0,
+    })
+
+    for s in all_sessions:
+        if s.last_active < cutoff:
+            continue
+        day_key = s.last_active.strftime("%Y-%m-%d")
+        d = daily[day_key]
+        inp = s.conversation.total_input_tokens
+        out = s.conversation.total_output_tokens
+        d["input_tokens"] += inp
+        d["output_tokens"] += out
+        d["cost_usd"] += _get_cost(inp, out)
+        d["sessions"] += 1
+        d["messages"] += len(s.conversation.messages)
+        d["tool_calls"] += s.conversation.total_tool_calls
+
+    # Build full date range (fill in zero-days)
+    result = []
+    for i in range(days):
+        date = (now - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+        entry = daily.get(date, {
+            "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+            "sessions": 0, "messages": 0, "tool_calls": 0,
+        })
+        result.append({"date": date, **entry, "cost_usd": round(entry["cost_usd"], 4)})
+
+    total_cost = sum(d["cost_usd"] for d in result)
+    return {
+        "days": result,
+        "total_cost_usd": round(total_cost, 4),
+        "period_days": days,
     }
