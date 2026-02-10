@@ -33,6 +33,7 @@ import {
   ArchiveRestore,
   Link2,
   Copy,
+  Download,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useAuth } from "@/lib/auth";
@@ -257,6 +258,30 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
       renameSession(editingSessionId, editValue);
       setEditingSessionId(null);
       setEditValue("");
+    }
+  };
+
+  const exportSession = async (sessionId: string, format: "markdown" | "json" = "markdown") => {
+    try {
+      const token = localStorage.getItem("jarvis_token");
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${baseUrl}/api/conversation/sessions/${sessionId}/export?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const ext = format === "markdown" ? "md" : "json";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jarvis-session-${sessionId.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Exported", `Session exported as ${format === "markdown" ? "Markdown" : "JSON"}.`);
+    } catch {
+      toast.error("Export failed", "Could not export session.");
     }
   };
 
@@ -869,7 +894,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           className="fixed z-[200] min-w-[160px] rounded-xl border border-border/50 bg-background shadow-2xl p-1 animate-scale-in"
           style={{
             left: Math.min(contextMenu.x, window.innerWidth - 180),
-            top: Math.min(contextMenu.y, window.innerHeight - 160),
+            top: Math.min(contextMenu.y, window.innerHeight - 320),
           }}
         >
           <button
@@ -906,6 +931,16 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
           >
             <Copy className="h-3 w-3" />
             Duplicate
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => {
+              exportSession(contextMenu.sessionId, "markdown");
+              setContextMenu(null);
+            }}
+          >
+            <Download className="h-3 w-3" />
+            Export
           </button>
           <button
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
