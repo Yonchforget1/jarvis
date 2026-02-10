@@ -409,6 +409,20 @@ export function MessageBubble({
                       </code>
                     );
                   },
+                  table: ({ children, ...props }) => (
+                    <div className="overflow-x-auto my-2 rounded-xl border border-border/50">
+                      <table className="!m-0 w-full text-xs" {...props}>{children}</table>
+                    </div>
+                  ),
+                  th: ({ children, ...props }) => (
+                    <th className="!border-b !border-border/50 !bg-muted/50 !px-3 !py-2 !text-left !text-[10px] !font-medium !uppercase !tracking-wider !text-muted-foreground/60" {...props}>{children}</th>
+                  ),
+                  td: ({ children, ...props }) => (
+                    <td className="!border-b !border-border/30 !px-3 !py-2 !text-xs" {...props}>{children}</td>
+                  ),
+                  a: ({ href, children, ...props }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/30 hover:decoration-primary/60 transition-colors" {...props}>{children}</a>
+                  ),
                 }}
               >
                 {message.content}
