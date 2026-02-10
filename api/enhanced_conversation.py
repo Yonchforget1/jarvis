@@ -68,7 +68,7 @@ class WebConversation(Conversation):
                 self._trim_history()
                 return response.text or ""
 
-    def send_stream(self, user_input: str, event_queue: queue.Queue) -> str:
+    def send_stream(self, user_input: str, event_queue: queue.Queue) -> None:
         """Send a message with real-time SSE events pushed to the queue.
 
         Events emitted:

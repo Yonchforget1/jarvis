@@ -118,9 +118,9 @@ export function ConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className={`h-8 rounded-lg text-xs ${
+            className={`h-8 rounded-lg text-xs${
               variant === "danger"
-                ? "bg-red-500 hover:bg-red-600 text-white"
+                ? " bg-red-500 hover:bg-red-600 text-white"
                 : ""
             }`}
           >
