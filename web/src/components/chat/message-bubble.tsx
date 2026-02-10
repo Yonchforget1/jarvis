@@ -10,11 +10,11 @@ import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
 import { Tooltip } from "@/components/ui/tooltip";
 
-function CopyButton({ text }: { text: string }) {
+function useCopyToClipboard(text: string) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -23,7 +23,12 @@ function CopyButton({ text }: { text: string }) {
     }
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setCopied(false), 2000);
-  };
+  }, [text]);
+  return { copied, handleCopy };
+}
+
+function CopyButton({ text }: { text: string }) {
+  const { copied, handleCopy } = useCopyToClipboard(text);
   return (
     <button
       onClick={handleCopy}
@@ -41,19 +46,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function MessageCopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setCopied(false), 2000);
-  };
+  const { copied, handleCopy } = useCopyToClipboard(text);
   return (
     <button
       onClick={handleCopy}

@@ -109,12 +109,13 @@ export function ChatContainer({
   const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
 
   // Message windowing: only render recent messages to avoid DOM bloat
+  // When search is open, show all messages so search results can be navigated to
   const MSG_WINDOW_SIZE = 100;
   const [showAllMessages, setShowAllMessages] = useState(false);
   const visibleMessages = useMemo(() => {
-    if (showAllMessages || messages.length <= MSG_WINDOW_SIZE) return messages;
+    if (showAllMessages || searchOpen || messages.length <= MSG_WINDOW_SIZE) return messages;
     return messages.slice(-MSG_WINDOW_SIZE);
-  }, [messages, showAllMessages]);
+  }, [messages, showAllMessages, searchOpen]);
   const hiddenCount = messages.length - visibleMessages.length;
 
   // Debounce search query to avoid recomputing matches on every keystroke

@@ -120,6 +120,20 @@ function usernameHue(name: string): number {
   return Math.abs(hash) % 360;
 }
 
+/** Highlight matching substring in session name during search. */
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-primary/20 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -409,8 +423,13 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                     onChange={(e) => { setSessionSearch(e.target.value); setSessionLimit(15); }}
                     placeholder="Search chats..."
                     aria-label="Search conversations"
-                    className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-2 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
+                    className="w-full rounded-lg bg-muted/50 border border-border/30 pl-7 pr-8 py-1.5 text-[11px] placeholder:text-muted-foreground/30 outline-none focus:border-primary/30 transition-colors"
                   />
+                  {debouncedSearch.trim() && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground/40 tabular-nums">
+                      {filteredSessions.length}/{sessions.length}
+                    </span>
+                  )}
                 </div>
                 <Tooltip content={`Sort: ${sortMode === "recent" ? "Recent" : sortMode === "name" ? "Name" : "Messages"}`} side="bottom">
                   <button
@@ -548,7 +567,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                           startRename(session.session_id, session.customName || session.autoTitle || session.preview || "New conversation");
                         }}
                       >
-                        <span className="truncate">{session.customName || session.autoTitle || session.preview || "New conversation"}</span>
+                        <span className="truncate">
+                          <HighlightMatch text={session.customName || session.autoTitle || session.preview || "New conversation"} query={debouncedSearch} />
+                        </span>
                         {activeSessionId === session.session_id && isProcessing && (
                           <span className="shrink-0 flex gap-0.5">
                             {[0, 1, 2].map((i) => (
