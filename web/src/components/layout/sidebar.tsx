@@ -364,7 +364,14 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
 
       <Separator className={`${collapsed ? "mx-2" : "mx-3"} !my-3 bg-muted`} />
 
-      {/* Chat History - hidden when collapsed */}
+      {/* Chat History */}
+      {!collapsed && sessions.length > 0 && (
+        <div className="px-4 mb-1">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">
+            Chats ({sessions.length})
+          </span>
+        </div>
+      )}
       <div className={`flex-1 overflow-y-auto ${collapsed ? "px-2" : "px-3"} space-y-1`}>
         {collapsed ? (
           /* Collapsed: show recent chat dots */

@@ -1,6 +1,7 @@
 """Jarvis AI Agent API Server."""
 
 import asyncio
+import contextvars
 import logging
 import platform
 import sys
@@ -24,6 +25,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 log = logging.getLogger("jarvis.api")
+
+# Context variable for request-scoped tracing ID
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 
 from api.session_manager import SessionManager
 from api.routers import admin, auth, chat, compliance, dashboard, tools, stats, learnings, conversation, settings, files, metrics, websocket, webhook_routes, whatsapp, logs
@@ -204,6 +208,7 @@ async def request_logging_middleware(request: Request, call_next):
         )
     # Assign a correlation ID for request tracing
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    request_id_var.set(request_id)
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000

@@ -94,6 +94,13 @@ export function Header({ onMenuClick }: HeaderProps) {
             <WifiOff className="h-3 w-3 text-red-400" />
             <span className="text-[10px] font-medium text-red-400">Disconnected</span>
           </div>
+        ) : status === "degraded" ? (
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1">
+            <Wifi className="h-3 w-3 text-yellow-500" />
+            <span className="text-[10px] font-medium text-yellow-500">
+              Slow{latency !== null && ` (${latency}ms)`}
+            </span>
+          </div>
         ) : (
           <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1">
             <Loader2 className="h-3 w-3 text-yellow-500 animate-spin" />
@@ -109,6 +116,8 @@ export function Header({ onMenuClick }: HeaderProps) {
                 ? "bg-green-500"
                 : status === "disconnected"
                 ? "bg-red-500 animate-pulse"
+                : status === "degraded"
+                ? "bg-yellow-500"
                 : "bg-yellow-500 animate-pulse"
             }`}
           />
