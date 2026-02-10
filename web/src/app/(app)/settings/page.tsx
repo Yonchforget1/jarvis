@@ -777,6 +777,31 @@ export default function SettingsPage() {
                 <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${notificationSound && notificationsEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
               </div>
             </button>
+            {notificationsEnabled && notificationSound && (
+              <button
+                onClick={() => {
+                  try {
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1047, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.25);
+                    osc.onended = () => ctx.close();
+                  } catch { /* audio not available */ }
+                }}
+                className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full"
+              >
+                <Bell className="h-3.5 w-3.5 text-primary" />
+                Test notification sound
+              </button>
+            )}
             {typeof Notification !== "undefined" && Notification.permission === "denied" && notificationsEnabled && (
               <p className="text-[10px] text-yellow-400 flex items-center gap-1 animate-fade-in">
                 <AlertCircle className="h-3 w-3" />

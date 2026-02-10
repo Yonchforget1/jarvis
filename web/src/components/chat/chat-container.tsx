@@ -492,6 +492,18 @@ export function ChatContainer({
                 : `${activeMatchIndex + 1}/${matchingIndices.length}`}
             </span>
           )}
+          {searchQuery && matchingIndices.length > 0 && (
+            <span className="text-[9px] text-muted-foreground/40 shrink-0 hidden sm:inline">
+              {(() => {
+                const userCount = matchingIndices.filter((i) => messages[i]?.role === "user").length;
+                const assistantCount = matchingIndices.length - userCount;
+                const parts: string[] = [];
+                if (userCount > 0) parts.push(`${userCount} you`);
+                if (assistantCount > 0) parts.push(`${assistantCount} JARVIS`);
+                return parts.join(" · ");
+              })()}
+            </span>
+          )}
           <div className="flex items-center gap-0.5">
             <button
               onClick={() => navigateMatch("prev")}
