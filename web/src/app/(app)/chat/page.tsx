@@ -6,7 +6,7 @@ import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
 
 export default function ChatPage() {
-  const { selectedSessionId, clearUnread, incrementUnread, selectSession } = useSessionContext();
+  const { selectedSessionId, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
 
   // Clear unread count when visiting chat page
   useEffect(() => {
@@ -93,6 +93,11 @@ export default function ChatPage() {
       selectSession(sessionId);
     }
   }, [sessionId, selectedSessionId, selectSession]);
+
+  // Sync processing state to session context for sidebar indicator
+  useEffect(() => {
+    setProcessing(isLoading);
+  }, [isLoading, setProcessing]);
 
   // Dynamic page title based on first user message
   useEffect(() => {

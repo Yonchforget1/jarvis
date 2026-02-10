@@ -148,7 +148,7 @@ function extractUrls(text: string): string[] {
   return [...new Set(matches)].slice(0, 3);
 }
 
-function LinkBadges({ urls }: { urls: string[] }) {
+const LinkBadges = memo(function LinkBadges({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5 mt-1">
@@ -174,7 +174,7 @@ function LinkBadges({ urls }: { urls: string[] }) {
       })}
     </div>
   );
-}
+});
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;

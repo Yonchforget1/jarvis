@@ -114,7 +114,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { unreadCount } = useSessionContext();
+  const { unreadCount, isProcessing } = useSessionContext();
   const { sessions, loading: sessionsLoading, error: sessionsError, fetchSessions, deleteSession, renameSession, togglePin } = useSessions();
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -390,13 +390,24 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       />
                     ) : (
                       <p
-                        className="text-xs truncate"
+                        className="text-xs truncate flex items-center gap-1"
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           startRename(session.session_id, session.customName || session.autoTitle || session.preview || "");
                         }}
                       >
-                        {session.customName || session.autoTitle || session.preview || "New conversation"}
+                        <span className="truncate">{session.customName || session.autoTitle || session.preview || "New conversation"}</span>
+                        {activeSessionId === session.session_id && isProcessing && (
+                          <span className="shrink-0 flex gap-0.5">
+                            {[0, 1, 2].map((i) => (
+                              <span
+                                key={i}
+                                className="h-1 w-1 rounded-full bg-primary animate-typing-wave"
+                                style={{ animationDelay: `${i * 0.15}s` }}
+                              />
+                            ))}
+                          </span>
+                        )}
                       </p>
                     )}
                     <p className="text-[10px] text-muted-foreground/40 flex items-center gap-1">

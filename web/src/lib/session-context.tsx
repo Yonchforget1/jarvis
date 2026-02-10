@@ -11,6 +11,8 @@ interface SessionContextType {
   unreadCount: number;
   incrementUnread: () => void;
   clearUnread: () => void;
+  isProcessing: boolean;
+  setProcessing: (v: boolean) => void;
 }
 
 const SessionContext = createContext<SessionContextType>({
@@ -22,6 +24,8 @@ const SessionContext = createContext<SessionContextType>({
   unreadCount: 0,
   incrementUnread: () => {},
   clearUnread: () => {},
+  isProcessing: false,
+  setProcessing: () => {},
 });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -30,6 +34,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
   const [selectedSessionName, setSelectedSessionName] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isProcessing, setProcessing] = useState(false);
 
   const selectSession = useCallback((id: string, name?: string) => {
     setSelectedSessionId(id || null);
@@ -55,7 +60,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionContext.Provider
-      value={{ selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread }}
+      value={{ selectedSessionId, selectedSessionName, selectSession, clearSelection, setSessionName, unreadCount, incrementUnread, clearUnread, isProcessing, setProcessing }}
     >
       {children}
     </SessionContext.Provider>
