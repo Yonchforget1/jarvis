@@ -24,8 +24,15 @@ class AuthRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=32)
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
     email: str = ""
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if v.isdigit() or v.isalpha():
+            raise ValueError("Password must contain both letters and numbers")
+        return v
 
     @field_validator("username")
     @classmethod

@@ -113,20 +113,21 @@ function setReaction(messageId: string, reaction: Reaction) {
 
 function MessageReactions({ messageId }: { messageId: string }) {
   const [reaction, setReactionState] = useState<Reaction>(() => getReaction(messageId));
+  const [syncFailed, setSyncFailed] = useState(false);
 
   const toggle = useCallback(
     (type: "up" | "down") => {
       const next = reaction === type ? null : type;
       setReactionState(next);
       setReaction(messageId, next);
-      // Fire-and-forget sync to backend for analytics
+      setSyncFailed(false);
       const token = localStorage.getItem("jarvis_token");
       if (token) {
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/reactions`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ message_id: messageId, reaction: next }),
-        }).catch(() => {});
+        }).catch(() => setSyncFailed(true));
       }
     },
     [messageId, reaction]
@@ -160,6 +161,9 @@ function MessageReactions({ messageId }: { messageId: string }) {
       >
         <ThumbsDown className="h-3 w-3" />
       </button>
+      {syncFailed && (
+        <span className="text-[9px] text-yellow-500/70 ml-0.5" title="Feedback saved locally but failed to sync">!</span>
+      )}
     </div>
   );
 }

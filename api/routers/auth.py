@@ -98,6 +98,8 @@ async def change_password_endpoint(
     """Change the current user's password."""
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    if body.new_password.isdigit() or body.new_password.isalpha():
+        raise HTTPException(status_code=400, detail="Password must contain both letters and numbers")
     if body.old_password == body.new_password:
         raise HTTPException(status_code=400, detail="New password must differ from current password")
     success = change_password(user.id, body.old_password, body.new_password)
