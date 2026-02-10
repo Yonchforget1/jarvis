@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Cpu } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { api } from "@/lib/api";
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
-  const { selectedSessionId, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
+  const { selectedSessionId, selectedSessionName, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
+
+  // Fetch model info once for header badge
+  const [modelLabel, setModelLabel] = useState<string | null>(null);
+  useEffect(() => {
+    api.get<{ backend: string; model: string }>("/api/stats")
+      .then((res) => {
+        const short = res.model?.split("-").slice(0, 3).join("-") || res.backend;
+        setModelLabel(short);
+      })
+      .catch(() => {});
+  }, []);
 
   // Deep-link: load session from ?session=<id> query parameter
   const deepLinkHandled = useRef(false);
@@ -163,15 +176,44 @@ export default function ChatPage() {
 
   return (
     <ErrorBoundary>
-      <ChatContainer
-        messages={messages}
-        isLoading={isLoading}
-        onSend={sendMessage}
-        onEditMessage={editMessage}
-        onRetry={retryLast}
-        onStop={stopStreaming}
-        onClear={clearChat}
-      />
+      <div className="flex h-full flex-col">
+        {/* Session header bar */}
+        {(selectedSessionName || modelLabel || isLoading) && (
+          <div className="flex items-center gap-2 border-b border-border/30 bg-background/60 backdrop-blur-sm px-4 py-1.5 text-xs shrink-0">
+            {isLoading && (
+              <span className="flex items-center gap-1.5 text-primary">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+                <span className="font-medium">Streaming</span>
+              </span>
+            )}
+            {selectedSessionName && (
+              <span className="text-muted-foreground/70 truncate max-w-[200px] sm:max-w-md" title={selectedSessionName}>
+                {selectedSessionName}
+              </span>
+            )}
+            {modelLabel && (
+              <span className="ml-auto flex items-center gap-1 rounded-full bg-muted/50 border border-border/30 px-2 py-0.5 text-[10px] font-mono text-muted-foreground/50">
+                <Cpu className="h-2.5 w-2.5" />
+                {modelLabel}
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex-1 min-h-0">
+          <ChatContainer
+            messages={messages}
+            isLoading={isLoading}
+            onSend={sendMessage}
+            onEditMessage={editMessage}
+            onRetry={retryLast}
+            onStop={stopStreaming}
+            onClear={clearChat}
+          />
+        </div>
+      </div>
     </ErrorBoundary>
   );
 }

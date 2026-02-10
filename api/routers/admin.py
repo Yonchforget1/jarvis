@@ -6,12 +6,18 @@ import platform
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from api.audit import audit_log
+from api.auth import authenticate_user
 from api.deps import get_current_user
 from api.models import UserInfo
+
+
+class AdminConfirmRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -102,9 +108,16 @@ async def list_all_sessions(request: Request, user: UserInfo = Depends(get_curre
 
 @router.post("/admin/config/reload")
 @limiter.limit("3/minute")
-async def reload_config(request: Request, user: UserInfo = Depends(get_current_user)):
-    """Reload configuration from disk (admin only)."""
+async def reload_config(request: Request, body: AdminConfirmRequest, user: UserInfo = Depends(get_current_user)):
+    """Reload configuration from disk (admin only). Requires password confirmation."""
     _require_admin(user)
+
+    # Verify admin password before allowing config change
+    if not authenticate_user(user.username, body.password):
+        audit_log(user_id=user.id, username=user.username, action="config_reload_denied",
+                  detail="Invalid password confirmation",
+                  ip=request.client.host if request.client else "")
+        raise HTTPException(403, "Invalid password confirmation")
 
     try:
         from jarvis.config import Config

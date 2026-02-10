@@ -28,6 +28,7 @@ import {
   PinOff,
   Search,
   ArrowUpDown,
+  Monitor,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
@@ -39,6 +40,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
+import { api } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -48,13 +50,15 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-const TOOL_GROUPS = [
-  { label: "Filesystem", icon: Folder, count: 7, color: "text-blue-400" },
-  { label: "Execution", icon: Terminal, count: 2, color: "text-green-400" },
-  { label: "Web", icon: Globe, count: 2, color: "text-orange-400" },
-  { label: "Game Dev", icon: Gamepad2, count: 2, color: "text-purple-400" },
-  { label: "Memory", icon: Lightbulb, count: 3, color: "text-yellow-400" },
-];
+const CATEGORY_ICONS: Record<string, typeof Folder> = {
+  filesystem: Folder, execution: Terminal, web: Globe, gamedev: Gamepad2,
+  memory: Lightbulb, computer: Monitor, browser: Globe, other: Wrench,
+};
+const CATEGORY_COLORS: Record<string, string> = {
+  filesystem: "text-blue-400", execution: "text-green-400", web: "text-orange-400",
+  gamedev: "text-purple-400", memory: "text-yellow-400", computer: "text-cyan-400",
+  browser: "text-pink-400", other: "text-muted-foreground",
+};
 
 interface SidebarProps {
   onClose?: () => void;
@@ -130,6 +134,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sessionLimit, setSessionLimit] = useState(15);
   const [sortMode, setSortMode] = useState<"recent" | "name" | "messages">("recent");
+  const [toolGroups, setToolGroups] = useState<{ label: string; icon: typeof Folder; count: number; color: string }[]>([]);
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +142,29 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   useEffect(() => {
     onSessionDeleteError((msg) => toast.error("Delete failed", msg));
   }, [toast]);
+
+  // Fetch tool groups dynamically
+  useEffect(() => {
+    api.get<{ tools: { category: string }[] }>("/api/tools")
+      .then((res) => {
+        const counts: Record<string, number> = {};
+        for (const t of res.tools) {
+          const cat = t.category || "other";
+          counts[cat] = (counts[cat] || 0) + 1;
+        }
+        setToolGroups(
+          Object.entries(counts)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([name, count]) => ({
+              label: name.charAt(0).toUpperCase() + name.slice(1),
+              icon: CATEGORY_ICONS[name] || Wrench,
+              count,
+              color: CATEGORY_COLORS[name] || "text-muted-foreground",
+            }))
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // Debounce session search
   useEffect(() => {
@@ -540,7 +568,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
             <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
               Tool Groups
             </p>
-            {TOOL_GROUPS.map((group) => (
+            {toolGroups.length > 0 ? toolGroups.map((group) => (
               <div
                 key={group.label}
                 className="flex items-center justify-between rounded-xl px-3 py-2 text-xs text-muted-foreground/70"
@@ -553,7 +581,9 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                   {group.count}
                 </span>
               </div>
-            ))}
+            )) : (
+              <div className="px-3 py-2 text-[10px] text-muted-foreground/40">Loading tools...</div>
+            )}
           </>
         )}
       </div>
