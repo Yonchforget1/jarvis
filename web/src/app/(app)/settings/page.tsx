@@ -53,6 +53,9 @@ export default function SettingsPage() {
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Tool groups (fetched dynamically)
+  const [toolGroups, setToolGroups] = useState<{ name: string; count: number; color: string }[]>([]);
+
   // API Key management
   const [apiKeys, setApiKeys] = useState<{ id: string; label: string; prefix: string; created_at: string; last_used: string | null }[]>([]);
   const [apiKeysLoading, setApiKeysLoading] = useState(false);
@@ -75,6 +78,33 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchApiKeys();
   }, [fetchApiKeys]);
+
+  // Fetch tool groups dynamically
+  const CATEGORY_COLORS: Record<string, string> = {
+    filesystem: "text-blue-400", execution: "text-green-400", web: "text-orange-400",
+    gamedev: "text-purple-400", memory: "text-yellow-400", computer: "text-cyan-400",
+    browser: "text-pink-400", other: "text-muted-foreground",
+  };
+  useEffect(() => {
+    api.get<{ tools: { category: string }[] }>("/api/tools")
+      .then((res) => {
+        const counts: Record<string, number> = {};
+        for (const t of res.tools) {
+          const cat = t.category || "other";
+          counts[cat] = (counts[cat] || 0) + 1;
+        }
+        setToolGroups(
+          Object.entries(counts)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([name, count]) => ({
+              name: name.charAt(0).toUpperCase() + name.slice(1),
+              count,
+              color: CATEGORY_COLORS[name] || "text-muted-foreground",
+            }))
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCreateApiKey = async () => {
     if (creatingKey) return;
@@ -604,15 +634,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { name: "Filesystem", count: 7, color: "text-blue-400" },
-                { name: "Execution", count: 2, color: "text-green-400" },
-                { name: "Web", count: 2, color: "text-orange-400" },
-                { name: "Game Dev", count: 2, color: "text-purple-400" },
-                { name: "Memory", count: 3, color: "text-yellow-400" },
-                { name: "Computer", count: 12, color: "text-cyan-400" },
-                { name: "Browser", count: 11, color: "text-pink-400" },
-              ].map((group) => (
+              {toolGroups.length > 0 ? toolGroups.map((group) => (
                 <div
                   key={group.name}
                   className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 p-2.5"
@@ -624,7 +646,9 @@ export default function SettingsPage() {
                     {group.count}
                   </span>
                 </div>
-              ))}
+              )) : (
+                <div className="col-span-full text-xs text-muted-foreground/50">Loading tools...</div>
+              )}
             </div>
           </CardContent>
         </Card>

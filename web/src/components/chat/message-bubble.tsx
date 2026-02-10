@@ -396,9 +396,9 @@ export const MessageBubble = memo(function MessageBubble({
             </div>
             )
           ) : isStreaming && !message.content ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>{message.streamStatus || "Thinking..."}</span>
-              <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground max-w-full">
+              <span className="truncate max-w-xs">{message.streamStatus || "Thinking..."}</span>
+              <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm shrink-0" />
             </div>
           ) : (
             <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:relative prose-pre:bg-transparent prose-pre:p-0 prose-p:leading-relaxed prose-headings:text-foreground prose-a:text-primary prose-strong:text-foreground">
