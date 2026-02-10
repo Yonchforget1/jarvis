@@ -261,11 +261,19 @@ export default function DashboardPage() {
       </div>
 
       {/* Session Cost Breakdown */}
-      {sessionStats.length > 0 && (
+      {sessionStats.length > 0 && (() => {
+        const totalCost = sessionStats.reduce((sum, s) => sum + s.cost_estimate_usd, 0);
+        const maxCost = Math.max(...sessionStats.map((s) => s.cost_estimate_usd));
+        return (
         <div className="space-y-3">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
-            <DollarSign className="h-3 w-3" /> Session Costs
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
+              <DollarSign className="h-3 w-3" /> Session Costs
+            </h3>
+            <span className="text-xs font-medium text-primary tabular-nums">
+              Total: ${totalCost.toFixed(4)}
+            </span>
+          </div>
           <div className="rounded-2xl border border-border/50 bg-card/30 overflow-hidden">
             <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 border-b border-border/30">
               <span>Session</span>
@@ -276,16 +284,23 @@ export default function DashboardPage() {
               <Link
                 key={s.session_id}
                 href={`/chat?session=${s.session_id}`}
-                className="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-2.5 text-xs hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
+                className="relative grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-2.5 text-xs hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0 overflow-hidden"
               >
-                <span className="truncate text-foreground/80">{s.title}</span>
-                <span className="text-muted-foreground/60 tabular-nums">{formatTokens(s.input_tokens + s.output_tokens)}</span>
-                <span className="text-primary/80 font-medium tabular-nums">${s.cost_estimate_usd.toFixed(4)}</span>
+                {maxCost > 0 && (
+                  <div
+                    className="absolute inset-y-0 left-0 bg-primary/5"
+                    style={{ width: `${(s.cost_estimate_usd / maxCost) * 100}%` }}
+                  />
+                )}
+                <span className="relative truncate text-foreground/80">{s.title}</span>
+                <span className="relative text-muted-foreground/60 tabular-nums">{formatTokens(s.input_tokens + s.output_tokens)}</span>
+                <span className="relative text-primary/80 font-medium tabular-nums">${s.cost_estimate_usd.toFixed(4)}</span>
               </Link>
             ))}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

@@ -647,7 +647,7 @@ export function ChatContainer({
                   <span>new</span>
                 </span>
               ) : (
-                <span>Latest</span>
+                <span>Latest{messages.length > 10 && <span className="text-muted-foreground/40 ml-1">({messages.length})</span>}</span>
               )}
             </button>
           </div>
