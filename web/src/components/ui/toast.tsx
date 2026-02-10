@@ -19,6 +19,7 @@ interface ToastContextType {
   error: (title: string, message?: string) => void;
   info: (title: string, message?: string) => void;
   warning: (title: string, message?: string) => void;
+  dismissAll: () => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -57,7 +58,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   }, []);
 
   useEffect(() => {
-    if (isPaused) return;
+    // duration: 0 means persistent — no auto-dismiss
+    if (isPaused || duration === 0) return;
     const interval = 50;
     const step = (interval / duration) * 100;
     const timer = setInterval(() => {
@@ -126,13 +128,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev.slice(-4), { ...opts, id }]);
   }, []);
 
+  const dismissAll = useCallback(() => {
+    setToasts([]);
+  }, []);
+
   const ctx = useMemo<ToastContextType>(() => ({
     toast: addToast,
     success: (title, message) => addToast({ type: "success", title, message }),
     error: (title, message) => addToast({ type: "error", title, message, duration: 6000 }),
     info: (title, message) => addToast({ type: "info", title, message }),
     warning: (title, message) => addToast({ type: "warning", title, message }),
-  }), [addToast]);
+    dismissAll,
+  }), [addToast, dismissAll]);
 
   return (
     <ToastContext.Provider value={ctx}>

@@ -68,14 +68,19 @@ export default function LearningsPage() {
       ? `\n> Filtered: ${filtered.length} of ${learnings.length} learnings${categoryFilter ? ` (category: ${categoryFilter})` : ""}${search ? ` (search: "${search}")` : ""}\n`
       : `\n> ${learnings.length} total learnings\n`;
     const blob = new Blob([`# JARVIS Learnings Export\n${filterNote}\n${markdown}`], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    let url: string | null = null;
+    let a: HTMLAnchorElement | null = null;
+    try {
+      url = URL.createObjectURL(blob);
+      a = document.createElement("a");
+      a.href = url;
+      a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
+      document.body.appendChild(a);
+      a.click();
+    } finally {
+      if (a && document.body.contains(a)) document.body.removeChild(a);
+      if (url) URL.revokeObjectURL(url);
+    }
   }, [filtered, learnings.length, search, categoryFilter]);
 
   if (loading) {

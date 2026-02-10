@@ -140,6 +140,9 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
             <div>
               <h2 className="text-xl font-semibold mb-1">Something went wrong</h2>
+              {this.state.error?.name && this.state.error.name !== "Error" && (
+                <p className="text-xs font-mono text-muted-foreground/40 mb-1">{this.state.error.name}</p>
+              )}
               <p className="text-sm text-muted-foreground/70 leading-relaxed">
                 {this.state.error?.message || "An unexpected error occurred. Please try again."}
               </p>
