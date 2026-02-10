@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight, Bell, Settings, Shield, LogOut } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Loader2, Sun, Moon, ChevronRight, Bell, Settings, Shield, LogOut, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
 import { useSessionContext } from "@/lib/session-context";
@@ -30,7 +30,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const title = PAGE_TITLES[pathname] || "Jarvis";
   const { status, latency } = useConnection();
   const { theme, setTheme } = useTheme();
-  const { selectedSessionName, isProcessing, unreadCount, clearUnread } = useSessionContext();
+  const { selectedSessionName, isProcessing, unreadCount, clearUnread, selectSession } = useSessionContext();
   const { user, logout } = useAuth();
   const toast = useToast();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -71,6 +71,20 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-4 w-4" />
         </Button>
+        {pathname === "/chat" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              selectSession("");
+              router.push("/chat");
+            }}
+            aria-label="New chat"
+            className="h-8 w-8 lg:hidden text-muted-foreground hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-sm text-muted-foreground/50 hidden sm:inline shrink-0">JARVIS</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/30 hidden sm:block shrink-0" />
