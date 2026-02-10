@@ -139,6 +139,39 @@ async def get_session_stats(
     }
 
 
+@router.get("/stats/tools")
+@_limiter.limit("15/minute")
+async def get_user_tool_stats(
+    request: Request,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Per-tool usage statistics for the current user."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+
+    all_stats: dict[str, dict] = {}
+    for session in _session_manager.get_user_sessions(user.id):
+        registry = session.conversation.registry
+        for name, stat in registry.get_stats().items():
+            if name not in all_stats:
+                all_stats[name] = {"calls": 0, "errors": 0, "total_ms": 0.0}
+            all_stats[name]["calls"] += stat.call_count
+            all_stats[name]["errors"] += stat.error_count
+            all_stats[name]["total_ms"] += stat.total_duration_ms
+
+    tools_list = [
+        {
+            "name": name,
+            "calls": s["calls"],
+            "errors": s["errors"],
+            "avg_ms": round(s["total_ms"] / s["calls"], 1) if s["calls"] else 0,
+        }
+        for name, s in all_stats.items()
+        if s["calls"] > 0
+    ]
+    return {"tools": sorted(tools_list, key=lambda x: x["calls"], reverse=True)}
+
+
 @router.get("/stats/usage-trends")
 @_limiter.limit("15/minute")
 async def get_usage_trends(

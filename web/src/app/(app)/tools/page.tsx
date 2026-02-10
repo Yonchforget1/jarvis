@@ -21,7 +21,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { api } from "@/lib/api";
 import type { ToolInfo } from "@/lib/types";
+
+interface ToolStat {
+  name: string;
+  calls: number;
+  errors: number;
+  avg_ms: number;
+}
 
 const CATEGORY_META: Record<
   string,
@@ -85,7 +93,7 @@ const CATEGORY_META: Record<
   },
 };
 
-function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boolean }) {
+function ToolCard({ tool, forceExpanded, usage }: { tool: ToolInfo; forceExpanded?: boolean; usage?: ToolStat }) {
   const [expanded, setExpanded] = useState(false);
   const isExpanded = forceExpanded !== undefined ? forceExpanded : expanded;
   const meta = CATEGORY_META[tool.category] || CATEGORY_META.other;
@@ -112,6 +120,11 @@ function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boo
                 {paramCount} param{paramCount !== 1 ? "s" : ""}
               </span>
             )}
+            {usage && usage.calls > 0 && (
+              <span className="text-[10px] font-medium text-primary/70 bg-primary/10 rounded-full px-1.5 py-0.5 tabular-nums">
+                {usage.calls} call{usage.calls !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
             {tool.description}
@@ -126,6 +139,21 @@ function ToolCard({ tool, forceExpanded }: { tool: ToolInfo; forceExpanded?: boo
       {isExpanded && (
         <div className="border-t border-border/50 p-4 animate-fade-in-up">
           <p className="text-sm leading-relaxed mb-3">{tool.description}</p>
+          {usage && usage.calls > 0 && (
+            <div className="flex items-center gap-4 mb-3 text-[10px] text-muted-foreground/60 bg-muted/30 rounded-lg px-3 py-2">
+              <span className="flex items-center gap-1">
+                <span className="font-medium text-foreground/80">{usage.calls}</span> calls
+              </span>
+              {usage.errors > 0 && (
+                <span className="flex items-center gap-1 text-red-400/70">
+                  <span className="font-medium">{usage.errors}</span> errors
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                avg <span className="font-medium text-foreground/80">{usage.avg_ms}ms</span>
+              </span>
+            </div>
+          )}
           {tool.parameters?.properties &&
             Object.keys(tool.parameters.properties).length > 0 && (
               <div>
@@ -174,6 +202,18 @@ export default function ToolsPage() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [allExpanded, setAllExpanded] = useState<boolean | undefined>(undefined);
+  const [toolStats, setToolStats] = useState<Record<string, ToolStat>>({});
+
+  // Fetch tool usage stats
+  useEffect(() => {
+    api.get<{ tools: ToolStat[] }>("/api/stats/tools")
+      .then((res) => {
+        const map: Record<string, ToolStat> = {};
+        for (const s of res.tools) map[s.name] = s;
+        setToolStats(map);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -318,7 +358,7 @@ export default function ToolsPage() {
       ) : (
         <div id="tools-results" className="grid grid-cols-1 md:grid-cols-2 gap-3" role="region" aria-label="Tools list">
           {filtered.map((tool) => (
-            <ToolCard key={tool.name} tool={tool} forceExpanded={allExpanded} />
+            <ToolCard key={tool.name} tool={tool} forceExpanded={allExpanded} usage={toolStats[tool.name]} />
           ))}
         </div>
       )}
