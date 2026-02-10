@@ -58,6 +58,19 @@ export default function ChatPage() {
   const [analytics, setAnalytics] = useState<SessionAnalytics | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const analyticsPanelRef = useRef<HTMLDivElement>(null);
+
+  // Close analytics panel when clicking outside
+  useEffect(() => {
+    if (!analyticsOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (analyticsPanelRef.current && !analyticsPanelRef.current.contains(e.target as Node)) {
+        setAnalyticsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [analyticsOpen]);
 
   const fetchAnalytics = useCallback(async (sid: string) => {
     setAnalyticsLoading(true);
@@ -407,7 +420,7 @@ export default function ChatPage() {
         )}
         {/* Session analytics panel */}
         {analyticsOpen && (
-          <div className="border-b border-border/30 bg-card/60 backdrop-blur-sm px-4 py-3 animate-fade-in">
+          <div ref={analyticsPanelRef} className="border-b border-border/30 bg-card/60 backdrop-blur-sm px-4 py-3 animate-fade-in">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <BarChart3 className="h-3 w-3 text-primary" />

@@ -28,7 +28,10 @@ function buildShortcuts(mod: string) {
         { keys: [mod, "/"], description: "Focus chat input" },
         { keys: [mod, "F"], description: "Search in messages" },
         { keys: [mod, "Shift", "E"], description: "Export chat as Markdown" },
+        { keys: [mod, "Shift", "R"], description: "Regenerate last response" },
+        { keys: [mod, "Home"], description: "Scroll to top" },
         { keys: [mod, "L"], description: "Clear chat" },
+        { keys: ["\u2191", "\u2193"], description: "Navigate input history" },
       ],
     },
     {
@@ -37,6 +40,13 @@ function buildShortcuts(mod: string) {
         { keys: ["Enter"], description: "Next match" },
         { keys: ["Shift", "Enter"], description: "Previous match" },
         { keys: ["Esc"], description: "Close search" },
+      ],
+    },
+    {
+      category: "Input",
+      items: [
+        { keys: ["/"], description: "Open slash commands" },
+        { keys: ["Tab"], description: "Accept slash command" },
       ],
     },
     {
