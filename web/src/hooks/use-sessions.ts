@@ -141,17 +141,31 @@ export function useSessions() {
     // Refresh when a new session is created in chat
     const handleSessionCreated = () => fetchSessions();
 
+    // Update local name when session is renamed from chat header
+    const handleSessionRenamed = (e: Event) => {
+      const { sessionId, name } = (e as CustomEvent<{ sessionId: string; name: string }>).detail;
+      if (sessionId && name) {
+        setSessionNames((prev) => {
+          const next = { ...prev, [sessionId]: name };
+          saveSessionNames(next);
+          return next;
+        });
+      }
+    };
+
     // Sync immediately when window regains focus (e.g. user switches from another app)
     const handleFocus = () => fetchSessions();
 
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("session-created", handleSessionCreated);
+    window.addEventListener("session-renamed", handleSessionRenamed);
     window.addEventListener("focus", handleFocus);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("session-created", handleSessionCreated);
+      window.removeEventListener("session-renamed", handleSessionRenamed);
       window.removeEventListener("focus", handleFocus);
     };
   }, [fetchSessions]);
