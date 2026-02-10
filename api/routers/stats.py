@@ -103,6 +103,8 @@ async def get_session_stats(
     user: UserInfo = Depends(get_current_user),
 ):
     """Per-session token usage breakdown for the current user."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     all_sessions = _session_manager.get_user_sessions(user.id)
     all_sessions = sorted(all_sessions, key=lambda s: s.last_active, reverse=True)
     sessions = all_sessions[offset:offset + limit]

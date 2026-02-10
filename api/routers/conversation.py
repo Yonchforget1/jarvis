@@ -58,6 +58,8 @@ async def list_sessions(
     archived: bool | None = Query(default=None, description="Filter by archived status"),
 ):
     """List sessions for the current user with pagination and sorting."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     sessions = _session_manager.get_user_sessions(user.id)
     if archived is not None:
         sessions = [s for s in sessions if getattr(s, "archived", False) == archived]
@@ -99,6 +101,8 @@ async def get_session_messages(
     user: UserInfo = Depends(get_current_user),
 ):
     """Get displayable messages from a session."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_session(session_id, user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -117,6 +121,8 @@ async def rename_session(
     user: UserInfo = Depends(get_current_user),
 ):
     """Rename a session with a custom name."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_session(session_id, user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -142,6 +148,8 @@ async def archive_session(
     user: UserInfo = Depends(get_current_user),
 ):
     """Toggle archive status on a session."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_session(session_id, user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -158,6 +166,8 @@ async def delete_session(
     user: UserInfo = Depends(get_current_user),
 ):
     """Delete a session."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     success = _session_manager.remove_session(session_id, user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -172,6 +182,8 @@ async def bulk_delete_sessions(
     user: UserInfo = Depends(get_current_user),
 ):
     """Delete multiple sessions at once."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     deleted = []
     not_found = []
     for sid in body.session_ids:
@@ -191,6 +203,8 @@ async def export_session(
     user: UserInfo = Depends(get_current_user),
 ):
     """Export a conversation as JSON or Markdown."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_session(session_id, user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -251,6 +265,8 @@ async def session_analytics(
     user: UserInfo = Depends(get_current_user),
 ):
     """Per-session analytics: token costs, tool usage, message stats."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     session = _session_manager.get_session(session_id, user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -304,6 +320,8 @@ async def search_conversations(
     user: UserInfo = Depends(get_current_user),
 ):
     """Full-text search across all conversation messages for the current user."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     sessions = _session_manager.get_user_sessions(user.id)
     # Search most recent sessions first for faster relevant results
     sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)
@@ -367,6 +385,8 @@ async def search_conversations(
 @_limiter.limit("30/minute")
 async def list_conversations(request: Request, user: UserInfo = Depends(get_current_user)):
     """Legacy endpoint - use GET /sessions instead."""
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     sessions = _session_manager.get_user_sessions(user.id)
     return [
         SessionInfo(

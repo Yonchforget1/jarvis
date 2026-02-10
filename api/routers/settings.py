@@ -139,6 +139,8 @@ def _get_decrypted_api_key(user_settings: dict, fallback: str = "") -> str:
 @router.get("/settings", response_model=SettingsResponse)
 @_limiter.limit("30/minute")
 async def get_settings(request: Request, user: UserInfo = Depends(get_current_user)):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     user_settings = _get_user_settings(user.id)
     config = _session_manager.config
     has_key = bool(_get_decrypted_api_key(user_settings, config.api_key))
@@ -159,6 +161,8 @@ async def update_settings(
     update: SettingsUpdate,
     user: UserInfo = Depends(get_current_user),
 ):
+    if _session_manager is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
     user_settings = _get_user_settings(user.id)
     config = _session_manager.config
 
