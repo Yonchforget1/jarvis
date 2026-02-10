@@ -8,7 +8,8 @@
  * After that, the session persists and reconnects automatically.
  *
  * Usage:
- *   node whatsapp_bridge.js
+ *   node whatsapp_bridge.js                           (QR code auth)
+ *   node whatsapp_bridge.js --phone 13478058362       (phone number pairing)
  *   node whatsapp_bridge.js --api http://localhost:8000
  */
 
@@ -28,6 +29,14 @@ const API_BASE = (() => {
   const idx = process.argv.indexOf("--api");
   if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
   return "http://localhost:8000";
+})();
+
+const PAIR_PHONE = (() => {
+  const eqArg = process.argv.find((a) => a.startsWith("--phone="));
+  if (eqArg) return eqArg.split("=")[1];
+  const idx = process.argv.indexOf("--phone");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return null;
 })();
 
 const IMAGES_DIR = path.join(__dirname, "whatsapp_images");
@@ -80,24 +89,45 @@ function apiPost(urlPath, body) {
 // ---------------------------------------------------------------------------
 // WhatsApp Client
 // ---------------------------------------------------------------------------
-const client = new Client({
+const clientOpts = {
   authStrategy: new LocalAuth({ dataPath: path.join(__dirname, ".wwebjs_auth") }),
   puppeteer: {
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
-});
+};
+
+if (PAIR_PHONE) {
+  clientOpts.pairWithPhoneNumber = {
+    phoneNumber: PAIR_PHONE,
+    showNotification: true,
+  };
+}
+
+const client = new Client(clientOpts);
 
 // --- Events ---------------------------------------------------------------
 
-client.on("qr", (qr) => {
-  console.log("\n╔════════════════════════════════════════════╗");
-  console.log("║  Scan this QR code with WhatsApp on your  ║");
-  console.log("║  phone to link Jarvis:                     ║");
-  console.log("╚════════════════════════════════════════════╝\n");
-  qrcode.generate(qr, { small: true });
-  console.log("\nWaiting for scan...\n");
-});
+if (PAIR_PHONE) {
+  client.on("code", (code) => {
+    console.log("\n╔════════════════════════════════════════════╗");
+    console.log("║  Enter this code in WhatsApp on your phone ║");
+    console.log("║  Settings > Linked Devices > Link a Device ║");
+    console.log("║  > Link with phone number                  ║");
+    console.log("╚════════════════════════════════════════════╝\n");
+    console.log(`  Pairing code:  ${code}\n`);
+    console.log("Waiting for pairing...\n");
+  });
+} else {
+  client.on("qr", (qr) => {
+    console.log("\n╔════════════════════════════════════════════╗");
+    console.log("║  Scan this QR code with WhatsApp on your  ║");
+    console.log("║  phone to link Jarvis:                     ║");
+    console.log("╚════════════════════════════════════════════╝\n");
+    qrcode.generate(qr, { small: true });
+    console.log("\nWaiting for scan...\n");
+  });
+}
 
 client.on("authenticated", () => {
   console.log("[jarvis-wa] Authenticated successfully.");
