@@ -57,4 +57,8 @@ export interface SessionInfo {
   created_at: string;
   last_active: string;
   message_count: number;
+  preview?: string;
+  customName?: string;
+  autoTitle?: string;
+  pinned?: boolean;
 }

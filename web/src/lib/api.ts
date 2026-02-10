@@ -1,4 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
 
 class ApiError extends Error {
   status: number;
@@ -6,6 +9,20 @@ class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+function isRetryable(error: unknown): boolean {
+  // Retry on network errors (no response)
+  if (error instanceof TypeError && error.message.includes("fetch")) return true;
+  // Retry on timeout
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  // Retry on 5xx server errors
+  if (error instanceof ApiError && error.status >= 500) return true;
+  return false;
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -20,26 +37,47 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let lastError: unknown;
 
-  if (res.status === 401) {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("jarvis_token");
-      localStorage.removeItem("jarvis_user");
-      window.location.href = "/login";
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+
+      const res = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+        signal: options.signal || controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (res.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("jarvis_token");
+          localStorage.removeItem("jarvis_user");
+          window.location.href = "/login";
+        }
+        throw new ApiError("Unauthorized", 401);
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new ApiError(body.detail || res.statusText, res.status);
+      }
+
+      return res.json();
+    } catch (err) {
+      lastError = err;
+      // Don't retry 401s or non-retryable errors
+      if (err instanceof ApiError && err.status === 401) throw err;
+      if (!isRetryable(err) || attempt === MAX_RETRIES) throw err;
+      // Wait before retrying with exponential backoff
+      await sleep(RETRY_DELAY * (attempt + 1));
     }
-    throw new ApiError("Unauthorized", 401);
   }
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(body.detail || res.statusText, res.status);
-  }
-
-  return res.json();
+  throw lastError;
 }
 
 export const api = {
