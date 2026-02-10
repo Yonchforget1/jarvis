@@ -199,7 +199,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">
                 Arguments
               </p>
-              <pre className="text-xs bg-muted dark:bg-black/30 rounded-lg p-2.5 overflow-x-auto text-foreground font-mono leading-relaxed">
+              <pre aria-label={`Arguments for ${call.name}`} className="text-xs bg-muted dark:bg-black/30 rounded-lg p-2.5 overflow-x-auto text-foreground font-mono leading-relaxed">
                 {JSON.stringify(call.args, null, 2)}
               </pre>
             </div>
@@ -224,6 +224,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
                     e.stopPropagation();
                     handleCopyResult();
                   }}
+                  aria-label={copied ? "Result copied to clipboard" : "Copy tool result"}
                   className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                 >
                   {copied ? (

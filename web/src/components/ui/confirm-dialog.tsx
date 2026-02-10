@@ -29,10 +29,13 @@ export function ConfirmDialog({
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<Element | null>(null);
 
-  // Focus cancel button for danger dialogs (safer default), confirm for others
+  // Capture trigger element and focus appropriate button when opening.
+  // Restore focus to trigger when closing.
   useEffect(() => {
     if (open) {
+      triggerRef.current = document.activeElement;
       focusTimerRef.current = setTimeout(() => {
         if (variant === "danger") {
           cancelRef.current?.focus();
@@ -40,6 +43,9 @@ export function ConfirmDialog({
           confirmRef.current?.focus();
         }
       }, 50);
+    } else if (triggerRef.current) {
+      (triggerRef.current as HTMLElement).focus?.();
+      triggerRef.current = null;
     }
     return () => {
       if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
