@@ -475,6 +475,22 @@ export const MessageBubble = memo(function MessageBubble({
                   a: ({ href, children, ...props }) => (
                     <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/30 hover:decoration-primary/60 transition-colors" {...props}>{children}</a>
                   ),
+                  img: ({ src, alt, ...props }) => (
+                    <span className="block my-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={alt || "image"}
+                        loading="lazy"
+                        className="max-w-full rounded-xl border border-border/50 shadow-sm"
+                        style={{ maxHeight: "400px", objectFit: "contain" }}
+                        {...props}
+                      />
+                      {alt && alt !== "image" && (
+                        <span className="block text-[10px] text-muted-foreground/50 mt-1 text-center">{alt}</span>
+                      )}
+                    </span>
+                  ),
                 }}
               >
                 {message.content}

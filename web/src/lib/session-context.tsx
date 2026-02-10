@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 
 interface SessionContextType {
   selectedSessionId: string | null;
@@ -28,6 +28,28 @@ const SessionContext = createContext<SessionContextType>({
   setProcessing: () => {},
 });
 
+const SESSION_STORAGE_KEY = "jarvis-active-session";
+
+function getPersistedSession(): { id: string; name: string | null } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.id === "string") return parsed;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function persistSession(id: string | null, name: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ id, name }));
+    } else {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  } catch { /* ignore */ }
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
@@ -36,14 +58,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isProcessing, setProcessing] = useState(false);
 
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const saved = getPersistedSession();
+    if (saved && !selectedSessionId) {
+      setSelectedSessionId(saved.id);
+      setSelectedSessionName(saved.name);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectSession = useCallback((id: string, name?: string) => {
-    setSelectedSessionId(id || null);
-    setSelectedSessionName(name || null);
+    const sid = id || null;
+    const sname = name || null;
+    setSelectedSessionId(sid);
+    setSelectedSessionName(sname);
+    persistSession(sid, sname);
   }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedSessionId(null);
     setSelectedSessionName(null);
+    persistSession(null, null);
   }, []);
 
   const setSessionName = useCallback((name: string) => {
