@@ -1,19 +1,25 @@
 "use client";
 
-import React, { Component, type ReactNode, useState } from "react";
+import React, { Component, type ReactNode, useState, useRef, useEffect } from "react";
 import { AlertTriangle, RotateCcw, Home, Copy, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function ErrorDetails({ error }: { error: Error }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   const errorInfo = `${error.name}: ${error.message}\n\n${error.stack || "No stack trace available"}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(errorInfo);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (

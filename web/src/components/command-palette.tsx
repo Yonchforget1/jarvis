@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -169,8 +169,17 @@ export function CommandPalette() {
       )
     : commands; // Don't show sessions when there's no query
 
-  // Group by category
+  // Pre-compute flat indexed items grouped by category (StrictMode-safe)
   const categories = [...new Set(filtered.map((c) => c.category))];
+  const indexedGroups = useMemo(() => {
+    let idx = 0;
+    return categories.map((category) => ({
+      category,
+      items: filtered
+        .filter((c) => c.category === category)
+        .map((cmd) => ({ cmd, flatIndex: idx++ })),
+    }));
+  }, [filtered, categories]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -193,10 +202,14 @@ export function CommandPalette() {
   }, [open, close]);
 
   // Focus input when opened
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+      focusTimerRef.current = setTimeout(() => inputRef.current?.focus(), 50);
     }
+    return () => {
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
   }, [open]);
 
   // Navigate list with arrow keys
@@ -224,8 +237,6 @@ export function CommandPalette() {
   }, [selectedIndex]);
 
   if (!open) return null;
-
-  let flatIndex = 0;
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -270,22 +281,19 @@ export function CommandPalette() {
                 No results found
               </div>
             ) : (
-              categories.map((category) => {
-                const items = filtered.filter((c) => c.category === category);
-                return (
+              indexedGroups.map(({ category, items }) => (
                   <div key={category}>
                     <p className="px-3 pt-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
                       {category}
                     </p>
-                    {items.map((cmd) => {
-                      const thisIndex = flatIndex++;
-                      const isSelected = thisIndex === selectedIndex;
+                    {items.map(({ cmd, flatIndex: fi }) => {
+                      const isSelected = fi === selectedIndex;
                       return (
                         <button
                           key={cmd.id}
                           data-selected={isSelected}
                           onClick={cmd.action}
-                          onMouseEnter={() => setSelectedIndex(thisIndex)}
+                          onMouseEnter={() => setSelectedIndex(fi)}
                           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                             isSelected
                               ? "bg-primary/10 text-foreground"
@@ -305,8 +313,7 @@ export function CommandPalette() {
                       );
                     })}
                   </div>
-                );
-              })
+                ))
             )}
           </div>
 

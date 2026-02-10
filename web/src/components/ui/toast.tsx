@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from "react";
 import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
 
 type ToastType = "success" | "error" | "info" | "warning";
@@ -48,8 +48,13 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   const [isLeaving, setIsLeaving] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const Icon = ICONS[toast.type];
   const duration = toast.duration || 4000;
+
+  useEffect(() => () => {
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (isPaused) return;
@@ -61,7 +66,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
         if (next <= 0) {
           clearInterval(timer);
           setIsLeaving(true);
-          setTimeout(() => onDismiss(toast.id), 300);
+          if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+          dismissTimerRef.current = setTimeout(() => onDismiss(toast.id), 300);
           return 0;
         }
         return next;
@@ -90,7 +96,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       <button
         onClick={() => {
           setIsLeaving(true);
-          setTimeout(() => onDismiss(toast.id), 300);
+          if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+          dismissTimerRef.current = setTimeout(() => onDismiss(toast.id), 300);
         }}
         className="shrink-0 rounded-md p-0.5 opacity-60 hover:opacity-100 transition-opacity"
       >

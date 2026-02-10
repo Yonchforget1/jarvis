@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Cpu,
   Key,
@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize form from settings
   useEffect(() => {
@@ -87,7 +88,15 @@ export default function SettingsPage() {
     }
   };
 
+  // Cleanup confirmClear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
+
   const handleSave = async () => {
+    if (saving) return;
     try {
       const update: Record<string, unknown> = {};
       if (backend !== settings?.backend) update.backend = backend;
@@ -150,7 +159,8 @@ export default function SettingsPage() {
   const handleClearAllSessions = async () => {
     if (!confirmClear) {
       setConfirmClear(true);
-      setTimeout(() => setConfirmClear(false), 5000);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => setConfirmClear(false), 5000);
       return;
     }
     setClearingAllSessions(true);
