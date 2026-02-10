@@ -179,8 +179,10 @@ export default function LearningsPage() {
       </div>
 
       {/* Category filters */}
-      <div className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label="Filter by category" className="flex flex-wrap gap-2">
         <button
+          role="tab"
+          aria-selected={!categoryFilter}
           onClick={() => setCategoryFilter(null)}
           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
             !categoryFilter
@@ -195,6 +197,8 @@ export default function LearningsPage() {
           const count = allLearnings.filter((l) => l.category === cat).length;
           return (
             <button
+              role="tab"
+              aria-selected={categoryFilter === cat}
               key={cat}
               onClick={() =>
                 setCategoryFilter(categoryFilter === cat ? null : cat)

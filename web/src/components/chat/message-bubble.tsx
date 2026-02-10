@@ -431,12 +431,12 @@ export const MessageBubble = memo(function MessageBubble({
                     return (
                       <div className="relative group my-2">
                         {language && (
-                          <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border/50 bg-black/60 px-3 py-1.5">
-                            <span className="text-[10px] font-mono text-muted-foreground/60 uppercase">{language}</span>
+                          <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border/50 bg-slate-200 dark:bg-black/60 px-3 py-1.5">
+                            <span className="text-[10px] font-mono text-muted-foreground uppercase">{language}</span>
                           </div>
                         )}
                         <pre
-                          className={`!bg-black/40 dark:!bg-black/40 !border !border-border/50 overflow-x-auto ${language ? "!rounded-t-none !rounded-b-xl" : "!rounded-xl"}`}
+                          className={`!bg-slate-100 dark:!bg-black/40 !border !border-border/50 overflow-x-auto ${language ? "!rounded-t-none !rounded-b-xl" : "!rounded-xl"}`}
                           {...props}
                         >
                           {children}
@@ -561,14 +561,18 @@ export const MessageBubble = memo(function MessageBubble({
                   <span>Edit</span>
                 </button>
               )}
-              {!isUser && message.content && (
-                <>
-                  <span className="text-[10px] text-muted-foreground/40">
-                    {message.content.split(/\s+/).filter(Boolean).length}w
-                  </span>
-                  <MessageReactions messageId={message.id} />
-                </>
-              )}
+              {!isUser && message.content && (() => {
+                const wordCount = message.content.split(/\s+/).filter(Boolean).length;
+                const readMin = Math.max(1, Math.ceil(wordCount / 200));
+                return (
+                  <>
+                    <span className="text-[10px] text-muted-foreground/40">
+                      {wordCount}w{wordCount >= 100 && ` · ${readMin} min read`}
+                    </span>
+                    <MessageReactions messageId={message.id} />
+                  </>
+                );
+              })()}
               {onRegenerate && (
                 <button
                   onClick={onRegenerate}

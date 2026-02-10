@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const { settings, modelsData, loading, saving, error: settingsError, updateSettings, refetch } = useSettings();
   const { learnings } = useLearnings();
   const toast = useToast();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, systemTheme } = useTheme();
 
   const [backend, setBackend] = useState("");
   const [model, setModel] = useState("");
@@ -465,6 +465,11 @@ export default function SettingsPage() {
                   <span className={`text-sm font-medium ${theme === opt.id ? "text-primary" : ""}`}>
                     {opt.label}
                   </span>
+                  {opt.id === "system" && theme === "system" && systemTheme && (
+                    <span className="text-[10px] text-muted-foreground/50">
+                      Currently {systemTheme}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
