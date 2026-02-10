@@ -24,6 +24,8 @@ import {
   Plus,
   Copy,
   X,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -53,6 +55,43 @@ export default function SettingsPage() {
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Notification preferences
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const saved = localStorage.getItem("jarvis_notifications");
+      if (saved) return JSON.parse(saved).enabled !== false;
+    } catch { /* ignore */ }
+    return true;
+  });
+  const [notificationSound, setNotificationSound] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = localStorage.getItem("jarvis_notifications");
+      if (saved) return JSON.parse(saved).sound === true;
+    } catch { /* ignore */ }
+    return false;
+  });
+
+  const handleToggleNotifications = (enabled: boolean) => {
+    setNotificationsEnabled(enabled);
+    try {
+      const current = JSON.parse(localStorage.getItem("jarvis_notifications") || "{}");
+      localStorage.setItem("jarvis_notifications", JSON.stringify({ ...current, enabled }));
+    } catch { /* ignore */ }
+    if (enabled && typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  };
+
+  const handleToggleSound = (sound: boolean) => {
+    setNotificationSound(sound);
+    try {
+      const current = JSON.parse(localStorage.getItem("jarvis_notifications") || "{}");
+      localStorage.setItem("jarvis_notifications", JSON.stringify({ ...current, sound }));
+    } catch { /* ignore */ }
+  };
 
   // Tool groups (fetched dynamically)
   const [toolGroups, setToolGroups] = useState<{ name: string; count: number; color: string }[]>([]);
@@ -388,6 +427,73 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bell className="h-4 w-4 text-primary" />
+              Notifications
+            </CardTitle>
+            <CardDescription>Control how Jarvis notifies you about new responses</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <button
+              onClick={() => handleToggleNotifications(!notificationsEnabled)}
+              className={`flex w-full items-center justify-between rounded-xl border p-3 transition-all duration-200 ${
+                notificationsEnabled
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border/50 bg-muted/30 hover:border-border"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {notificationsEnabled ? (
+                  <Bell className="h-4 w-4 text-primary" />
+                ) : (
+                  <BellOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div className="text-left">
+                  <p className={`text-sm font-medium ${notificationsEnabled ? "text-primary" : ""}`}>
+                    Desktop Notifications
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {notificationsEnabled ? "You'll be notified when Jarvis responds in a background tab" : "Notifications are disabled"}
+                  </p>
+                </div>
+              </div>
+              <div className={`relative h-6 w-11 rounded-full transition-colors ${notificationsEnabled ? "bg-primary" : "bg-muted"}`}>
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${notificationsEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+              </div>
+            </button>
+            <button
+              onClick={() => handleToggleSound(!notificationSound)}
+              disabled={!notificationsEnabled}
+              className={`flex w-full items-center justify-between rounded-xl border p-3 transition-all duration-200 ${
+                !notificationsEnabled ? "opacity-50 cursor-not-allowed" : ""
+              } ${
+                notificationSound
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border/50 bg-muted/30 hover:border-border"
+              }`}
+            >
+              <div className="text-left">
+                <p className={`text-sm font-medium ${notificationSound ? "text-primary" : ""}`}>
+                  Notification Sound
+                </p>
+                <p className="text-xs text-muted-foreground">Play a sound when a response arrives</p>
+              </div>
+              <div className={`relative h-6 w-11 rounded-full transition-colors ${notificationSound && notificationsEnabled ? "bg-primary" : "bg-muted"}`}>
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${notificationSound && notificationsEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+              </div>
+            </button>
+            {typeof Notification !== "undefined" && Notification.permission === "denied" && notificationsEnabled && (
+              <p className="text-[10px] text-yellow-400 flex items-center gap-1 animate-fade-in">
+                <AlertCircle className="h-3 w-3" />
+                Browser notifications are blocked. Please allow them in your browser settings.
+              </p>
+            )}
           </CardContent>
         </Card>
 

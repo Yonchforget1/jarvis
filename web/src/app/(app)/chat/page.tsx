@@ -75,6 +75,14 @@ export default function ChatPage() {
   const onAssistantMessage = useCallback(() => {
     if (document.hidden) {
       incrementUnread();
+
+      // Check notification preferences
+      let notifEnabled = true;
+      try {
+        const prefs = JSON.parse(localStorage.getItem("jarvis_notifications") || "{}");
+        if (prefs.enabled === false) notifEnabled = false;
+      } catch { /* ignore */ }
+
       // Flash the title
       if (!titleFlashRef.current) {
         const original = document.title;
@@ -84,8 +92,8 @@ export default function ChatPage() {
           show = !show;
         }, 1000);
       }
-      // Send browser notification if permitted
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      // Send browser notification if permitted and enabled
+      if (notifEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
         new Notification("JARVIS", {
           body: "New response ready",
           icon: "/icon-192x192.png",
