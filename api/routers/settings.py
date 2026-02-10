@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from api.audit import audit_log
 from api.crypto import decrypt, encrypt
 from api.deps import get_current_user
 from api.models import UserInfo
@@ -184,6 +185,21 @@ async def update_settings(
 
     _set_user_settings(user.id, user_settings)
     has_key = bool(_get_decrypted_api_key(user_settings, config.api_key))
+
+    # Audit log settings change
+    changed = []
+    if update.backend is not None:
+        changed.append(f"backend={update.backend}")
+    if update.model is not None:
+        changed.append(f"model={update.model}")
+    if update.api_key is not None:
+        changed.append("api_key=***")
+    if update.max_tokens is not None:
+        changed.append(f"max_tokens={update.max_tokens}")
+    if update.disabled_tools is not None:
+        changed.append(f"disabled_tools={len(update.disabled_tools)}")
+    if changed:
+        audit_log(user_id=user.id, username=user.username, action="settings_updated", detail=", ".join(changed))
 
     return SettingsResponse(
         backend=user_settings.get("backend", config.backend),

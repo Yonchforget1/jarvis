@@ -92,5 +92,6 @@ async def list_tools(request: Request, user: UserInfo = Depends(get_current_user
             headers={"Cache-Control": "private, max-age=3600", "ETag": f'"{etag}"'},
         )
     except Exception as e:
-        log.exception("Failed to list tools for user %s", user.id)
+        req_id = request.headers.get("X-Request-ID", "?")
+        log.exception("[%s] Failed to list tools for user %s", req_id, user.id)
         raise HTTPException(status_code=500, detail="Failed to list tools")

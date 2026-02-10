@@ -74,7 +74,8 @@ async def get_stats(request: Request, user: UserInfo = Depends(get_current_user)
             avg_tokens_per_message=avg_tokens,
         )
     except Exception as e:
-        log.exception("Failed to get stats for user %s", user.id)
+        req_id = request.headers.get("X-Request-ID", "?")
+        log.exception("[%s] Failed to get stats for user %s", req_id, user.id)
         raise HTTPException(status_code=500, detail="Failed to retrieve stats")
 
 

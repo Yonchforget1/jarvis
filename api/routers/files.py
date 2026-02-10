@@ -125,14 +125,21 @@ async def list_uploads(user: UserInfo = Depends(get_current_user)):
         return {"files": [], "count": 0}
 
     files = []
-    for name in sorted(os.listdir(user_dir)):
-        full_path = os.path.join(user_dir, name)
-        stat = os.stat(full_path)
-        files.append({
-            "filename": name,
-            "size": stat.st_size,
-            "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-        })
+    try:
+        for name in sorted(os.listdir(user_dir)):
+            full_path = os.path.join(user_dir, name)
+            try:
+                stat = os.stat(full_path)
+                files.append({
+                    "filename": name,
+                    "size": stat.st_size,
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                })
+            except OSError:
+                continue  # Skip files that can't be stat'd
+    except OSError:
+        log.exception("Failed to list uploads for user %s", user.id)
+        raise HTTPException(status_code=500, detail="Failed to list uploaded files")
 
     return {"files": files, "count": len(files)}
 

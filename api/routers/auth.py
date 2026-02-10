@@ -117,21 +117,26 @@ class ApiKeyCreate(BaseModel):
 
 
 @router.post("/api-keys")
-async def create_key(body: ApiKeyCreate, user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("5/minute")
+async def create_key(request: Request, body: ApiKeyCreate, user: UserInfo = Depends(get_current_user)):
     """Create a new API key. The key is only shown once."""
     key = create_api_key(user.id, body.label)
+    audit_log(user_id=user.id, username=user.username, action="api_key_created", detail=f"label={body.label}", ip=request.client.host if request.client else None)
     return {"api_key": key}
 
 
 @router.get("/api-keys")
-async def list_keys(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("10/minute")
+async def list_keys(request: Request, user: UserInfo = Depends(get_current_user)):
     """List all API keys for the current user (prefixes only)."""
     return {"api_keys": list_user_api_keys(user.id)}
 
 
 @router.delete("/api-keys/{key_id}")
-async def delete_key(key_id: str, user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("5/minute")
+async def delete_key(request: Request, key_id: str, user: UserInfo = Depends(get_current_user)):
     """Revoke an API key."""
     if not revoke_api_key(user.id, key_id):
         raise HTTPException(status_code=404, detail="API key not found")
+    audit_log(user_id=user.id, username=user.username, action="api_key_revoked", detail=f"key_id={key_id}", ip=request.client.host if request.client else None)
     return {"status": "revoked", "key_id": key_id}
