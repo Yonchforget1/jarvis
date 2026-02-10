@@ -132,9 +132,11 @@ export default function ChatPage() {
 
       // Check notification preferences
       let notifEnabled = true;
+      let soundEnabled = false;
       try {
         const prefs = JSON.parse(localStorage.getItem("jarvis_notifications") || "{}");
         if (prefs.enabled === false) notifEnabled = false;
+        if (prefs.sound === true) soundEnabled = true;
       } catch { /* ignore */ }
 
       // Flash the title
@@ -145,6 +147,24 @@ export default function ChatPage() {
           document.title = show ? "New message - JARVIS" : original;
           show = !show;
         }, 1000);
+      }
+      // Play notification sound via Web Audio API
+      if (soundEnabled) {
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.setValueAtTime(1047, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.25);
+          osc.onended = () => ctx.close();
+        } catch { /* audio not available */ }
       }
       // Send browser notification if permitted and enabled
       if (notifEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
