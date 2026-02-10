@@ -47,7 +47,7 @@ function AnimatedTerminal() {
   }, [visibleLines, currentChar]);
 
   return (
-    <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5">
+    <div aria-hidden="true" className="mx-auto mt-16 max-w-2xl rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden shadow-2xl shadow-primary/5">
       <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
         <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
         <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />

@@ -145,7 +145,8 @@ export function ChatInput({ onSend, disabled, onSlashCommand }: ChatInputProps) 
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        handleSlashSelect(filteredSlash[slashIndex].action);
+        const clamped = Math.min(slashIndex, filteredSlash.length - 1);
+        handleSlashSelect(filteredSlash[clamped].action);
         return;
       }
       if (e.key === "Escape") {

@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const token = localStorage.getItem("jarvis_token");
     const savedUser = localStorage.getItem("jarvis_user");
     if (token && savedUser) {
@@ -41,9 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(parsed);
         // Validate token with server in background
         api.get<{ user: User }>("/api/auth/me").then((res) => {
+          if (cancelled) return;
           setUser(res.user);
           localStorage.setItem("jarvis_user", JSON.stringify(res.user));
         }).catch((err) => {
+          if (cancelled) return;
           // Only clear on 401 (expired/invalid token), not on network errors
           if (err instanceof ApiError && err.status === 401) {
             localStorage.removeItem("jarvis_token");
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setIsLoading(false);
+    return () => { cancelled = true; };
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
