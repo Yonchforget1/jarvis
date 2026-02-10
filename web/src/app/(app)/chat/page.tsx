@@ -94,9 +94,17 @@ export default function ChatPage() {
   }, [selectedSessionId, loadSession, clearChat]);
 
   // Keep the session context updated with the current session
+  const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionId && sessionId !== selectedSessionId) {
       selectSession(sessionId);
+    }
+    // Notify sidebar to refresh when a new session is created
+    if (sessionId && sessionId !== prevSessionIdRef.current) {
+      if (prevSessionIdRef.current !== null) {
+        window.dispatchEvent(new CustomEvent("session-created"));
+      }
+      prevSessionIdRef.current = sessionId;
     }
   }, [sessionId, selectedSessionId, selectSession]);
 

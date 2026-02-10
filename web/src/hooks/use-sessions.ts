@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 
 interface SessionEntry {
@@ -83,8 +83,31 @@ export function useSessions() {
     }
   }, []);
 
+  // Initial fetch + visibility-aware polling every 30s
   useEffect(() => {
     fetchSessions();
+    let interval = setInterval(fetchSessions, 30000);
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchSessions();
+        interval = setInterval(fetchSessions, 30000);
+      }
+    };
+
+    // Refresh when a new session is created in chat
+    const handleSessionCreated = () => fetchSessions();
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("session-created", handleSessionCreated);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("session-created", handleSessionCreated);
+    };
   }, [fetchSessions]);
 
   const deleteSession = useCallback(
