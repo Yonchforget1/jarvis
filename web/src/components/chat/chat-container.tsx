@@ -20,6 +20,12 @@ import {
   Trash2,
   Copy,
   AlertTriangle,
+  FileSearch,
+  BarChart2,
+  Wrench,
+  PenTool,
+  Bug,
+  BookOpen,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageBubble } from "./message-bubble";
@@ -29,6 +35,31 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ShortcutsDialog } from "@/components/ui/shortcuts-dialog";
 import { useConnection } from "@/hooks/use-connection";
 import { useToast } from "@/components/ui/toast";
+import { api } from "@/lib/api";
+
+interface Template {
+  key: string;
+  name: string;
+  description: string;
+}
+
+const TEMPLATE_ICONS: Record<string, typeof Code> = {
+  "code-review": FileSearch,
+  "data-analysis": BarChart2,
+  "devops": Wrench,
+  "research": BookOpen,
+  "writing": PenTool,
+  "debugging": Bug,
+};
+
+const TEMPLATE_COLORS: Record<string, { color: string; bg: string }> = {
+  "code-review": { color: "text-cyan-400", bg: "bg-cyan-400/10 border-cyan-400/20 hover:bg-cyan-400/15" },
+  "data-analysis": { color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/15" },
+  "devops": { color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20 hover:bg-emerald-400/15" },
+  "research": { color: "text-violet-400", bg: "bg-violet-400/10 border-violet-400/20 hover:bg-violet-400/15" },
+  "writing": { color: "text-rose-400", bg: "bg-rose-400/10 border-rose-400/20 hover:bg-rose-400/15" },
+  "debugging": { color: "text-red-400", bg: "bg-red-400/10 border-red-400/20 hover:bg-red-400/15" },
+};
 
 function getDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
@@ -104,7 +135,15 @@ export function ChatContainer({
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const prevMessageCountRef = useRef(messages.length);
+
+  // Fetch templates once for empty state
+  useEffect(() => {
+    api.get<{ templates: Template[] }>("/api/settings/templates")
+      .then((res) => setTemplates(res.templates || []))
+      .catch(() => {});
+  }, []);
 
   const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
 
@@ -573,6 +612,32 @@ export function ChatContainer({
                 </button>
               ))}
             </div>
+
+            {/* Conversation Templates */}
+            {templates.length > 0 && (
+              <div className="mt-8 w-full max-w-lg px-2">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40 mb-2 px-1">
+                  Specialized Modes
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {templates.map((t) => {
+                    const Icon = TEMPLATE_ICONS[t.key] || Code;
+                    const colors = TEMPLATE_COLORS[t.key] || { color: "text-muted-foreground", bg: "bg-muted/50 border-border/50 hover:bg-muted" };
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => onSend(`Use ${t.name} mode. ${t.description}`)}
+                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${colors.bg}`}
+                        title={t.description}
+                      >
+                        <Icon className={`h-3.5 w-3.5 shrink-0 ${colors.color}`} />
+                        <span className="text-muted-foreground">{t.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Keyboard shortcut hint */}
             <div className="mt-8 flex items-center gap-3 text-[10px] text-muted-foreground/40">
