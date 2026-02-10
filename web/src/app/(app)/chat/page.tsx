@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X, Link2, Check } from "lucide-react";
+import { Cpu, BarChart3, Zap, Hash, DollarSign, Clock, X, Link2, Check, Pencil } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSessionContext } from "@/lib/session-context";
 import { ChatContainer } from "@/components/chat/chat-container";
@@ -37,7 +37,7 @@ function formatDuration(secs: number): string {
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
-  const { selectedSessionId, selectedSessionName, clearUnread, incrementUnread, selectSession, setProcessing } = useSessionContext();
+  const { selectedSessionId, selectedSessionName, clearUnread, incrementUnread, selectSession, setProcessing, setSessionName } = useSessionContext();
 
   // Fetch model info once for header badge (cached in sessionStorage)
   const [modelLabel, setModelLabel] = useState<string | null>(() => {
@@ -186,6 +186,31 @@ export default function ChatPage() {
     }).catch(() => {});
   }, [sessionId]);
 
+  // Inline session rename
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const startRename = useCallback(() => {
+    setRenameValue(selectedSessionName || "");
+    setRenaming(true);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  }, [selectedSessionName]);
+
+  const commitRename = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && sessionId) {
+      setSessionName(trimmed);
+      api.patch(`/api/conversation/sessions/${sessionId}`, { name: trimmed }).catch(() => {});
+      window.dispatchEvent(new CustomEvent("session-renamed", { detail: { sessionId, name: trimmed } }));
+    }
+    setRenaming(false);
+  }, [renameValue, sessionId, setSessionName]);
+
+  const cancelRename = useCallback(() => {
+    setRenaming(false);
+  }, []);
+
   // Auto-send prompt from ?prompt= query parameter (e.g., dashboard "Try These")
   const promptHandled = useRef(false);
   useEffect(() => {
@@ -285,9 +310,29 @@ export default function ChatPage() {
               </span>
             )}
             {selectedSessionName && (
-              <span className="text-muted-foreground/70 truncate max-w-[200px] sm:max-w-md" title={selectedSessionName}>
-                {selectedSessionName}
-              </span>
+              renaming ? (
+                <input
+                  ref={renameInputRef}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename();
+                    if (e.key === "Escape") cancelRename();
+                  }}
+                  onBlur={commitRename}
+                  className="text-xs text-foreground bg-muted/50 border border-border/50 rounded-md px-2 py-0.5 max-w-[200px] sm:max-w-md outline-none focus:border-primary/50"
+                  maxLength={100}
+                />
+              ) : (
+                <button
+                  onClick={startRename}
+                  className="group/name flex items-center gap-1 text-muted-foreground/70 hover:text-foreground truncate max-w-[200px] sm:max-w-md transition-colors"
+                  title="Click to rename session"
+                >
+                  <span className="truncate">{selectedSessionName}</span>
+                  <Pencil className="h-2.5 w-2.5 opacity-0 group-hover/name:opacity-60 transition-opacity shrink-0" />
+                </button>
+              )
             )}
             <span className="ml-auto flex items-center gap-2">
               {messages.length > 0 && (
