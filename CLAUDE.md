@@ -29,12 +29,34 @@ If a tool produces low-quality output, Jarvis must iterate until it meets profes
 
 ## 4. Capabilities Roadmap
 
-1. **Current** - 16 tools including filesystem, web scraping, code execution, shell commands, game dev, memory.
-2. **Next** - Computer vision and GUI control so Jarvis can see the screen and control any software.
-3. **Then** - Web UI for customers to access Jarvis through a browser.
-4. **Then** - Background automation so Jarvis runs 24/7 without human supervision.
-5. **Then** - Voice control.
-6. **Then** - White-label system for reselling.
+1. **Done** - 18 tools including filesystem, web scraping, code execution, shell commands, game dev, memory.
+2. **Done** - Computer vision and GUI control (pywinauto/pyautogui/OCR) - 31 tools.
+3. **Done** - Web UI at localhost:3000 (FastAPI + dark-theme chat UI).
+4. **Done** - Desktop app via Electron (system tray, auto-start, auto-update, Windows/Mac/Linux installers).
+5. **Done** - WhatsApp chatbot via whatsapp-web.js bridge.
+6. **Done** - Smart tool router: picks 8 most relevant tools per message for local models.
+7. **Next** - Background automation so Jarvis runs 24/7 without human supervision.
+8. **Then** - Voice control.
+9. **Then** - White-label system for reselling.
+
+## 4a. Architecture Overview
+
+```
+desktop/          Electron app (the product users install)
+  main.js         Main process - starts backend, creates window, system tray
+  tray.js         System tray with auto-start, quick actions
+  updater.js      Auto-update from GitHub Releases
+api/              FastAPI server (port 3000)
+  main.py         Routes, middleware, static file serving
+  routers/        Endpoint modules (chat, auth, whatsapp, tools, etc.)
+  static/         Web chat UI (fallback when Next.js not built)
+web/              Next.js frontend (full dashboard, chat, settings)
+jarvis/           Core Python package
+  backends/       LLM backends (Claude, OpenAI, Gemini, Ollama)
+  tools/          Tool modules (filesystem, shell, web, computer, browser, etc.)
+  tool_router.py  Smart tool selection for local models
+  conversation.py Agent loop with tool calling
+```
 
 ## 5. Business Context
 
