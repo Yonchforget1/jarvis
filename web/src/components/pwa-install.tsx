@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Download, X, Smartphone } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -8,20 +8,21 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+function detectIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
+}
+
 export function PWAInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [bannerMode, setBannerMode] = useState<"native" | "ios">("native");
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   useEffect(() => {
     // Check if already installed as PWA
     if (window.matchMedia("(display-mode: standalone)").matches) return;
-
-    // Detect iOS Safari
-    const ua = navigator.userAgent;
-    const isIOSDevice = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
-    setIsIOS(isIOSDevice);
 
     // Check if user dismissed recently
     const dismissed = localStorage.getItem("jarvis-pwa-dismissed");
@@ -34,13 +35,17 @@ export function PWAInstall() {
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
+      setBannerMode("native");
       setShowBanner(true);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
     // For iOS, show after a delay if not installed
-    if (isIOSDevice) {
-      const timer = setTimeout(() => setShowBanner(true), 5000);
+    if (detectIOS()) {
+      const timer = setTimeout(() => {
+        setBannerMode("ios");
+        setShowBanner(true);
+      }, 5000);
       return () => {
         clearTimeout(timer);
         window.removeEventListener("beforeinstallprompt", handler);
@@ -57,7 +62,7 @@ export function PWAInstall() {
     }
   }, []);
 
-  const handleInstall = async () => {
+  const handleInstall = useCallback(async () => {
     if (installPrompt) {
       await installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
@@ -65,15 +70,15 @@ export function PWAInstall() {
         setShowBanner(false);
       }
       setInstallPrompt(null);
-    } else if (isIOS) {
+    } else if (bannerMode === "ios") {
       setShowIOSGuide(true);
     }
-  };
+  }, [installPrompt, bannerMode]);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setShowBanner(false);
     localStorage.setItem("jarvis-pwa-dismissed", String(Date.now()));
-  };
+  }, []);
 
   if (!showBanner) return null;
 
@@ -89,7 +94,7 @@ export function PWAInstall() {
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Install JARVIS</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isIOS
+                {bannerMode === "ios"
                   ? "Add to Home Screen for the best experience"
                   : "Install as an app for quick access"}
               </p>
@@ -107,7 +112,7 @@ export function PWAInstall() {
               className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3 py-2 text-xs font-medium hover:bg-primary/90 transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
-              {isIOS ? "Show Me How" : "Install"}
+              {bannerMode === "ios" ? "Show Me How" : "Install"}
             </button>
             <button
               onClick={handleDismiss}
@@ -128,7 +133,7 @@ export function PWAInstall() {
             <ol className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
-                <span>Tap the <strong className="text-foreground">Share</strong> button in Safari's toolbar</span>
+                <span>Tap the <strong className="text-foreground">Share</strong> button in Safari&apos;s toolbar</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>

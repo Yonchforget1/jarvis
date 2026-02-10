@@ -92,6 +92,7 @@ app = FastAPI(
         {"name": "settings", "description": "User preferences and configuration"},
         {"name": "files", "description": "File upload and management"},
         {"name": "websocket", "description": "Real-time WebSocket chat"},
+        {"name": "voice", "description": "Voice input and transcription"},
     ],
 )
 app.state.limiter = limiter
@@ -151,6 +152,10 @@ app.include_router(metrics.router, prefix="/api", tags=["monitoring"])
 app.include_router(dashboard.router, prefix="/api", tags=["monitoring"])
 app.include_router(compliance.router, prefix="/api", tags=["compliance"])
 app.include_router(whatsapp.router, prefix="/api", tags=["whatsapp"])
+
+# Integration routes (voice transcription, etc.)
+from jarvis.integrations import register_integration_routes
+register_integration_routes(app)
 
 
 @app.get("/api/health")
