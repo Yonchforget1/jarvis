@@ -421,6 +421,18 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                 <p className="text-xs text-muted-foreground/50 font-medium">No conversations yet</p>
                 <p className="text-[10px] text-muted-foreground/30 mt-0.5">Start chatting to see your history here</p>
               </div>
+            ) : filteredSessions.length === 0 && debouncedSearch.trim() ? (
+              <div className="px-3 py-4 text-center">
+                <Search className="h-6 w-6 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground/50 font-medium">No matches found</p>
+                <p className="text-[10px] text-muted-foreground/30 mt-0.5">Try a different search term</p>
+                <button
+                  onClick={() => setSessionSearch("")}
+                  className="mt-2 text-[10px] text-primary/60 hover:text-primary transition-colors"
+                >
+                  Clear search
+                </button>
+              </div>
             ) : (
               filteredSessions
                 .slice(0, sessionLimit).map((session, idx, arr) => {

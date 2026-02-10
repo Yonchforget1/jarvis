@@ -7,6 +7,7 @@ import queue
 import re
 import threading
 import time
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -15,6 +16,22 @@ from api.auth import decode_token, get_user_by_id, validate_api_key
 
 MAX_WS_MESSAGE_SIZE = 51_200  # 50 KB
 _SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def _ws_error(message: str, *, code: str = "unknown", category: str = "server",
+              retry_after: int | None = None, request_id: str | None = None) -> dict:
+    """Build a structured WebSocket error event."""
+    err: dict = {
+        "type": "error",
+        "message": message,
+        "error_code": code,
+        "error_category": category,
+    }
+    if retry_after is not None:
+        err["retry_after"] = retry_after
+    if request_id:
+        err["request_id"] = request_id
+    return err
 
 log = logging.getLogger("jarvis.api.ws")
 router = APIRouter()
@@ -77,44 +94,63 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
         while True:
             raw = await websocket.receive_text()
 
+            req_id = uuid.uuid4().hex[:12]
+
             # Message size limit
             if len(raw) > MAX_WS_MESSAGE_SIZE:
-                await websocket.send_json({"type": "error", "message": f"Message too large (max {MAX_WS_MESSAGE_SIZE // 1024} KB)"})
+                await websocket.send_json(_ws_error(
+                    f"Message too large (max {MAX_WS_MESSAGE_SIZE // 1024} KB)",
+                    code="message_too_large", category="validation", request_id=req_id,
+                ))
                 continue
 
             # Per-connection rate limiting
             now = time.monotonic()
             _msg_timestamps = [t for t in _msg_timestamps if now - t < _RATE_WINDOW]
             if len(_msg_timestamps) >= _MAX_MSGS_PER_WINDOW:
-                await websocket.send_json({"type": "error", "message": "Rate limit exceeded. Please slow down."})
+                wait = int(_RATE_WINDOW - (now - _msg_timestamps[0])) + 1
+                await websocket.send_json(_ws_error(
+                    "Rate limit exceeded. Please slow down.",
+                    code="rate_limited", category="rate_limit", retry_after=wait, request_id=req_id,
+                ))
                 continue
             _msg_timestamps.append(now)
 
             try:
                 data = json.loads(raw)
             except json.JSONDecodeError:
-                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+                await websocket.send_json(_ws_error(
+                    "Invalid JSON", code="invalid_json", category="validation", request_id=req_id,
+                ))
                 continue
 
             message = data.get("message", "").strip()
             session_id = data.get("session_id")
 
             if not message:
-                await websocket.send_json({"type": "error", "message": "Empty message"})
+                await websocket.send_json(_ws_error(
+                    "Empty message", code="empty_message", category="validation", request_id=req_id,
+                ))
                 continue
 
             # Validate session_id format
             if session_id is not None and not _SESSION_ID_RE.match(str(session_id)):
-                await websocket.send_json({"type": "error", "message": "Invalid session_id format"})
+                await websocket.send_json(_ws_error(
+                    "Invalid session_id format", code="invalid_session_id", category="validation", request_id=req_id,
+                ))
                 continue
 
             # Validate message length
             if len(message) > 50_000:
-                await websocket.send_json({"type": "error", "message": "Message too long (max 50,000 characters)"})
+                await websocket.send_json(_ws_error(
+                    "Message too long (max 50,000 characters)", code="message_too_long", category="validation", request_id=req_id,
+                ))
                 continue
 
             if _session_manager is None:
-                await websocket.send_json({"type": "error", "message": "Server not ready"})
+                await websocket.send_json(_ws_error(
+                    "Server not ready", code="server_not_ready", category="server", retry_after=5, request_id=req_id,
+                ))
                 continue
 
             session = _session_manager.get_or_create(session_id, user_id)
@@ -127,8 +163,18 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
                 try:
                     session.conversation.send_stream(message, event_queue)
                 except Exception as e:
-                    log.error("WebSocket stream error for user=%s: %s", user_id, e)
-                    event_queue.put({"event": "error", "data": {"message": "An error occurred processing your request."}})
+                    log.error("WebSocket stream error for user=%s req=%s: %s", user_id, req_id, e)
+                    error_msg = "An error occurred processing your request."
+                    error_code = "execution_error"
+                    if "timeout" in str(e).lower():
+                        error_msg = "Request timed out. Try a simpler query."
+                        error_code = "timeout"
+                    event_queue.put({"event": "error", "data": {
+                        "message": error_msg,
+                        "error_code": error_code,
+                        "error_category": "execution",
+                        "request_id": req_id,
+                    }})
                     event_queue.put({"event": "done", "data": {}})
 
             thread = threading.Thread(target=run, daemon=True)
@@ -160,7 +206,12 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
                 elif event_type == "error":
-                    await websocket.send_json({"type": "error", "message": event_data.get("message", "")})
+                    await websocket.send_json(_ws_error(
+                        event_data.get("message", "Unknown error"),
+                        code=event_data.get("error_code", "stream_error"),
+                        category=event_data.get("error_category", "execution"),
+                        request_id=event_data.get("request_id", req_id),
+                    ))
                 elif event_type == "done":
                     break
 
@@ -169,6 +220,9 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(default="")):
     except Exception as e:
         log.exception("WebSocket error for user=%s: %s", user_id, e)
         try:
-            await websocket.send_json({"type": "error", "message": "An unexpected error occurred."})
+            await websocket.send_json(_ws_error(
+                "An unexpected error occurred.",
+                code="internal_error", category="server",
+            ))
         except Exception:
             pass
