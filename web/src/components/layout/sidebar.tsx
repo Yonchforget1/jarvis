@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/toast";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -123,6 +124,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionLimit, setSessionLimit] = useState(15);
+  const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -592,6 +594,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
         onConfirm={() => {
           if (deletingSessionId) {
             deleteSession(deletingSessionId);
+            toast.success("Deleted", "Conversation removed.");
           }
         }}
         title="Delete conversation?"

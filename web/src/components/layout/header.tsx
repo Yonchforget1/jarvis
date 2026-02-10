@@ -24,7 +24,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const title = PAGE_TITLES[pathname] || "Jarvis";
   const { status, latency } = useConnection();
   const { theme, setTheme } = useTheme();
-  const { selectedSessionName } = useSessionContext();
+  const { selectedSessionName, isProcessing } = useSessionContext();
 
   return (
     <header role="banner" className="flex h-14 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
@@ -49,6 +49,17 @@ export function Header({ onMenuClick }: HeaderProps) {
                 {selectedSessionName}
               </span>
             </>
+          )}
+          {pathname === "/chat" && isProcessing && (
+            <div className="flex items-center gap-1 ml-1">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-1 w-1 rounded-full bg-primary animate-typing-wave"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

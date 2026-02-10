@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { SessionProvider, useSessionContext } from "@/lib/session-context";
@@ -72,6 +72,36 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Touch swipe to open/close sidebar on mobile
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+      const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+      const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      // Only trigger on horizontal swipes (at least 60px, and more horizontal than vertical)
+      if (absDx > 60 && absDx > absDy * 1.5) {
+        if (dx > 0 && touchStartRef.current.x < 40 && !sidebarOpen) {
+          setSidebarOpen(true);
+        } else if (dx < 0 && sidebarOpen) {
+          setSidebarOpen(false);
+        }
+      }
+      touchStartRef.current = null;
+    };
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [sidebarOpen]);
 
   if (isLoading) {
     return (
