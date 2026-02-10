@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLearnings } from "@/hooks/use-learnings";
 import { LearningsTimeline } from "@/components/dashboard/learnings-timeline";
 import { Input } from "@/components/ui/input";
@@ -24,55 +24,27 @@ function getCatStyle(cat: string) {
 }
 
 export default function LearningsPage() {
-  const { learnings, loading, error, refetch } = useLearnings();
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const PAGE_SIZE = 50;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 200);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [search]);
+  // Server-side search, sort, and filtering via hook
+  const { learnings, total, loading, error, refetch } = useLearnings({
+    search: search || undefined,
+    sort: sortOrder,
+    category: categoryFilter || undefined,
+    pageSize: 200,
+  });
+
+  // Also fetch unfiltered to get all categories
+  const { learnings: allLearnings } = useLearnings({ pageSize: 200 });
 
   const categories = useMemo(
-    () => [...new Set(learnings.map((l) => l.category))].sort(),
-    [learnings],
+    () => [...new Set(allLearnings.map((l) => l.category))].sort(),
+    [allLearnings],
   );
 
-  const filtered = useMemo(() => {
-    const result = learnings.filter((l) => {
-      const matchesSearch =
-        !debouncedSearch ||
-        l.insight.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        l.context.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        l.task_description.toLowerCase().includes(debouncedSearch.toLowerCase());
-      const matchesCategory = !categoryFilter || l.category === categoryFilter;
-      return matchesSearch && matchesCategory;
-    });
-    // Sort by timestamp
-    result.sort((a, b) => {
-      const ta = new Date(a.timestamp).getTime();
-      const tb = new Date(b.timestamp).getTime();
-      return sortOrder === "newest" ? tb - ta : ta - tb;
-    });
-    return result;
-  }, [learnings, debouncedSearch, categoryFilter, sortOrder]);
-
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearch, categoryFilter, sortOrder]);
-
-  const visibleLearnings = useMemo(
-    () => filtered.slice(0, visibleCount),
-    [filtered, visibleCount],
-  );
-  const hasMore = visibleCount < filtered.length;
+  const filtered = learnings;
 
   const handleExport = useCallback(() => {
     const markdown = filtered
@@ -127,7 +99,7 @@ export default function LearningsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Learnings</h1>
           <p className="text-sm text-muted-foreground/60 mt-0.5">
-            {filtered.length} of {learnings.length} insights from past tasks
+            {filtered.length} of {total} insights from past tasks
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -177,11 +149,11 @@ export default function LearningsPage() {
               : "bg-muted text-muted-foreground/70 border border-border/50 hover:bg-muted/80"
           }`}
         >
-          All ({learnings.length})
+          All ({total})
         </button>
         {categories.map((cat) => {
           const style = getCatStyle(cat);
-          const count = learnings.filter((l) => l.category === cat).length;
+          const count = allLearnings.filter((l) => l.category === cat).length;
           return (
             <button
               key={cat}
@@ -223,19 +195,7 @@ export default function LearningsPage() {
           </p>
         </div>
       ) : (
-        <>
-          <LearningsTimeline learnings={visibleLearnings} />
-          {hasMore && (
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                className="rounded-full border border-border/50 bg-muted/50 px-6 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                Show more ({filtered.length - visibleCount} remaining)
-              </button>
-            </div>
-          )}
-        </>
+        <LearningsTimeline learnings={filtered} />
       )}
       </div>
     </div>

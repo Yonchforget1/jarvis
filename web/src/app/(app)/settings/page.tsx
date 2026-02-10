@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Cpu,
   Key,
@@ -21,6 +21,9 @@ import {
   Moon,
   Monitor,
   RotateCcw,
+  Plus,
+  Copy,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/use-settings";
@@ -49,6 +52,59 @@ export default function SettingsPage() {
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // API Key management
+  const [apiKeys, setApiKeys] = useState<{ id: string; label: string; prefix: string; created_at: string; last_used: string | null }[]>([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [newKeyLabel, setNewKeyLabel] = useState("");
+  const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
+  const [creatingKey, setCreatingKey] = useState(false);
+
+  const fetchApiKeys = useCallback(async () => {
+    setApiKeysLoading(true);
+    try {
+      const res = await api.get<{ api_keys: typeof apiKeys }>("/api/auth/api-keys");
+      setApiKeys(res.api_keys);
+    } catch {
+      // Non-critical, silently fail
+    } finally {
+      setApiKeysLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApiKeys();
+  }, [fetchApiKeys]);
+
+  const handleCreateApiKey = async () => {
+    if (creatingKey) return;
+    setCreatingKey(true);
+    try {
+      const res = await api.post<{ api_key: { id: string; key: string; label: string; prefix: string } }>("/api/auth/api-keys", { label: newKeyLabel || "default" });
+      setNewKeyValue(res.api_key.key);
+      setNewKeyLabel("");
+      fetchApiKeys();
+    } catch {
+      toast.error("Failed", "Could not create API key.");
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const handleRevokeApiKey = async (keyId: string) => {
+    try {
+      await api.delete(`/api/auth/api-keys/${keyId}`);
+      setApiKeys((prev) => prev.filter((k) => k.id !== keyId));
+      toast.success("Revoked", "API key has been revoked.");
+    } catch {
+      toast.error("Failed", "Could not revoke API key.");
+    }
+  };
+
+  const handleCopyKey = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied", "API key copied to clipboard.");
+  };
 
   // Initialize form from settings
   useEffect(() => {
@@ -437,6 +493,101 @@ export default function SettingsPage() {
                 Your key is stored securely and used only for your sessions.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* API Keys Management */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Key className="h-4 w-4 text-primary" />
+              API Keys
+            </CardTitle>
+            <CardDescription>Create and manage API keys for programmatic access</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Create new key */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newKeyLabel}
+                onChange={(e) => setNewKeyLabel(e.target.value)}
+                placeholder="Key label (e.g. 'CI/CD', 'Mobile app')"
+                maxLength={64}
+                className="bg-secondary/50 border-border/50 text-sm"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateApiKey}
+                disabled={creatingKey}
+                className="shrink-0 gap-1.5"
+              >
+                {creatingKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Create
+              </Button>
+            </div>
+
+            {/* Newly created key (shown once) */}
+            {newKeyValue && (
+              <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 animate-scale-in">
+                <p className="text-xs text-green-400 font-medium mb-1.5">New API key created - copy it now, it won&apos;t be shown again</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-lg bg-black/20 px-3 py-1.5 text-xs font-mono text-green-300 truncate">
+                    {newKeyValue}
+                  </code>
+                  <button
+                    onClick={() => handleCopyKey(newKeyValue)}
+                    className="shrink-0 rounded-lg p-1.5 text-green-400 hover:bg-green-500/10 transition-colors"
+                    aria-label="Copy API key"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setNewKeyValue(null)}
+                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Existing keys list */}
+            {apiKeysLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-12 rounded-xl bg-muted/30 animate-pulse" />
+                ))}
+              </div>
+            ) : apiKeys.length === 0 ? (
+              <p className="text-xs text-muted-foreground/50 text-center py-3">No API keys created yet</p>
+            ) : (
+              <div className="space-y-2">
+                {apiKeys.map((k) => (
+                  <div key={k.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{k.label}</span>
+                        <code className="text-[10px] font-mono text-muted-foreground/50">{k.prefix}...</code>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/40">
+                        Created {new Date(k.created_at).toLocaleDateString()}
+                        {k.last_used && ` · Last used ${new Date(k.last_used).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRevokeApiKey(k.id)}
+                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      aria-label={`Revoke key ${k.label}`}
+                      title="Revoke"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
