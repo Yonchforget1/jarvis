@@ -96,6 +96,8 @@ export function ChatContainer({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const prevMessageCountRef = useRef(messages.length);
 
+  const hasStreaming = useMemo(() => messages.some((m) => m.isStreaming), [messages]);
+
   // Find matching message indices
   const matchingIndices = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -276,6 +278,13 @@ export function ChatContainer({
   }, []);
 
   // Determine which message is the active match
+  const handleSlashCommand = useCallback((action: "clear" | "export" | "new" | "help") => {
+    if (action === "clear") setClearConfirmOpen(true);
+    else if (action === "export") exportChat();
+    else if (action === "new") onSend("/new");
+    else if (action === "help") setShortcutsOpen(true);
+  }, [exportChat, onSend]);
+
   const activeMatchMsgId =
     matchingIndices.length > 0
       ? messages[matchingIndices[activeMatchIndex]]?.id
@@ -487,7 +496,7 @@ export function ChatContainer({
                 </div>
               );
             })}
-            {isLoading && !messages.some((m) => m.isStreaming) && (
+            {isLoading && !hasStreaming && (
               <TypingIndicator />
             )}
           </div>
@@ -519,7 +528,7 @@ export function ChatContainer({
       )}
 
       {/* Floating stop button during streaming */}
-      {isLoading && onStop && messages.some((m) => m.isStreaming) && (
+      {isLoading && onStop && hasStreaming && (
         <div className="flex justify-center py-2 animate-fade-in">
           <button
             onClick={onStop}
@@ -535,14 +544,7 @@ export function ChatContainer({
       <ChatInput
         onSend={onSend}
         disabled={isLoading}
-        onSlashCommand={(action) => {
-          if (action === "clear") setClearConfirmOpen(true);
-          else if (action === "export") exportChat();
-          else if (action === "new") onSend("/new");
-          else if (action === "help") {
-            setShortcutsOpen(true);
-          }
-        }}
+        onSlashCommand={handleSlashCommand}
       />
 
       {/* Keyboard shortcuts dialog */}

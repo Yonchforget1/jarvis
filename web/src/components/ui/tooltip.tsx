@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 
 interface TooltipProps {
   content: string;
@@ -21,6 +21,9 @@ export function Tooltip({ content, children, side = "right", delay = 200 }: Tool
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setVisible(false);
   }, []);
+
+  // Clean up timeout on unmount
+  useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
 
   const positionClasses: Record<string, string> = {
     right: "left-full top-1/2 -translate-y-1/2 ml-2",
