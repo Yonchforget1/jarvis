@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink } from "lucide-react";
+import { User, Bot, Copy, Check, AlertTriangle, RotateCcw, Loader2, Square, ThumbsUp, ThumbsDown, ExternalLink, Pencil, X } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ToolCallCard } from "./tool-call-card";
@@ -207,6 +207,7 @@ export function MessageBubble({
   message,
   onRetry,
   onStop,
+  onEdit,
   searchQuery = "",
   isActiveMatch = false,
   isGrouped = false,
@@ -214,6 +215,7 @@ export function MessageBubble({
   message: ChatMessage;
   onRetry?: () => void;
   onStop?: () => void;
+  onEdit?: (newContent: string) => void;
   searchQuery?: string;
   isActiveMatch?: boolean;
   isGrouped?: boolean;
@@ -221,6 +223,8 @@ export function MessageBubble({
   const isUser = message.role === "user";
   const isError = message.isError;
   const isStreaming = message.isStreaming;
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
 
   // For user messages, highlight search terms in the plain text
   const userContent = useMemo(() => {
@@ -299,12 +303,56 @@ export function MessageBubble({
           }`}
         >
           {isUser ? (
+            editing ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (editValue.trim() && onEdit) {
+                        onEdit(editValue.trim());
+                        setEditing(false);
+                      }
+                    }
+                    if (e.key === "Escape") setEditing(false);
+                  }}
+                  className="w-full resize-none rounded-lg bg-primary-foreground/10 px-2 py-1.5 text-sm text-primary-foreground outline-none border border-primary-foreground/20 focus:border-primary-foreground/40"
+                  rows={Math.min(editValue.split("\n").length + 1, 6)}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                />
+                <div className="flex items-center gap-1.5 justify-end">
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editValue.trim() && onEdit) {
+                        onEdit(editValue.trim());
+                        setEditing(false);
+                      }
+                    }}
+                    className="flex items-center gap-1 rounded-md bg-primary-foreground/20 px-2 py-1 text-[10px] text-primary-foreground hover:bg-primary-foreground/30 transition-colors"
+                  >
+                    <Check className="h-2.5 w-2.5" />
+                    Send
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div>
               <p className="text-sm whitespace-pre-wrap leading-relaxed">
                 {userContent || message.content}
               </p>
               <LinkBadges urls={userUrls} />
             </div>
+            )
           ) : isStreaming && !message.content ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{message.streamStatus || "Thinking..."}</span>
@@ -318,14 +366,23 @@ export function MessageBubble({
                 components={{
                   pre: ({ children, ...props }) => {
                     let codeText = "";
+                    let language = "";
                     try {
-                      const child = children as React.ReactElement<{ children?: string }>;
+                      const child = children as React.ReactElement<{ children?: string; className?: string }>;
                       codeText = String(child?.props?.children || "");
+                      const cls = child?.props?.className || "";
+                      const langMatch = cls.match(/language-(\w+)/);
+                      if (langMatch) language = langMatch[1];
                     } catch { /* ignore */ }
                     return (
                       <div className="relative group my-2">
+                        {language && (
+                          <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border/50 bg-black/60 px-3 py-1.5">
+                            <span className="text-[10px] font-mono text-muted-foreground/60 uppercase">{language}</span>
+                          </div>
+                        )}
                         <pre
-                          className="!bg-black/40 dark:!bg-black/40 !rounded-xl !border !border-border/50 overflow-x-auto"
+                          className={`!bg-black/40 dark:!bg-black/40 !border !border-border/50 overflow-x-auto ${language ? "!rounded-t-none !rounded-b-xl" : "!rounded-xl"}`}
                           {...props}
                         >
                           {children}
@@ -406,6 +463,19 @@ export function MessageBubble({
               </Tooltip>
               {message.content && (
                 <MessageCopyButton text={message.content} />
+              )}
+              {isUser && onEdit && !editing && (
+                <button
+                  onClick={() => {
+                    setEditValue(message.content);
+                    setEditing(true);
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                  title="Edit message"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                  <span>Edit</span>
+                </button>
               )}
               {!isUser && message.content && (
                 <>

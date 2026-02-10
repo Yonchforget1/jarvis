@@ -444,6 +444,9 @@ export function ChatContainer({
                     message={msg}
                     onRetry={msg.isError ? onRetry : undefined}
                     onStop={msg.isStreaming ? onStop : undefined}
+                    onEdit={msg.role === "user" && !isLoading ? (newContent) => {
+                      onSend(newContent);
+                    } : undefined}
                     searchQuery={searchOpen ? searchQuery : ""}
                     isActiveMatch={msg.id === activeMatchMsgId}
                     isGrouped={isGrouped}
