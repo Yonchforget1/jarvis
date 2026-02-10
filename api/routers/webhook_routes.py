@@ -101,7 +101,9 @@ async def create_webhook(
 
 
 @router.delete("/webhooks/{webhook_id}")
+@_limiter.limit("10/minute")
 async def delete_webhook(
+    request: Request,
     webhook_id: str,
     user: UserInfo = Depends(get_current_user),
 ):

@@ -3,13 +3,20 @@
 import asyncio
 import logging
 import os
+import re
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, field_validator
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+from api.deps import get_current_user
+from api.models import UserInfo
 
 log = logging.getLogger("jarvis.whatsapp")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 
@@ -26,11 +33,32 @@ def set_session_manager(sm):
 # Bridge endpoint (used by whatsapp_bridge.js — no auth required, localhost only)
 # ---------------------------------------------------------------------------
 
+_PHONE_RE = re.compile(r"^\+?[0-9]{7,15}$")
+
+
 class BridgeRequest(BaseModel):
     phone: str
     name: str = ""
     message: str
     session_id: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not _PHONE_RE.match(v):
+            raise ValueError("Invalid phone number format (expected 7-15 digits, optional + prefix)")
+        return v
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        if len(v) > 10_000:
+            raise ValueError("Message too long (max 10,000 characters)")
+        return v
 
 
 class BridgeResponse(BaseModel):
@@ -40,6 +68,7 @@ class BridgeResponse(BaseModel):
 
 
 @router.post("/whatsapp/bridge", response_model=BridgeResponse)
+@_limiter.limit("30/minute")
 async def whatsapp_bridge(body: BridgeRequest, request: Request):
     """Internal endpoint for the Node.js WhatsApp bridge.
 
@@ -91,6 +120,7 @@ class OCRRequest(BaseModel):
 
 
 @router.post("/whatsapp/ocr")
+@_limiter.limit("20/minute")
 async def whatsapp_ocr(body: OCRRequest, request: Request):
     """OCR an image file saved by the WhatsApp bridge. Localhost only."""
     client_host = request.client.host if request.client else ""
@@ -122,12 +152,12 @@ async def whatsapp_ocr(body: OCRRequest, request: Request):
 # ---------------------------------------------------------------------------
 
 @router.get("/whatsapp/status")
-async def whatsapp_status():
-    """Check WhatsApp integration status."""
+@_limiter.limit("10/minute")
+async def whatsapp_status(request: Request, user: UserInfo = Depends(get_current_user)):
+    """Check WhatsApp integration status (authenticated)."""
     return {
         "mode": "bridge",
         "bridge_endpoint": "/api/whatsapp/bridge",
         "ocr_endpoint": "/api/whatsapp/ocr",
         "active_conversations": len(_phone_sessions),
-        "sessions": {phone: sid for phone, sid in _phone_sessions.items()},
     }

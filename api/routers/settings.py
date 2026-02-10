@@ -5,9 +5,11 @@ import logging
 import os
 import threading
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.audit import audit_log
 from api.crypto import decrypt, encrypt
@@ -18,6 +20,7 @@ from jarvis.templates import list_templates
 log = logging.getLogger("jarvis.api.settings")
 
 router = APIRouter()
+_limiter = Limiter(key_func=get_remote_address)
 
 _session_manager = None
 
@@ -134,7 +137,8 @@ def _get_decrypted_api_key(user_settings: dict, fallback: str = "") -> str:
 
 
 @router.get("/settings", response_model=SettingsResponse)
-async def get_settings(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def get_settings(request: Request, user: UserInfo = Depends(get_current_user)):
     user_settings = _get_user_settings(user.id)
     config = _session_manager.config
     has_key = bool(_get_decrypted_api_key(user_settings, config.api_key))
@@ -149,7 +153,9 @@ async def get_settings(user: UserInfo = Depends(get_current_user)):
 
 
 @router.put("/settings", response_model=SettingsResponse)
+@_limiter.limit("10/minute")
 async def update_settings(
+    request: Request,
     update: SettingsUpdate,
     user: UserInfo = Depends(get_current_user),
 ):
@@ -211,7 +217,8 @@ async def update_settings(
 
 
 @router.get("/settings/models", response_model=ModelsResponse)
-async def get_available_models(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def get_available_models(request: Request, user: UserInfo = Depends(get_current_user)):
     resp = ModelsResponse(backends=AVAILABLE_BACKENDS, models=AVAILABLE_MODELS)
     return JSONResponse(
         content=resp.model_dump(),
@@ -229,7 +236,8 @@ _DEFAULT_PREFS = {
 
 
 @router.get("/settings/preferences", response_model=PreferencesResponse)
-async def get_preferences(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def get_preferences(request: Request, user: UserInfo = Depends(get_current_user)):
     """Get user UI preferences."""
     user_settings = _get_user_settings(user.id)
     prefs = user_settings.get("preferences", {})
@@ -237,7 +245,9 @@ async def get_preferences(user: UserInfo = Depends(get_current_user)):
 
 
 @router.put("/settings/preferences", response_model=PreferencesResponse)
+@_limiter.limit("10/minute")
 async def update_preferences(
+    request: Request,
     update: PreferencesUpdate,
     user: UserInfo = Depends(get_current_user),
 ):
@@ -266,6 +276,7 @@ async def update_preferences(
 
 
 @router.get("/settings/templates")
-async def get_templates(user: UserInfo = Depends(get_current_user)):
+@_limiter.limit("30/minute")
+async def get_templates(request: Request, user: UserInfo = Depends(get_current_user)):
     """Return available conversation templates."""
     return {"templates": list_templates()}
