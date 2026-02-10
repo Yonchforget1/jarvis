@@ -29,7 +29,7 @@ import {
   Search,
   ArrowUpDown,
 } from "lucide-react";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useSessionContext } from "@/lib/session-context";
 import { useSessions } from "@/hooks/use-sessions";
@@ -124,15 +124,24 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sessionLimit, setSessionLimit] = useState(15);
   const [sortMode, setSortMode] = useState<"recent" | "name" | "messages">("recent");
   const toast = useToast();
   const editInputRef = useRef<HTMLInputElement>(null);
 
+  // Debounce session search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(sessionSearch), 200);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [sessionSearch]);
+
   const filteredSessions = useMemo(() => {
     let result = sessions;
-    if (sessionSearch.trim()) {
-      const q = sessionSearch.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((s) =>
         s.customName?.toLowerCase().includes(q) ||
         s.autoTitle?.toLowerCase().includes(q) ||
@@ -150,7 +159,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
     }
     // "recent" uses default order from API (most recent first)
     return result;
-  }, [sessions, sessionSearch, sortMode]);
+  }, [sessions, debouncedSearch, sortMode]);
 
   useEffect(() => {
     if (editingSessionId && editInputRef.current) {

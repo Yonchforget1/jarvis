@@ -64,7 +64,7 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
   const meta = TOOL_META[call.name] || DEFAULT_META;
   const Icon = meta.icon;
 
-  // Timer: tick every 100ms while running, freeze when result arrives
+  // Timer: tick every 100ms for first second, then every 1s. Freeze when result arrives
   useEffect(() => {
     if (call.result) {
       if (frozenTimeRef.current === null) {
@@ -73,9 +73,21 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
       }
       return;
     }
-    const timer = setInterval(() => {
-      setElapsed(Date.now() - startTimeRef.current);
-    }, 100);
+    // Start with fast ticks, switch to slow after 1s
+    let timer: ReturnType<typeof setInterval>;
+    const now = Date.now() - startTimeRef.current;
+    if (now < 1000) {
+      timer = setInterval(() => {
+        const e = Date.now() - startTimeRef.current;
+        setElapsed(e);
+        if (e >= 1000) {
+          clearInterval(timer);
+          timer = setInterval(() => setElapsed(Date.now() - startTimeRef.current), 1000);
+        }
+      }, 100);
+    } else {
+      timer = setInterval(() => setElapsed(Date.now() - startTimeRef.current), 1000);
+    }
     return () => clearInterval(timer);
   }, [call.result]);
 

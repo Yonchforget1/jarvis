@@ -226,9 +226,13 @@ export function ChatContainer({
     }
   }, [messages, toast]);
 
-  // Track messages length in ref so keyboard handler doesn't re-register on every message
+  // Track messages length + last error in refs so keyboard handler stays stable
   const messagesLenRef = useRef(messages.length);
-  useEffect(() => { messagesLenRef.current = messages.length; }, [messages.length]);
+  const lastMsgErrorRef = useRef(false);
+  useEffect(() => {
+    messagesLenRef.current = messages.length;
+    lastMsgErrorRef.current = messages.length > 0 && !!messages[messages.length - 1].isError;
+  }, [messages]);
 
   const searchFocusRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -259,25 +263,37 @@ export function ChatContainer({
         e.preventDefault();
         setClearConfirmOpen(true);
       }
+      // Ctrl+Shift+R to retry last failed message
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "R" && lastMsgErrorRef.current && onRetry) {
+        e.preventDefault();
+        onRetry();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [searchOpen, closeSearch, exportChat, onClear]);
+  }, [searchOpen, closeSearch, exportChat, onClear, onRetry]);
 
-  // Track scroll position to show/hide scroll-to-bottom button
+  // Track scroll position to show/hide scroll-to-bottom button (throttled via rAF)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let rafId: number | null = null;
     const handleScroll = () => {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setShowScrollButton(distanceFromBottom > 200);
-      // Reset new message count when scrolled to bottom
-      if (distanceFromBottom < 100) {
-        setNewMessageCount(0);
-      }
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        setShowScrollButton(distanceFromBottom > 200);
+        if (distanceFromBottom < 100) {
+          setNewMessageCount(0);
+        }
+      });
     };
     el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Auto-scroll to bottom on new messages (only if already near bottom)
