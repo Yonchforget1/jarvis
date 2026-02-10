@@ -312,7 +312,7 @@ export default function ToolsPage() {
           <Search className="h-10 w-10 text-muted-foreground/20 mb-3" />
           <p className="text-sm text-muted-foreground">No tools found</p>
           <p className="text-xs text-muted-foreground/50 mt-1">
-            Try a different search or filter
+            {debouncedSearch ? `"${debouncedSearch}" matched 0 of ${tools.length} tools` : `No tools in this category (${tools.length} total)`}
           </p>
         </div>
       ) : (

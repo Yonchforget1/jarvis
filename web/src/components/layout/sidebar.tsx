@@ -468,7 +468,7 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
               <div className="px-3 py-4 text-center">
                 <Search className="h-6 w-6 text-muted-foreground/20 mx-auto mb-2" />
                 <p className="text-xs text-muted-foreground/50 font-medium">No matches found</p>
-                <p className="text-[10px] text-muted-foreground/30 mt-0.5">Try a different search term</p>
+                <p className="text-[10px] text-muted-foreground/30 mt-0.5">0 of {sessions.length} chats match &ldquo;{debouncedSearch}&rdquo;</p>
                 <button
                   onClick={() => setSessionSearch("")}
                   className="mt-2 text-[10px] text-primary/60 hover:text-primary transition-colors"

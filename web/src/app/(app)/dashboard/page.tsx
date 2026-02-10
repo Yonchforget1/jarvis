@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
       {/* Stale data warning */}
       {isStale && !statsError && (
-        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-2.5 animate-fade-in">
+        <div className={`flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-2.5 animate-fade-in transition-opacity ${refetching ? "opacity-50" : ""}`}>
           <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
           <span className="text-xs text-yellow-400">Data may be outdated (last update {lastUpdatedText})</span>
           <button
