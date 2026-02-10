@@ -106,7 +106,11 @@ class WebConversation(Conversation):
                     })
 
                     self.total_tool_calls += 1
-                    result = self.registry.handle_call(tc.name, tc.args)
+                    try:
+                        result = self.registry.handle_call(tc.name, tc.args)
+                    except Exception as e:
+                        log.exception("Tool %s failed in stream: %s", tc.name, e)
+                        result = f"Error executing {tc.name}: {str(e)[:500]}"
                     display_result = self._truncate_result(result)
 
                     self._pending_tool_calls.append({

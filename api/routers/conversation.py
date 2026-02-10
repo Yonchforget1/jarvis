@@ -306,9 +306,14 @@ async def search_conversations(
     # Search most recent sessions first for faster relevant results
     sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)
     query_lower = q.lower()
+    q_len = len(q)
     results = []
 
     for session in sessions:
+        # Early exit: stop scanning once we have 3x the requested limit
+        if len(results) >= limit * 3:
+            break
+
         messages = session.conversation.get_display_messages()
         matches = []
         for i, msg in enumerate(messages):
@@ -316,11 +321,12 @@ async def search_conversations(
             if isinstance(content, list):
                 text_parts = [p.get("text", "") for p in content if isinstance(p, dict) and "text" in p]
                 content = "\n".join(text_parts)
-            if query_lower in content.lower():
-                # Include snippet around match
-                idx = content.lower().find(query_lower)
+            # Single .lower() call, reuse for both check and find
+            content_lower = content.lower()
+            idx = content_lower.find(query_lower)
+            if idx != -1:
                 start = max(0, idx - 50)
-                end = min(len(content), idx + len(q) + 50)
+                end = min(len(content), idx + q_len + 50)
                 snippet = content[start:end]
                 if start > 0:
                     snippet = "..." + snippet
