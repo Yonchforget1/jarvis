@@ -92,7 +92,7 @@ export function LoginForm() {
       <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
+            <div role="alert" id="login-error" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
               {isRateLimited && (
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-4 w-4 shrink-0" />
@@ -121,6 +121,7 @@ export function LoginForm() {
               autoFocus
               autoComplete="username"
               enterKeyHint="next"
+              aria-describedby={error ? "login-error" : undefined}
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
@@ -137,6 +138,7 @@ export function LoginForm() {
                 minLength={6}
                 autoComplete="current-password"
                 enterKeyHint="go"
+                aria-describedby={error ? "login-error" : undefined}
                 className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
               />
               <button

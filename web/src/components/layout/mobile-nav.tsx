@@ -34,7 +34,7 @@ export function MobileNav() {
               href={item.href}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+              className={`relative flex flex-col items-center gap-0.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground/60 active:text-foreground"

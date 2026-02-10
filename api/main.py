@@ -153,13 +153,16 @@ async def security_headers_middleware(request: Request, call_next):
     # CSP: allow self + API + inline styles (needed for Next.js) + media from self
     csp = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob:; "
         "font-src 'self'; "
-        "connect-src 'self' ws: wss: http://localhost:* https://localhost:*; "
+        "connect-src 'self' ws: wss: http://localhost:8000 http://localhost:3000; "
         "media-src 'self' blob:; "
-        "frame-ancestors 'none';"
+        "frame-ancestors 'none'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
     )
     response.headers["Content-Security-Policy"] = csp
     return response

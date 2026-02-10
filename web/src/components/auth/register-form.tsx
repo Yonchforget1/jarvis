@@ -117,7 +117,7 @@ export function RegisterForm() {
       <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
+            <div role="alert" id="register-error" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 animate-scale-in">
               {error}
             </div>
           )}
@@ -136,6 +136,7 @@ export function RegisterForm() {
               autoFocus
               autoComplete="username"
               enterKeyHint="next"
+              aria-describedby={error ? "register-error" : undefined}
               className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40"
             />
           </div>
@@ -165,7 +166,8 @@ export function RegisterForm() {
                 required
                 autoComplete="new-password"
                 enterKeyHint="next"
-                className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
+                aria-describedby={error ? "register-error" : undefined}
+              className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/40 pr-10"
               />
               <button
                 type="button"
