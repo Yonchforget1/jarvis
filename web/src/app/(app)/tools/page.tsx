@@ -14,6 +14,9 @@ import {
   Monitor,
   Eye,
   ChevronsUpDown,
+  ArrowUpDown,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useTools } from "@/hooks/use-tools";
 import { Input } from "@/components/ui/input";
@@ -93,11 +96,31 @@ const CATEGORY_META: Record<
   },
 };
 
+// Format a JSON schema type for display
+function formatParamType(schema: Record<string, unknown>): string {
+  const type = schema.type as string | undefined;
+  if (schema.enum) return `enum(${(schema.enum as string[]).join("|")})`;
+  if (type === "array" && schema.items) {
+    const items = schema.items as Record<string, unknown>;
+    return `${items.type || "any"}[]`;
+  }
+  return type || "string";
+}
+
 function ToolCard({ tool, forceExpanded, usage }: { tool: ToolInfo; forceExpanded?: boolean; usage?: ToolStat }) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const isExpanded = forceExpanded !== undefined ? forceExpanded : expanded;
   const meta = CATEGORY_META[tool.category] || CATEGORY_META.other;
   const paramCount = Object.keys(tool.parameters?.properties || {}).length;
+
+  const copyName = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(tool.name).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   return (
     <div
@@ -138,7 +161,17 @@ function ToolCard({ tool, forceExpanded, usage }: { tool: ToolInfo; forceExpande
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 p-4 animate-fade-in-up">
-          <p className="text-sm leading-relaxed mb-3">{tool.description}</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm leading-relaxed">{tool.description}</p>
+            <button
+              onClick={copyName}
+              className="flex items-center gap-1 shrink-0 ml-2 rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Copy tool name"
+            >
+              {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copied" : "Copy name"}
+            </button>
+          </div>
           {usage && usage.calls > 0 && (
             <div className="flex items-center gap-4 mb-3 text-[10px] text-muted-foreground/60 bg-muted/30 rounded-lg px-3 py-2">
               <span className="flex items-center gap-1">
@@ -163,7 +196,7 @@ function ToolCard({ tool, forceExpanded, usage }: { tool: ToolInfo; forceExpande
                 <div className="space-y-2 bg-muted dark:bg-black/20 rounded-lg p-3">
                   {Object.entries(tool.parameters.properties).map(
                     ([name, schema]) => {
-                      const s = schema as Record<string, string>;
+                      const s = schema as Record<string, unknown>;
                       const isRequired =
                         tool.parameters.required?.includes(name);
                       return (
@@ -171,13 +204,13 @@ function ToolCard({ tool, forceExpanded, usage }: { tool: ToolInfo; forceExpande
                           <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary shrink-0">
                             {name}
                           </code>
-                          <span className="text-muted-foreground/60 shrink-0">
-                            {s.type || "string"}
+                          <span className="text-muted-foreground/60 shrink-0 font-mono text-[10px]">
+                            {formatParamType(s)}
                             {isRequired && (
                               <span className="text-red-400 ml-0.5">*</span>
                             )}
                           </span>
-                          {s.description && (
+                          {typeof s.description === "string" && s.description && (
                             <span className="text-muted-foreground/50 leading-relaxed">
                               {s.description}
                             </span>
@@ -202,6 +235,7 @@ export default function ToolsPage() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [allExpanded, setAllExpanded] = useState<boolean | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<"name" | "calls" | "errors" | "speed">("name");
   const [toolStats, setToolStats] = useState<Record<string, ToolStat>>({});
 
   // Fetch tool usage stats
@@ -221,15 +255,22 @@ export default function ToolsPage() {
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  const filtered = useMemo(() => tools.filter((t) => {
-    const matchesSearch =
-      !debouncedSearch ||
-      t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      t.description.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchesCategory =
-      !activeCategory || (t.category || "other") === activeCategory;
-    return matchesSearch && matchesCategory;
-  }), [tools, debouncedSearch, activeCategory]);
+  const filtered = useMemo(() => {
+    const list = tools.filter((t) => {
+      const matchesSearch =
+        !debouncedSearch ||
+        t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        t.description.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesCategory =
+        !activeCategory || (t.category || "other") === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+    if (sortBy === "name") return list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === "calls") return list.sort((a, b) => (toolStats[b.name]?.calls || 0) - (toolStats[a.name]?.calls || 0));
+    if (sortBy === "errors") return list.sort((a, b) => (toolStats[b.name]?.errors || 0) - (toolStats[a.name]?.errors || 0));
+    if (sortBy === "speed") return list.sort((a, b) => (toolStats[a.name]?.avg_ms || 9999) - (toolStats[b.name]?.avg_ms || 9999));
+    return list;
+  }, [tools, debouncedSearch, activeCategory, sortBy, toolStats]);
 
   // Get unique categories from actual tools
   const categories = useMemo(
@@ -276,13 +317,31 @@ export default function ToolsPage() {
           </p>
         </div>
         {tools.length > 0 && (
-          <button
-            onClick={() => setAllExpanded(allExpanded === true ? undefined : true)}
-            className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <ChevronsUpDown className="h-3.5 w-3.5" />
-            {allExpanded ? "Collapse All" : "Expand All"}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 p-0.5">
+              <ArrowUpDown className="h-3 w-3 text-muted-foreground/50 ml-1.5" />
+              {(["name", "calls", "errors", "speed"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={`rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
+                    sortBy === s
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground/60 hover:text-foreground"
+                  }`}
+                >
+                  {s === "name" ? "A-Z" : s === "calls" ? "Most Used" : s === "errors" ? "Errors" : "Fastest"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setAllExpanded(allExpanded === true ? undefined : true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+              {allExpanded ? "Collapse All" : "Expand All"}
+            </button>
+          </div>
         )}
       </div>
 

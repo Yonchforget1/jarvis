@@ -50,7 +50,7 @@ export function useStats(pollInterval: number = 15000) {
     let cancelled = false;
 
     const scheduleNext = () => {
-      if (cancelled) return;
+      if (cancelled || document.hidden) return;
       // Exponential backoff: double interval per failure, cap at 2 minutes
       const backoff = consecutiveFailures.current > 0
         ? Math.min(pollInterval * Math.pow(2, consecutiveFailures.current), 120000)

@@ -21,7 +21,6 @@ export function useConnection() {
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [latency, setLatency] = useState<number | null>(null);
   const statusRef = useRef<ConnectionStatus>("checking");
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slowStreakRef = useRef(0);
   const failCountRef = useRef(0);
 
@@ -68,39 +67,42 @@ export function useConnection() {
   }, []);
 
   useEffect(() => {
-    checkConnection();
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    // Adaptive polling with jitter and exponential backoff when disconnected
-    const poll = () => {
+    // Use setTimeout chain instead of setInterval to prevent overlap
+    const scheduleNext = () => {
+      if (cancelled || document.hidden) return;
       let baseInterval: number;
       if (statusRef.current === "disconnected") {
-        baseInterval = Math.min(INITIAL_RETRY_INTERVAL * Math.pow(2, failCountRef.current - 1), MAX_RETRY_INTERVAL);
+        baseInterval = Math.min(
+          INITIAL_RETRY_INTERVAL * Math.pow(2, Math.max(0, failCountRef.current - 1)),
+          MAX_RETRY_INTERVAL,
+        );
       } else {
         baseInterval = POLL_INTERVAL;
       }
-      const interval = jitter(baseInterval);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        checkConnection().then(() => {
-          // Re-adjust interval if status changed
-          poll();
-        });
-      }, interval);
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        checkConnection().then(scheduleNext);
+      }, jitter(baseInterval));
     };
-    poll();
 
-    // Pause polling when tab is hidden
+    checkConnection().then(scheduleNext);
+
+    // Pause polling when tab is hidden, resume when visible
     const handleVisibility = () => {
       if (document.hidden) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (timer) { clearTimeout(timer); timer = null; }
       } else {
-        checkConnection();
-        poll();
+        checkConnection().then(scheduleNext);
       }
     };
 
     // Detect browser online/offline for instant feedback
-    const handleOnline = () => checkConnection();
+    const handleOnline = () => {
+      checkConnection().then(scheduleNext);
+    };
     const handleOffline = () => {
       setStatus("disconnected");
       setLatency(null);
@@ -111,7 +113,8 @@ export function useConnection() {
     window.addEventListener("offline", handleOffline);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      cancelled = true;
+      if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
