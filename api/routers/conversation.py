@@ -52,9 +52,12 @@ async def list_sessions(
     limit: int = Query(default=50, ge=1, le=200, description="Max sessions to return"),
     offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     sort_by: str = Query(default="last_active", pattern="^(last_active|created_at|message_count)$"),
+    archived: bool | None = Query(default=None, description="Filter by archived status"),
 ):
     """List sessions for the current user with pagination and sorting."""
     sessions = _session_manager.get_user_sessions(user.id)
+    if archived is not None:
+        sessions = [s for s in sessions if getattr(s, "archived", False) == archived]
     reverse = True
     if sort_by == "message_count":
         sessions = sorted(sessions, key=lambda s: s.message_count, reverse=reverse)
@@ -119,6 +122,22 @@ async def rename_session(
         raise HTTPException(status_code=400, detail="Session name contains invalid characters")
     session.custom_name = name
     return {"status": "renamed", "session_id": session_id, "name": name}
+
+
+@router.patch("/sessions/{session_id}/archive")
+@_limiter.limit("20/minute")
+async def archive_session(
+    request: Request,
+    session_id: str = Path(..., min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Toggle archive status on a session."""
+    session = _session_manager.get_session(session_id, user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    current = getattr(session, "archived", False)
+    session.archived = not current
+    return {"status": "archived" if session.archived else "unarchived", "session_id": session_id}
 
 
 @router.delete("/sessions/{session_id}")

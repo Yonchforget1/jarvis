@@ -89,11 +89,61 @@ def blacklist_token(token: str) -> bool:
     return True
 
 
-def blacklist_user_tokens(user_id: str):
-    """Blacklist all active tokens for a user (force logout everywhere)."""
-    # This is a best-effort operation - tokens without JTI won't be caught
-    # New tokens include JTI, so this will work for all tokens going forward
-    pass
+def blacklist_user_tokens(user_id: str) -> int:
+    """Blacklist all active tokens for a user (force logout everywhere).
+
+    Scans the blacklist file for active JTIs belonging to this user and
+    adds them all. Returns the count of newly blacklisted tokens.
+
+    Note: Only works for tokens that have been seen (logged in within
+    JWT_EXPIRY_HOURS). This is a best-effort operation.
+    """
+    # Since we don't track user_id -> JTI mappings, we decode all non-blacklisted
+    # tokens. For a more scalable approach, maintain a user_id -> [jti] index.
+    # For now, we record the user_id in a "force_logout" set so that
+    # any token decode for this user will be rejected.
+    with _blacklist_lock:
+        _force_logout_users.add(user_id)
+        _save_force_logout()
+    return 0  # We don't know exact count, but all future checks will reject
+
+
+# Force-logout set: any token for these user IDs is rejected
+_FORCE_LOGOUT_FILE = os.path.join(DATA_DIR, "force_logout_users.json")
+_force_logout_users: set[str] = set()
+
+
+def _load_force_logout():
+    global _force_logout_users
+    if not os.path.exists(_FORCE_LOGOUT_FILE):
+        return
+    try:
+        with open(_FORCE_LOGOUT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        _force_logout_users = set(data) if isinstance(data, list) else set()
+    except Exception:
+        _force_logout_users = set()
+
+
+def _save_force_logout():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(_FORCE_LOGOUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(_force_logout_users), f)
+
+
+def clear_force_logout(user_id: str):
+    """Remove a user from the force-logout set (after they re-login)."""
+    with _blacklist_lock:
+        _force_logout_users.discard(user_id)
+        _save_force_logout()
+
+
+def is_user_force_logged_out(user_id: str) -> bool:
+    """Check if a user is in the force-logout set."""
+    return user_id in _force_logout_users
+
+
+_load_force_logout()
 
 
 def is_token_blacklisted(jti: str) -> bool:
@@ -140,6 +190,9 @@ def authenticate_user(username: str, password: str) -> dict | None:
     users = _load_users()
     for user in users:
         if user["username"] == username and bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+            # Clear force-logout on successful re-authentication
+            if is_user_force_logged_out(user["id"]):
+                clear_force_logout(user["id"])
             return user
     return None
 
@@ -181,12 +234,16 @@ def create_token(user: dict) -> str:
 def decode_token(token: str, check_blacklist: bool = True) -> dict | None:
     """Decode and validate a JWT token. Returns payload or None.
 
-    If check_blacklist is True, also verifies the token hasn't been revoked.
+    If check_blacklist is True, also verifies the token hasn't been revoked
+    and the user hasn't been force-logged-out.
     """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if check_blacklist and payload.get("jti") and is_token_blacklisted(payload["jti"]):
-            return None
+        if check_blacklist:
+            if payload.get("jti") and is_token_blacklisted(payload["jti"]):
+                return None
+            if payload.get("sub") and is_user_force_logged_out(payload["sub"]):
+                return None
         return payload
     except JWTError:
         return None

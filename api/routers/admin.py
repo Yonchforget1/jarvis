@@ -86,11 +86,19 @@ async def system_info(request: Request, user: UserInfo = Depends(get_current_use
 
 @router.get("/admin/sessions")
 @limiter.limit("10/minute")
-async def list_all_sessions(request: Request, user: UserInfo = Depends(get_current_user)):
-    """List all active sessions across all users (admin only)."""
+async def list_all_sessions(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user: UserInfo = Depends(get_current_user),
+):
+    """List all active sessions across all users with pagination (admin only)."""
     _require_admin(user)
 
     sessions = _session_manager.get_all_sessions() if _session_manager else []
+    sessions = sorted(sessions, key=lambda s: s.last_active, reverse=True)
+    total = len(sessions)
+    page = sessions[offset:offset + limit]
     return {
         "sessions": [
             {
@@ -99,10 +107,13 @@ async def list_all_sessions(request: Request, user: UserInfo = Depends(get_curre
                 "created_at": s.created_at.isoformat(),
                 "last_active": s.last_active.isoformat(),
                 "message_count": s.message_count,
+                "archived": getattr(s, "archived", False),
             }
-            for s in sessions
+            for s in page
         ],
-        "total": len(sessions),
+        "total": total,
+        "limit": limit,
+        "offset": offset,
     }
 
 
