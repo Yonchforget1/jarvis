@@ -327,6 +327,13 @@ export function useChat(initialSessionId?: string | null, options?: UseChatOptio
         },
       );
 
+      if (res.status === 404) {
+        // Session was deleted or doesn't exist
+        setMessages([]);
+        setSessionId(null);
+        setError("This conversation no longer exists.");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to load session");
 
       const data = await res.json();

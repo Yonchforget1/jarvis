@@ -378,13 +378,14 @@ export function Sidebar({ onClose, onSessionSelect, activeSessionId, collapsed, 
                       <input
                         ref={editInputRef}
                         value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
+                        onChange={(e) => setEditValue(e.target.value.slice(0, 100))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") finishRename();
                           if (e.key === "Escape") setEditingSessionId(null);
                         }}
                         onBlur={finishRename}
                         onClick={(e) => e.stopPropagation()}
+                        maxLength={100}
                         className="w-full text-xs bg-transparent outline-none border-b border-primary/40 pb-0.5"
                       />
                     ) : (

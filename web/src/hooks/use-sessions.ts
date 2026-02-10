@@ -79,29 +79,32 @@ export function useSessions() {
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
+      // Optimistic: remove from UI immediately
+      const previousSessions = sessions;
+      setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+      setSessionNames((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        saveSessionNames(next);
+        return next;
+      });
       try {
         await api.delete(`/api/sessions/${sessionId}`);
-        setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
-        // Clean up custom name
-        setSessionNames((prev) => {
-          const next = { ...prev };
-          delete next[sessionId];
-          saveSessionNames(next);
-          return next;
-        });
       } catch {
-        // Silently fail
+        // Rollback on error
+        setSessions(previousSessions);
       }
     },
-    [],
+    [sessions],
   );
 
   const renameSession = useCallback(
     (sessionId: string, name: string) => {
+      const trimmed = name.trim().slice(0, 100);
       setSessionNames((prev) => {
         const next = { ...prev };
-        if (name.trim()) {
-          next[sessionId] = name.trim();
+        if (trimmed) {
+          next[sessionId] = trimmed;
         } else {
           delete next[sessionId];
         }
