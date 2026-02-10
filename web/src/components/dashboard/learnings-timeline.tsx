@@ -33,8 +33,9 @@ export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] })
   return (
     <div className="space-y-3">
       {[...learnings].reverse().map((entry, i) => (
-        <div
+        <article
           key={`${entry.timestamp}-${i}`}
+          aria-label={`${entry.category} learning`}
           className="group rounded-2xl border border-border/50 bg-card/50 p-4 transition-all duration-200 hover:border-border hover:bg-card/80 animate-fade-in-up"
           style={{ animationDelay: `${i * 0.05}s` }}
         >
@@ -65,7 +66,7 @@ export function LearningsTimeline({ learnings }: { learnings: LearningEntry[] })
               Task: {entry.task_description}
             </p>
           )}
-        </div>
+        </article>
       ))}
     </div>
   );

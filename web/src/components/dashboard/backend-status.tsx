@@ -48,9 +48,12 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
   const [health, setHealth] = useState<HealthData | null>(null);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
     const fetchHealth = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/health`);
+        const res = await fetch(`${API_URL}/api/health`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (res.ok) {
           setHealth(await res.json());
         }
@@ -59,8 +62,23 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
       }
     };
     fetchHealth();
-    const interval = setInterval(fetchHealth, 30000);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchHealth, 30000);
+
+    // Pause polling when tab is hidden
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchHealth();
+        interval = setInterval(fetchHealth, 30000);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const items = [
