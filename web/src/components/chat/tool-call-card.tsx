@@ -87,6 +87,12 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
       ? `${elapsed}ms`
       : `${(elapsed / 1000).toFixed(1)}s`;
 
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
+
   const handleCopyResult = async () => {
     try {
       await navigator.clipboard.writeText(call.result);
@@ -94,7 +100,8 @@ export function ToolCallCard({ call }: { call: ToolCallDetail }) {
     } catch {
       setCopied(false);
     }
-    setTimeout(() => setCopied(false), 3000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 3000);
   };
 
   const argsSummary = useMemo(() => {

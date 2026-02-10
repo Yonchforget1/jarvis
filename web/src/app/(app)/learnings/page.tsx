@@ -93,7 +93,9 @@ export default function LearningsPage() {
                 const a = document.createElement("a");
                 a.href = url;
                 a.download = `jarvis-learnings-${new Date().toISOString().slice(0, 10)}.md`;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
               }}
               className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

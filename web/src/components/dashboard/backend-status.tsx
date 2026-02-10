@@ -48,13 +48,14 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
   const [health, setHealth] = useState<HealthData | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const token = typeof window !== "undefined" ? localStorage.getItem("jarvis_token") : null;
     const fetchHealth = async () => {
       try {
         const res = await fetch(`${API_URL}/api/health`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           setHealth(await res.json());
         }
       } catch {
@@ -76,6 +77,7 @@ export function BackendStatus({ stats }: { stats: SystemStats }) {
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
