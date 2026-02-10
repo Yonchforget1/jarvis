@@ -6,6 +6,7 @@ import os
 import threading
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from api.crypto import decrypt, encrypt
@@ -195,9 +196,10 @@ async def update_settings(
 
 @router.get("/settings/models", response_model=ModelsResponse)
 async def get_available_models(user: UserInfo = Depends(get_current_user)):
-    return ModelsResponse(
-        backends=AVAILABLE_BACKENDS,
-        models=AVAILABLE_MODELS,
+    resp = ModelsResponse(backends=AVAILABLE_BACKENDS, models=AVAILABLE_MODELS)
+    return JSONResponse(
+        content=resp.model_dump(),
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 

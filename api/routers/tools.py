@@ -1,8 +1,10 @@
 """Tools endpoint: list available tools with categories."""
 
+import hashlib
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -83,7 +85,12 @@ async def list_tools(request: Request, user: UserInfo = Depends(get_current_user
             for t in tools
         ]
 
-        return ToolsResponse(tools=tool_list, count=len(tool_list))
+        resp = ToolsResponse(tools=tool_list, count=len(tool_list))
+        etag = hashlib.md5(",".join(sorted(t.name for t in tool_list)).encode()).hexdigest()[:16]
+        return JSONResponse(
+            content=resp.model_dump(),
+            headers={"Cache-Control": "private, max-age=3600", "ETag": f'"{etag}"'},
+        )
     except Exception as e:
         log.exception("Failed to list tools for user %s", user.id)
         raise HTTPException(status_code=500, detail="Failed to list tools")

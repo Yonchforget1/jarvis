@@ -332,7 +332,9 @@ export function ChatContainer({
     const isNearBottom = distanceFromBottom < 200;
 
     if (isNearBottom) {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      // Use instant scroll when far from actual bottom to avoid jank during rapid streaming
+      const jumpDistance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      el.scrollTo({ top: el.scrollHeight, behavior: jumpDistance > 500 ? "auto" : "smooth" });
       setNewMessageCount(0);
     } else if (messages.length > prevMessageCountRef.current) {
       // User is scrolled up and new messages arrived
@@ -343,7 +345,9 @@ export function ChatContainer({
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      const el = scrollRef.current;
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      el.scrollTo({ top: el.scrollHeight, behavior: distance > 500 ? "auto" : "smooth" });
       setNewMessageCount(0);
     }
   }, []);

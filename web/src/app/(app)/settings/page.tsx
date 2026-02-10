@@ -49,6 +49,7 @@ export default function SettingsPage() {
   const [maxTokens, setMaxTokens] = useState(4096);
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -181,8 +182,30 @@ export default function SettingsPage() {
     };
   }, []);
 
+  const validateForm = useCallback((): boolean => {
+    const errors: Record<string, string> = {};
+    if (maxTokens < 256 || maxTokens > 32768) {
+      errors.maxTokens = "Must be between 256 and 32,768";
+    }
+    if (apiKey && apiKey.length > 0 && apiKey.length < 10) {
+      errors.apiKey = "API key appears too short";
+    }
+    if (!backend) {
+      errors.backend = "Please select a backend";
+    }
+    if (!model) {
+      errors.model = "Please select a model";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [maxTokens, apiKey, backend, model]);
+
   const handleSave = async () => {
     if (saving) return;
+    if (!validateForm()) {
+      toast.error("Validation failed", "Please fix the highlighted errors.");
+      return;
+    }
     try {
       const update: Partial<{
         backend: string;
@@ -198,6 +221,7 @@ export default function SettingsPage() {
       await updateSettings(update);
       setApiKey("");
       setHasChanges(false);
+      setFormErrors({});
       toast.success("Settings saved", "Your preferences have been updated.");
     } catch {
       toast.error("Failed to save", "Please check your settings and try again.");
@@ -505,7 +529,8 @@ export default function SettingsPage() {
                   placeholder="Enter your API key to override server default"
                   maxLength={256}
                   autoComplete="off"
-                  className="pr-10 bg-secondary/50 border-border/50"
+                  aria-invalid={!!formErrors.apiKey}
+                  className={`pr-10 bg-secondary/50 ${formErrors.apiKey ? "border-red-500/50" : "border-border/50"}`}
                 />
                 <button
                   type="button"
@@ -519,9 +544,16 @@ export default function SettingsPage() {
                   )}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground/60">
-                Your key is stored securely and used only for your sessions.
-              </p>
+              {formErrors.apiKey ? (
+                <p className="text-[10px] text-red-400 flex items-center gap-1 animate-fade-in">
+                  <AlertCircle className="h-3 w-3" />
+                  {formErrors.apiKey}
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground/60">
+                  Your key is stored securely and used only for your sessions.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
