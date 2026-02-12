@@ -311,9 +311,27 @@ def test_settings_get(client):
     assert "anthropic" in data["available_backends"]
 
 
+def test_settings_update_admin(client):
+    # First user becomes admin
+    reg = client.post("/api/auth/register", json={"username": "admin1", "password": "pass123"})
+    token = reg.json()["access_token"]
+    assert reg.json()["role"] == "admin"
+
+    res = client.patch(
+        "/api/settings",
+        json={"max_tokens": 8192},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert "max_tokens" in res.json()["changed"]
+
+
 def test_settings_update_requires_admin(client):
+    # First user is admin, second is not
+    client.post("/api/auth/register", json={"username": "firstadm", "password": "pass123"})
     reg = client.post("/api/auth/register", json={"username": "normuser", "password": "pass123"})
     token = reg.json()["access_token"]
+    assert reg.json()["role"] == "user"
     res = client.patch(
         "/api/settings",
         json={"max_tokens": 8192},

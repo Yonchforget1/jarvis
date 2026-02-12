@@ -46,16 +46,20 @@ def _save_users(users: list[dict]) -> None:
 
 
 def create_user(username: str, password: str, email: str = "") -> dict | None:
-    """Create a new user. Returns user dict or None if duplicate."""
+    """Create a new user. Returns user dict or None if duplicate.
+    The first registered user automatically becomes admin.
+    """
     users = _load_users()
     if any(u["username"] == username for u in users):
         return None
+    # First user is admin
+    role = "admin" if len(users) == 0 else "user"
     user = {
         "id": uuid.uuid4().hex,
         "username": username,
         "password_hash": _hash_password(password),
         "email": email,
-        "role": "user",
+        "role": role,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     users.append(user)
