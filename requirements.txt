@@ -18,6 +18,7 @@ python-multipart>=0.0.9
 slowapi>=0.1.9
 
 # AI Backends (optional – install the one you use)
+anthropic>=0.40.0
 openai>=1.40.0
 google-genai>=1.0.0
 

@@ -16,6 +16,10 @@ def create_backend(config: Config) -> Backend:
         from jarvis.backends.claude_code import ClaudeCodeBackend
         return ClaudeCodeBackend(config)
 
+    if name == "anthropic":
+        from jarvis.backends.anthropic_backend import AnthropicBackend
+        return AnthropicBackend(config)
+
     if name == "openai":
         from jarvis.backends.openai_backend import OpenAIBackend
         return OpenAIBackend(config)

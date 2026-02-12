@@ -226,6 +226,122 @@ def test_factory_openai(mock_openai):
     assert type(backend).__name__ == "OpenAIBackend"
 
 
+# ── Anthropic Backend ──
+
+def _make_anthropic_config():
+    config = MagicMock()
+    config.backend = "anthropic"
+    config.model = "claude-sonnet-4-5-20250929"
+    config.api_key = "test-key"
+    return config
+
+
+@pytest.fixture
+def mock_anthropic():
+    """Mock the anthropic module."""
+    mock_module = MagicMock()
+    with patch.dict(sys.modules, {"anthropic": mock_module}):
+        sys.modules.pop("jarvis.backends.anthropic_backend", None)
+        from jarvis.backends.anthropic_backend import AnthropicBackend
+        yield AnthropicBackend, mock_module
+
+
+def test_anthropic_send_text(mock_anthropic):
+    AnthropicBackend, mock_mod = mock_anthropic
+    mock_client = MagicMock()
+    mock_mod.Anthropic.return_value = mock_client
+
+    mock_text_block = MagicMock()
+    mock_text_block.type = "text"
+    mock_text_block.text = "Hello from Claude!"
+    mock_response = MagicMock()
+    mock_response.content = [mock_text_block]
+    mock_response.usage.input_tokens = 15
+    mock_response.usage.output_tokens = 8
+    mock_client.messages.create.return_value = mock_response
+
+    backend = AnthropicBackend(_make_anthropic_config())
+    result = backend.send(
+        messages=[{"role": "user", "content": "hi"}],
+        system="You are helpful.",
+        tools=[],
+    )
+
+    assert result.text == "Hello from Claude!"
+    assert result.tool_calls == []
+    assert result.usage.input_tokens == 15
+
+
+def test_anthropic_send_tool_call(mock_anthropic):
+    AnthropicBackend, mock_mod = mock_anthropic
+    mock_client = MagicMock()
+    mock_mod.Anthropic.return_value = mock_client
+
+    mock_tool_block = MagicMock()
+    mock_tool_block.type = "tool_use"
+    mock_tool_block.id = "toolu_123"
+    mock_tool_block.name = "read_file"
+    mock_tool_block.input = {"path": "/tmp/test.txt"}
+    mock_response = MagicMock()
+    mock_response.content = [mock_tool_block]
+    mock_response.usage.input_tokens = 20
+    mock_response.usage.output_tokens = 10
+    mock_client.messages.create.return_value = mock_response
+
+    backend = AnthropicBackend(_make_anthropic_config())
+    tool = ToolDef("read_file", "Read a file", {"properties": {"path": {"type": "string"}}}, lambda: "")
+    result = backend.send(
+        messages=[{"role": "user", "content": "read /tmp/test.txt"}],
+        system="",
+        tools=[tool],
+    )
+
+    assert result.text is None
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].name == "read_file"
+    assert result.tool_calls[0].id == "toolu_123"
+
+
+def test_anthropic_format_messages(mock_anthropic):
+    AnthropicBackend, mock_mod = mock_anthropic
+    mock_mod.Anthropic.return_value = MagicMock()
+    backend = AnthropicBackend(_make_anthropic_config())
+
+    msg = backend.format_user_message("hello")
+    assert msg == {"role": "user", "content": "hello"}
+
+    resp = BackendResponse(text="hi there")
+    msg = backend.format_assistant_message(resp)
+    assert msg == {"role": "assistant", "content": "hi there"}
+
+    # Tool results format
+    results = [("toolu_1", "file content")]
+    tool_msg = backend.format_tool_results(results)
+    assert tool_msg["role"] == "user"
+    assert len(tool_msg["content"]) == 1
+    assert tool_msg["content"][0]["type"] == "tool_result"
+    assert tool_msg["content"][0]["tool_use_id"] == "toolu_1"
+
+
+def test_anthropic_tool_schema(mock_anthropic):
+    AnthropicBackend, mock_mod = mock_anthropic
+    mock_mod.Anthropic.return_value = MagicMock()
+    backend = AnthropicBackend(_make_anthropic_config())
+    tool = ToolDef("test", "A test", {"type": "object"}, lambda: "")
+    schema = backend._tool_schema(tool)
+    assert schema["name"] == "test"
+    assert schema["input_schema"] == {"type": "object"}
+
+
+def test_factory_anthropic(mock_anthropic):
+    AnthropicBackend, mock_mod = mock_anthropic
+    mock_mod.Anthropic.return_value = MagicMock()
+    from jarvis.backends import create_backend
+    config = _make_anthropic_config()
+    backend = create_backend(config)
+    assert type(backend).__name__ == "AnthropicBackend"
+
+
 def test_factory_gemini(mock_genai):
     GeminiBackend, mock_mod = mock_genai
     mock_mod.Client.return_value = MagicMock()

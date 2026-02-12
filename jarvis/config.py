@@ -49,6 +49,7 @@ class Config:
             # Auto-detect env var name from backend if not explicitly set
             if not config.api_key_env:
                 env_map = {
+                    "anthropic": "ANTHROPIC_API_KEY",
                     "openai": "OPENAI_API_KEY",
                     "gemini": "GOOGLE_API_KEY",
                 }
