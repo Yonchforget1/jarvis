@@ -1,6 +1,6 @@
 """Tests for shell tools."""
 
-from jarvis.tools.shell import run_shell, run_python, _is_dangerous
+from jarvis.tools.shell import run_shell, run_python, run_javascript, run_code, _is_dangerous
 
 
 def test_dangerous_rm_rf():
@@ -49,3 +49,29 @@ def test_run_python():
 def test_run_python_error():
     result = run_python("raise ValueError('boom')")
     assert "ValueError" in result or "boom" in result
+
+
+def test_run_javascript():
+    result = run_javascript("console.log(3 * 7)")
+    # Node might not be installed; that's OK
+    assert "21" in result or "not found" in result.lower()
+
+
+def test_run_code_python():
+    result = run_code("python", "print('hello from run_code')")
+    assert "hello from run_code" in result
+
+
+def test_run_code_shell():
+    result = run_code("shell", "echo test123")
+    assert "test123" in result
+
+
+def test_run_code_shell_blocked():
+    result = run_code("shell", "rm -rf /")
+    assert "blocked" in result.lower()
+
+
+def test_run_code_unsupported():
+    result = run_code("brainfuck", "++++++++++")
+    assert "Unsupported" in result

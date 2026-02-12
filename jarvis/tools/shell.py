@@ -71,6 +71,83 @@ def run_python(code: str, timeout: int = 60) -> str:
         return f"Error: {e}"
 
 
+def run_javascript(code: str, timeout: int = 30) -> str:
+    """Execute JavaScript code using Node.js and return the output."""
+    try:
+        result = subprocess.run(
+            ["node", "-e", code],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        output = result.stdout
+        if result.stderr:
+            output += f"\n[stderr]: {result.stderr}"
+        return output.strip()[:10000] or "(no output)"
+    except FileNotFoundError:
+        return "Error: Node.js not found. Install from https://nodejs.org"
+    except subprocess.TimeoutExpired:
+        return f"Error: JavaScript execution timed out after {timeout}s"
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def run_code(language: str, code: str, timeout: int = 60) -> str:
+    """Execute code in the specified language and return output.
+
+    Supported: python, javascript, shell, powershell, ruby, go
+    """
+    language = language.lower().strip()
+
+    runners = {
+        "python": lambda: subprocess.run(
+            ["python", "-c", code], capture_output=True, text=True, timeout=timeout
+        ),
+        "javascript": lambda: subprocess.run(
+            ["node", "-e", code], capture_output=True, text=True, timeout=timeout
+        ),
+        "js": lambda: subprocess.run(
+            ["node", "-e", code], capture_output=True, text=True, timeout=timeout
+        ),
+        "shell": lambda: subprocess.run(
+            code, shell=True, capture_output=True, text=True, timeout=timeout
+        ),
+        "bash": lambda: subprocess.run(
+            code, shell=True, capture_output=True, text=True, timeout=timeout
+        ),
+        "powershell": lambda: subprocess.run(
+            ["powershell", "-Command", code], capture_output=True, text=True, timeout=timeout
+        ),
+        "ruby": lambda: subprocess.run(
+            ["ruby", "-e", code], capture_output=True, text=True, timeout=timeout
+        ),
+    }
+
+    if language == "shell" or language == "bash":
+        danger = _is_dangerous(code)
+        if danger:
+            return danger
+
+    runner = runners.get(language)
+    if not runner:
+        return f"Unsupported language: {language}. Supported: {', '.join(runners.keys())}"
+
+    try:
+        result = runner()
+        output = result.stdout
+        if result.stderr:
+            output += f"\n[stderr]: {result.stderr}"
+        if result.returncode != 0:
+            output += f"\n[exit code: {result.returncode}]"
+        return output.strip()[:10000] or "(no output)"
+    except FileNotFoundError:
+        return f"Error: {language} runtime not found"
+    except subprocess.TimeoutExpired:
+        return f"Error: execution timed out after {timeout}s"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def register(registry: ToolRegistry) -> None:
     registry.register(ToolDef(
         name="run_shell",
@@ -95,4 +172,29 @@ def register(registry: ToolRegistry) -> None:
             "required": ["code"],
         },
         func=run_python,
+    ))
+    registry.register(ToolDef(
+        name="run_javascript",
+        description="Execute JavaScript code using Node.js and return output",
+        parameters={
+            "properties": {
+                "code": {"type": "string", "description": "JavaScript code to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds (default 30)"},
+            },
+            "required": ["code"],
+        },
+        func=run_javascript,
+    ))
+    registry.register(ToolDef(
+        name="run_code",
+        description="Execute code in any supported language (python, javascript, shell, powershell, ruby)",
+        parameters={
+            "properties": {
+                "language": {"type": "string", "description": "Programming language"},
+                "code": {"type": "string", "description": "Code to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds (default 60)"},
+            },
+            "required": ["language", "code"],
+        },
+        func=run_code,
     ))
