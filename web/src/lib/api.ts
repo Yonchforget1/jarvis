@@ -238,6 +238,13 @@ export const api = {
     );
   },
 
+  async regenerateSession(sessionId: string) {
+    return apiFetch<{ status: string; message: string }>(
+      `/api/sessions/${sessionId}/regenerate`,
+      { method: "POST" }
+    );
+  },
+
   async forkSession(sessionId: string, fromIndex = -1) {
     return apiFetch<{ session_id: string; title: string; message_count: number }>(
       `/api/sessions/${sessionId}/fork?from_index=${fromIndex}`,

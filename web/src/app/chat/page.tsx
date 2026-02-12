@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function ChatPage() {
   }, []);
 
   async function handleSend(text: string) {
+    setLastFailedMessage(null);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setSending(true);
 
@@ -103,21 +105,32 @@ export default function ChatPage() {
         },
         // onError
         (error) => {
+          setLastFailedMessage(text);
+          const friendly = error.includes("timed out")
+            ? "Response timed out. The AI took too long to respond."
+            : error.includes("429") || error.includes("rate")
+            ? "Rate limit reached. Please wait a moment before sending another message."
+            : `Something went wrong: ${error}`;
           setMessages((prev) => {
-            // Remove the empty assistant message and add error
             const updated = prev.filter(
               (m, i) => !(i === prev.length - 1 && m.role === "assistant" && !m.content)
             );
-            return [...updated, { role: "system", content: `Error: ${error}` }];
+            return [...updated, { role: "system", content: friendly }];
           });
         },
         selectedModel
       );
     } catch (err: unknown) {
+      setLastFailedMessage(text);
       const msg = err instanceof Error ? err.message : "Unknown error";
+      const friendly = msg.includes("timed out")
+        ? "Response timed out. The AI took too long to respond."
+        : msg.includes("Failed to fetch")
+        ? "Cannot reach the server. Check your connection."
+        : `Something went wrong: ${msg}`;
       setMessages((prev) => [
         ...prev,
-        { role: "system", content: `Error: ${msg}` },
+        { role: "system", content: friendly },
       ]);
     } finally {
       setSending(false);
@@ -238,11 +251,52 @@ export default function ChatPage() {
                   setSidebarRefresh((n) => n + 1);
                 } catch { /* ignore */ }
               } : undefined}
+              onEdit={msg.role === "user" && sessionId ? (newContent: string) => {
+                // Fork to the message before this one, then send new content
+                const forkIndex = i - 1;
+                if (forkIndex >= 0) {
+                  api.forkSession(sessionId, forkIndex).then((result) => {
+                    handleSelectSession(result.session_id);
+                    setSidebarRefresh((n) => n + 1);
+                    // Send the edited message in the forked session
+                    setTimeout(() => handleSend(newContent), 500);
+                  }).catch(() => {});
+                } else {
+                  // First message - just resend
+                  handleSend(newContent);
+                }
+              } : undefined}
+              onRegenerate={msg.role === "assistant" && sessionId ? async () => {
+                try {
+                  const result = await api.regenerateSession(sessionId);
+                  if (result.status === "ready") {
+                    // Remove the last assistant message from UI and resend
+                    setMessages((prev) => prev.filter((_, idx) => idx !== i));
+                    handleSend(result.message);
+                  }
+                } catch { /* ignore */ }
+              } : undefined}
             />
           ))}
           {sending && (
-            <div className="self-start text-xs text-zinc-500 animate-pulse">
-              Jarvis is thinking...
+            <div className="self-start flex items-center gap-2 px-4 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span className="text-xs text-zinc-500">Jarvis is thinking</span>
+            </div>
+          )}
+          {/* Retry button on error */}
+          {lastFailedMessage && !sending && (
+            <div className="self-center">
+              <button
+                onClick={() => handleSend(lastFailedMessage)}
+                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
           {/* Show templates when no active conversation */}

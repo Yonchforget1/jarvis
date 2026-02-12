@@ -568,6 +568,31 @@ def test_session_fork_not_found(client):
     assert res.status_code == 404
 
 
+# ---- Session Regenerate ----
+
+def test_session_regenerate(client):
+    reg = client.post("/api/auth/register", json={"username": "regenuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hello!"
+        mock_convo.messages = [
+            {"role": "user", "content": "hi there"},
+            {"role": "assistant", "content": "Hello!"},
+        ]
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hi there"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    res = client.post(f"/api/sessions/{session_id}/regenerate", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ready"
+    assert data["message"] == "hi there"
+
+
 # ---- Health Detailed ----
 
 def test_health_detailed(client):

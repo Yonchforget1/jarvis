@@ -184,6 +184,51 @@ async def export_session(
     )
 
 
+@router.post("/{session_id}/regenerate")
+async def regenerate_last(
+    session_id: str,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Remove the last assistant message and regenerate from the last user message."""
+    from api.main import session_mgr
+
+    session = session_mgr.get_session(session_id)
+    if session is None or session.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    messages = session.conversation.messages
+    # Remove trailing assistant message(s)
+    while messages and messages[-1].get("role") == "assistant":
+        messages.pop()
+
+    if not messages:
+        raise HTTPException(status_code=400, detail="No messages to regenerate from")
+
+    # Get the last user message to re-send
+    last_user_msg = None
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                last_user_msg = content
+            elif isinstance(content, list):
+                # Extract text from structured content
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        last_user_msg = part.get("text", "")
+                        break
+            break
+
+    if not last_user_msg:
+        raise HTTPException(status_code=400, detail="No user message found")
+
+    # Remove the last user message too (send will re-add it)
+    while messages and messages[-1].get("role") == "user":
+        messages.pop()
+
+    return {"status": "ready", "message": last_user_msg}
+
+
 @router.post("/{session_id}/fork")
 async def fork_session(
     session_id: str,
