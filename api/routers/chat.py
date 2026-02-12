@@ -92,6 +92,18 @@ async def chat(
     # Persist session to disk
     session_mgr.save_session(session)
 
+    # Push WebSocket notification
+    try:
+        import asyncio
+        from api.routers.ws import ws_manager
+        asyncio.ensure_future(ws_manager.send_to_user(user.id, "chat.response", {
+            "session_id": session.session_id,
+            "title": session.title,
+            "message_count": session.message_count,
+        }))
+    except Exception:
+        pass
+
     return ChatResponse(
         session_id=session.session_id,
         response=response_text,
@@ -154,6 +166,17 @@ async def _stream_response(session, message: str):
 
     # Persist session to disk
     session_mgr.save_session(session)
+
+    # Push WebSocket notification
+    try:
+        from api.routers.ws import ws_manager
+        await ws_manager.send_to_user(session.user_id, "chat.response", {
+            "session_id": session.session_id,
+            "title": session.title,
+            "message_count": session.message_count,
+        })
+    except Exception:
+        pass
 
     # Signal completion
     done = json.dumps({"done": True, "full_text": response_text})

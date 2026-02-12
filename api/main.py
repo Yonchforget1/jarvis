@@ -27,6 +27,26 @@ log = logging.getLogger("jarvis.api")
 
 session_mgr = SessionManager()
 task_runner = TaskRunner(max_concurrent=5)
+
+
+def _on_task_complete(task):
+    """Push WebSocket notification when a background task completes."""
+    import asyncio
+    try:
+        from api.routers.ws import ws_manager
+        event = f"task.{task.status.value}"
+        data = {"task_id": task.task_id, "description": task.description, "status": task.status.value}
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(ws_manager.send_to_user(task.user_id, event, data))
+        except RuntimeError:
+            # No running loop (called from thread) - create one
+            asyncio.run(ws_manager.send_to_user(task.user_id, event, data))
+    except Exception:
+        pass
+
+
+task_runner.on_complete = _on_task_complete
 usage_tracker = UsageTracker()
 webhook_mgr = WebhookManager()
 key_mgr = APIKeyManager()

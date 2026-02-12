@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 
 from api.deps import get_current_user
 from api.models import RenameRequest, SessionInfo, SessionUpdateRequest, UserInfo
@@ -147,7 +147,7 @@ async def get_session_messages(
 async def export_session(
     session_id: str,
     user: UserInfo = Depends(get_current_user),
-    format: str = Query("markdown", description="Export format: markdown or json"),
+    format: str = Query("markdown", description="Export format: markdown, json, or pdf"),
 ):
     from api.main import session_mgr
 
@@ -167,6 +167,9 @@ async def export_session(
             "messages": messages,
         }
         return export
+
+    if format == "pdf":
+        return _export_pdf(session_id, title, session.created_at.isoformat(), messages)
 
     # Markdown format
     lines = [f"# {title}", f"*Session: {session_id}*", f"*Date: {session.created_at.isoformat()}*", ""]
@@ -262,3 +265,55 @@ async def delete_session(
 
     session_mgr.delete_session(session_id)
     return {"status": "deleted"}
+
+
+def _export_pdf(session_id: str, title: str, created_at: str, messages: list[dict]) -> Response:
+    """Generate a PDF export of a chat session."""
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
+
+    # Metadata
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 6, f"Session: {session_id}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Date: {created_at}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    # Messages
+    for msg in messages:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if not content or role not in ("user", "assistant"):
+            continue
+
+        # Role label
+        if role == "user":
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_text_color(37, 99, 235)  # blue
+            pdf.cell(0, 6, "You:", new_x="LMARGIN", new_y="NEXT")
+        else:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_text_color(22, 163, 74)  # green
+            pdf.cell(0, 6, "Jarvis:", new_x="LMARGIN", new_y="NEXT")
+
+        # Message content
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(30, 30, 30)
+        # Clean up content for PDF (remove control chars, encode safely)
+        clean = content.encode("latin-1", errors="replace").decode("latin-1")
+        pdf.multi_cell(0, 5, clean)
+        pdf.ln(3)
+
+    pdf_bytes = pdf.output()
+    return Response(
+        content=bytes(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{session_id[:8]}_chat.pdf"'},
+    )

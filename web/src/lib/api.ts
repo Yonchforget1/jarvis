@@ -261,6 +261,18 @@ export const api = {
     );
   },
 
+  async exportSessionPdf(sessionId: string): Promise<Blob> {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/export?format=pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(data.detail || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+
   // Tools
   async getTools() {
     const data = await apiFetch<{ tools: ToolInfo[] }>("/api/tools");

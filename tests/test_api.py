@@ -659,6 +659,47 @@ def test_memory_search_requires_auth(client):
 
 # ---- Memory Context Enrichment ----
 
+def test_session_export_pdf(client):
+    """Test PDF export of a session."""
+    reg = client.post("/api/auth/register", json={"username": "pdfexp", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hello from Jarvis!"
+        mock_convo.total_input_tokens = 0
+        mock_convo.total_output_tokens = 0
+        mock_convo.messages = []
+        mock_convo.system = ""
+        mock_make.return_value = mock_convo
+
+        chat_res = client.post("/api/chat", json={"message": "Hello"}, headers=headers)
+        assert chat_res.status_code == 200
+        sid = chat_res.json()["session_id"]
+
+    res = client.get(f"/api/sessions/{sid}/export?format=pdf", headers=headers)
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+    # PDF files start with %PDF
+    assert res.content[:5] == b"%PDF-"
+
+
+def test_task_runner_on_complete_callback():
+    """Test that task runner calls on_complete callback."""
+    from api.task_runner import TaskRunner
+    completed_tasks = []
+
+    runner = TaskRunner(max_concurrent=2)
+    runner.on_complete = lambda task: completed_tasks.append(task.task_id)
+
+    task = runner.submit("user1", "test", "test task", lambda: "done")
+    task._thread.join(timeout=5)
+
+    assert len(completed_tasks) == 1
+    assert completed_tasks[0] == task.task_id
+
+
 def test_session_manager_enrich_system_prompt():
     """Test that enrich_system_prompt modifies the conversation system prompt."""
     with patch.object(session_mgr, "_make_conversation") as mock_make:

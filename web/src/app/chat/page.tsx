@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { useToast } from "@/components/Toast";
 import { ShortcutsModal } from "@/components/ShortcutsModal";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -40,6 +41,24 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const { on: onWsEvent } = useWebSocket();
+
+  // WebSocket notifications for task events
+  useEffect(() => {
+    const unsub1 = onWsEvent("task.completed", (data: unknown) => {
+      const d = data as { description?: string };
+      toast(`Task completed: ${d.description || "background task"}`, "success");
+    });
+    const unsub2 = onWsEvent("task.failed", (data: unknown) => {
+      const d = data as { description?: string };
+      toast(`Task failed: ${d.description || "background task"}`, "error");
+    });
+    const unsub3 = onWsEvent("notification", (data: unknown) => {
+      const d = data as { message?: string };
+      if (d.message) toast(d.message, "info");
+    });
+    return () => { unsub1(); unsub2(); unsub3(); };
+  }, [onWsEvent, toast]);
 
   useEffect(() => {
     if (!api.isLoggedIn()) {
@@ -527,6 +546,28 @@ export default function ChatPage() {
               },
             },
             {
+              name: "pdf",
+              description: "Export as PDF",
+              action: async () => {
+                if (sessionId) {
+                  try {
+                    const blob = await api.exportSessionPdf(sessionId);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${sessionId.slice(0, 8)}_chat.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast("PDF downloaded", "success");
+                  } catch {
+                    toast("Failed to export PDF", "error");
+                  }
+                } else {
+                  toast("No active conversation to export", "error");
+                }
+              },
+            },
+            {
               name: "share",
               description: "Share this conversation",
               action: async () => {
@@ -553,7 +594,7 @@ export default function ChatPage() {
                   {
                     role: "system",
                     content:
-                      "Available commands:\n/clear - Start a new chat\n/export - Export conversation as markdown\n/share - Share conversation link\n/help - Show this help\n\nKeyboard shortcuts:\nCtrl+N - New chat\nCtrl+K - Search conversations\nEsc - Focus chat input",
+                      "Available commands:\n/clear - Start a new chat\n/export - Export as markdown\n/pdf - Export as PDF\n/share - Share conversation link\n/help - Show this help\n\nKeyboard shortcuts:\nCtrl+N - New chat\nCtrl+K - Search conversations\nCtrl+/ - Keyboard shortcuts\nEsc - Focus chat input",
                   },
                 ]);
               },

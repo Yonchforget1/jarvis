@@ -67,6 +67,7 @@ class TaskRunner:
         self.tasks: dict[str, BackgroundTask] = {}
         self.max_concurrent = max_concurrent
         self._lock = threading.Lock()
+        self.on_complete: Callable[[BackgroundTask], None] | None = None
 
     def submit(
         self,
@@ -140,6 +141,11 @@ class TaskRunner:
                 task.status.value,
                 task.duration_seconds or 0,
             )
+            if self.on_complete:
+                try:
+                    self.on_complete(task)
+                except Exception:
+                    log.debug("Task completion callback failed")
 
     def get_task(self, task_id: str) -> BackgroundTask | None:
         return self.tasks.get(task_id)
