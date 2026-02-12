@@ -93,11 +93,23 @@ export default function ChatPage() {
     setSessionId(null);
   }
 
-  function handleSelectSession(sid: string) {
-    // Switch to existing session (messages won't reload from server yet,
-    // but the session_id will be used for subsequent messages)
+  async function handleSelectSession(sid: string) {
     setSessionId(sid);
-    setMessages([{ role: "system", content: "Resumed session. Continue the conversation." }]);
+    setMessages([{ role: "system", content: "Loading conversation..." }]);
+    try {
+      const data = await api.getSessionMessages(sid);
+      const history: Message[] = data.messages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+      if (history.length > 0) {
+        setMessages(history);
+      } else {
+        setMessages([{ role: "system", content: "Resumed session. Continue the conversation." }]);
+      }
+    } catch {
+      setMessages([{ role: "system", content: "Resumed session. Continue the conversation." }]);
+    }
   }
 
   function handleLogout() {

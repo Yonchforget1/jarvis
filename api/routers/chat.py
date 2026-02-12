@@ -50,6 +50,9 @@ async def chat(
     if not session.auto_title and session.message_count == 1:
         session.auto_title = req.message[:60]
 
+    # Persist session to disk
+    session_mgr.save_session(session)
+
     return ChatResponse(
         session_id=session.session_id,
         response=response_text,
@@ -86,6 +89,10 @@ async def _stream_response(session, message: str):
         yield f"data: {chunk}\n\n"
         # Small delay for streaming feel (10-30ms per word)
         await asyncio.sleep(0.02)
+
+    # Persist session to disk
+    from api.main import session_mgr
+    session_mgr.save_session(session)
 
     # Signal completion
     done = json.dumps({"done": True, "full_text": response_text})

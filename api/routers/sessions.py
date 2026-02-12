@@ -44,6 +44,21 @@ async def rename_session(
     return {"status": "renamed", "name": req.name}
 
 
+@router.get("/{session_id}/messages")
+async def get_session_messages(
+    session_id: str,
+    user: UserInfo = Depends(get_current_user),
+):
+    from api.main import session_mgr
+
+    session = session_mgr.get_session(session_id)
+    if session is None or session.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    messages = session_mgr.get_session_messages(session_id) or []
+    return {"session_id": session_id, "messages": messages}
+
+
 @router.delete("/{session_id}")
 async def delete_session(
     session_id: str,

@@ -221,6 +221,12 @@ export const api = {
     );
   },
 
+  async getSessionMessages(sessionId: string) {
+    return apiFetch<{ session_id: string; messages: { role: string; content: string }[] }>(
+      `/api/sessions/${sessionId}/messages`
+    );
+  },
+
   async deleteSession(sessionId: string) {
     return apiFetch<{ status: string }>(
       `/api/sessions/${sessionId}`,

@@ -1,4 +1,4 @@
-"""Session management for the API."""
+"""Session management for the API with persistent storage."""
 
 from __future__ import annotations
 
@@ -39,6 +39,10 @@ class Session:
         self.last_active = datetime.now(timezone.utc)
         self.message_count += 1
 
+    @property
+    def title(self) -> str:
+        return self.custom_name or self.auto_title or "New Chat"
+
 
 class SessionManager:
     def __init__(self) -> None:
@@ -51,19 +55,93 @@ class SessionManager:
             self.memory = Memory()
         except Exception:
             self.memory = _MemoryStub()
+        _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        self._load_persisted_sessions()
 
-    def _make_conversation(self) -> Conversation:
+    def _make_conversation(self, messages: list[dict] | None = None) -> Conversation:
         backend = create_backend(self.config)
         registry = ToolRegistry()
         register_all_tools(registry)
         router = ToolRouter(registry.all_tools())
-        return Conversation(
+        convo = Conversation(
             backend=backend,
             registry=registry,
             system=self.config.system_prompt,
             max_tokens=self.config.max_tokens,
             router=router,
         )
+        if messages:
+            convo.messages = messages
+        return convo
+
+    def _persist_session(self, session: Session) -> None:
+        """Save session metadata and messages to disk."""
+        try:
+            data = {
+                "session_id": session.session_id,
+                "user_id": session.user_id,
+                "created_at": session.created_at.isoformat(),
+                "last_active": session.last_active.isoformat(),
+                "auto_title": session.auto_title,
+                "custom_name": session.custom_name,
+                "message_count": session.message_count,
+                "messages": self._serialize_messages(session.conversation.messages),
+            }
+            path = _SESSIONS_DIR / f"{session.session_id}.json"
+            path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+        except Exception:
+            log.exception("Failed to persist session %s", session.session_id)
+
+    def _serialize_messages(self, messages: list[dict]) -> list[dict]:
+        """Serialize messages for JSON storage, keeping only role+content."""
+        serialized = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            # Only persist user and assistant messages (skip tool results)
+            if role in ("user", "assistant"):
+                if isinstance(content, str):
+                    serialized.append({"role": role, "content": content})
+                elif isinstance(content, list):
+                    # Extract text content from structured messages
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            text_parts.append(part.get("text", ""))
+                    if text_parts:
+                        serialized.append({"role": role, "content": " ".join(text_parts)})
+        return serialized
+
+    def _load_persisted_sessions(self) -> None:
+        """Load persisted sessions from disk on startup."""
+        loaded = 0
+        for path in _SESSIONS_DIR.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                sid = data["session_id"]
+                messages = data.get("messages", [])
+                convo = self._make_conversation(messages)
+                session = Session(
+                    session_id=sid,
+                    user_id=data["user_id"],
+                    conversation=convo,
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                    last_active=datetime.fromisoformat(data["last_active"]),
+                    auto_title=data.get("auto_title", ""),
+                    custom_name=data.get("custom_name", ""),
+                    message_count=data.get("message_count", 0),
+                )
+                # Check if session is expired
+                age = (datetime.now(timezone.utc) - session.last_active).total_seconds()
+                if age > _SESSION_TTL:
+                    path.unlink()
+                    continue
+                self._sessions[sid] = session
+                loaded += 1
+            except Exception:
+                log.exception("Failed to load session from %s", path)
+        if loaded:
+            log.info("Loaded %d persisted sessions", loaded)
 
     def get_or_create_session(self, session_id: str | None, user_id: str) -> Session:
         with self._lock:
@@ -77,7 +155,12 @@ class SessionManager:
             convo = self._make_conversation()
             session = Session(session_id=sid, user_id=user_id, conversation=convo)
             self._sessions[sid] = session
+            self._persist_session(session)
             return session
+
+    def save_session(self, session: Session) -> None:
+        """Persist session after a message exchange."""
+        self._persist_session(session)
 
     def get_session(self, session_id: str) -> Session | None:
         return self._sessions.get(session_id)
@@ -92,12 +175,25 @@ class SessionManager:
         session = self._sessions.get(session_id)
         if session:
             session.custom_name = name
+            self._persist_session(session)
             return True
         return False
 
     def delete_session(self, session_id: str) -> bool:
         with self._lock:
-            return self._sessions.pop(session_id, None) is not None
+            session = self._sessions.pop(session_id, None)
+            if session:
+                path = _SESSIONS_DIR / f"{session_id}.json"
+                path.unlink(missing_ok=True)
+                return True
+            return False
+
+    def get_session_messages(self, session_id: str) -> list[dict] | None:
+        """Get serialized messages for a session (for API responses)."""
+        session = self._sessions.get(session_id)
+        if not session:
+            return None
+        return self._serialize_messages(session.conversation.messages)
 
     @property
     def active_session_count(self) -> int:
@@ -109,7 +205,6 @@ class SessionManager:
 
     def cleanup_expired(self) -> int:
         """Remove sessions older than TTL. Returns count removed."""
-        now = time.monotonic()
         expired = []
         with self._lock:
             for sid, session in self._sessions.items():
@@ -118,6 +213,8 @@ class SessionManager:
                     expired.append(sid)
             for sid in expired:
                 del self._sessions[sid]
+                path = _SESSIONS_DIR / f"{sid}.json"
+                path.unlink(missing_ok=True)
         return len(expired)
 
 
