@@ -6,14 +6,34 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Required for production
+      - JARVIS_SECRET_KEY=${JARVIS_SECRET_KEY:-change-me-in-production}
+      - JARVIS_CORS_ORIGINS=${JARVIS_CORS_ORIGINS:-*}
+      - JARVIS_RATE_LIMIT=${JARVIS_RATE_LIMIT:-1}
+      - JARVIS_LOG_LEVEL=${JARVIS_LOG_LEVEL:-INFO}
+      # AI Backend Keys (set whichever you use)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      # SMTP for email tool (optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     volumes:
       - jarvis-data:/app/api/data
       - jarvis-memory:/app/memory
+      - jarvis-logs:/app/logs
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   jarvis-data:
   jarvis-memory:
+  jarvis-logs:

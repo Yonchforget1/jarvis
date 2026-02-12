@@ -1,6 +1,16 @@
-# Jarvis AI Agent - Production Docker Image
-# Serves FastAPI backend with built-in chat UI on port 3000
+# Jarvis AI Agent v2 - Production Docker Image
+# Multi-stage build: Node.js for frontend, Python for backend
 
+# ---- Stage 1: Build Next.js frontend ----
+FROM node:20-slim AS frontend
+
+WORKDIR /web
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci --production=false
+COPY web/ ./
+RUN npm run build
+
+# ---- Stage 2: Python backend + static frontend ----
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -18,14 +28,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY jarvis/ jarvis/
 COPY api/ api/
 COPY plugins/ plugins/
-COPY agent.py config.yaml CLAUDE.md ./
+COPY agent.py config.yaml .env.example CLAUDE.md ./
+
+# Copy built Next.js output as static files (optional fallback)
+COPY --from=frontend /web/.next/static api/static/_next/static/
 
 # Create data directories
-RUN mkdir -p api/data/sessions memory/vector_db memory
+RUN mkdir -p api/data/sessions api/data/usage api/data/webhooks \
+    memory/vector_db memory/plans logs
 
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV PORT=3000
+ENV JARVIS_LOG_LEVEL=INFO
 
 EXPOSE 3000
 
