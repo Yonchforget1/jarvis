@@ -49,6 +49,7 @@ class SessionInfo(BaseModel):
     created_at: str
     last_active: str
     pinned: bool = False
+    model: str = ""
 
 
 class SessionUpdateRequest(BaseModel):

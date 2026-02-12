@@ -31,6 +31,11 @@ export default function ChatPage() {
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
+  const dragCounterRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +90,48 @@ export default function ChatPage() {
     setAutoScroll(true);
   }
 
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) {
+      setDragging(true);
+    }
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setDragging(false);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      try {
+        const result = await api.uploadFile(file);
+        // Read file content and send as a message
+        const data = await api.getFileContent(result.file_id);
+        const msg = `[Attached file: ${result.filename}]\n\`\`\`\n${data.content}\n\`\`\``;
+        handleSend(msg);
+        toast(`Uploaded ${result.filename}`, "success");
+      } catch {
+        toast(`Failed to upload ${file.name}`, "error");
+      }
+    }
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyboard(e: KeyboardEvent) {
@@ -99,6 +146,13 @@ export default function ChatPage() {
         const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Search"]');
         searchInput?.focus();
       }
+      // Ctrl+F / Cmd+F: Search in conversation
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+        setSearchTerm("");
+        setSearchMatchIndex(0);
+      }
       // Ctrl+/ or Cmd+/: Show shortcuts
       if ((e.ctrlKey || e.metaKey) && e.key === "/") {
         e.preventDefault();
@@ -106,6 +160,11 @@ export default function ChatPage() {
       }
       // Escape: Close modals or focus chat input
       if (e.key === "Escape") {
+        if (searchOpen) {
+          setSearchOpen(false);
+          setSearchTerm("");
+          return;
+        }
         if (showShortcuts) {
           setShowShortcuts(false);
           return;
@@ -216,6 +275,9 @@ export default function ChatPage() {
     setMessages([{ role: "system", content: "Loading conversation..." }]);
     try {
       const data = await api.getSessionMessages(sid);
+      if (data.model) {
+        setSelectedModel(data.model);
+      }
       const history: Message[] = data.messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
@@ -236,7 +298,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <div
+      className="flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {/* Sidebar */}
       <Sidebar
         currentSessionId={sessionId}
@@ -306,6 +374,41 @@ export default function ChatPage() {
           </div>
         </header>
 
+        {/* In-conversation search bar */}
+        {searchOpen && (
+          <div className="flex items-center gap-2 px-5 py-2 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setSearchMatchIndex(0); }}
+              placeholder="Search in conversation..."
+              className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const matches = messages.filter((m) => m.content.toLowerCase().includes(searchTerm.toLowerCase()));
+                  if (matches.length > 0) {
+                    setSearchMatchIndex((i) => (i + 1) % matches.length);
+                  }
+                }
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  setSearchTerm("");
+                }
+              }}
+            />
+            <span className="text-xs text-zinc-500">
+              {searchTerm ? `${messages.filter((m) => m.content.toLowerCase().includes(searchTerm.toLowerCase())).length} matches` : ""}
+            </span>
+            <button
+              onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+              className="text-xs text-zinc-500 hover:text-zinc-300 px-1"
+            >
+              {"\u2715"}
+            </button>
+          </div>
+        )}
+
         {/* Messages */}
         <div
           ref={scrollContainerRef}
@@ -318,6 +421,7 @@ export default function ChatPage() {
               role={msg.role}
               content={msg.content}
               timestamp={msg.timestamp}
+              highlight={searchTerm && msg.content.toLowerCase().includes(searchTerm.toLowerCase()) ? searchTerm : undefined}
               onFork={sessionId ? async () => {
                 try {
                   const result = await api.forkSession(sessionId, i);
@@ -469,6 +573,16 @@ export default function ChatPage() {
       {/* Shortcuts Modal */}
       {showShortcuts && (
         <ShortcutsModal onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {/* Drop zone overlay */}
+      {dragging && (
+        <div className="absolute inset-0 z-50 bg-blue-500/10 border-2 border-dashed border-blue-500 flex items-center justify-center pointer-events-none">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl px-8 py-6 shadow-2xl border border-blue-400 text-center">
+            <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">Drop files here</p>
+            <p className="text-sm text-zinc-500 mt-1">Files will be uploaded and sent to Jarvis</p>
+          </div>
+        </div>
       )}
     </div>
   );

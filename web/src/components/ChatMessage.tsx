@@ -9,6 +9,7 @@ interface ChatMessageProps {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp?: number;
+  highlight?: string;
   onFork?: () => void;
   onEdit?: (newContent: string) => void;
   onRegenerate?: () => void;
@@ -25,10 +26,12 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export function ChatMessage({ role, content, timestamp, onFork, onEdit, onRegenerate, onCopy }: ChatMessageProps) {
+export function ChatMessage({ role, content, timestamp, highlight, onFork, onEdit, onRegenerate, onCopy }: ChatMessageProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
   const [copied, setCopied] = useState(false);
+
+  const highlightClass = highlight ? " ring-2 ring-yellow-400/50" : "";
 
   const baseStyles: Record<string, string> = {
     user: "bg-blue-100 dark:bg-blue-900/50 self-end rounded-br-sm",
@@ -52,7 +55,7 @@ export function ChatMessage({ role, content, timestamp, onFork, onEdit, onRegene
 
   if (role === "system") {
     return (
-      <div className={`max-w-2xl px-4 py-3 rounded-xl whitespace-pre-wrap break-words text-sm leading-relaxed ${baseStyles[role]}`}>
+      <div className={`max-w-2xl px-4 py-3 rounded-xl whitespace-pre-wrap break-words text-sm leading-relaxed ${baseStyles[role]}${highlightClass}`}>
         {content}
       </div>
     );
@@ -121,7 +124,7 @@ export function ChatMessage({ role, content, timestamp, onFork, onEdit, onRegene
             prose-pre:bg-zinc-200 dark:prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-300 dark:prose-pre:border-zinc-700 prose-pre:rounded-lg
             prose-code:text-blue-600 dark:prose-code:text-blue-300 prose-code:bg-zinc-200 dark:prose-code:bg-zinc-900 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
             prose-a:text-blue-500 dark:prose-a:text-blue-400 prose-headings:text-zinc-900 dark:prose-headings:text-zinc-100
-            ${baseStyles[role]}`}
+            ${baseStyles[role]}${highlightClass}`}
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -153,7 +156,7 @@ export function ChatMessage({ role, content, timestamp, onFork, onEdit, onRegene
     <div className="group/msg relative self-end">
       {actions}
       <div
-        className={`max-w-2xl px-4 py-3 rounded-xl whitespace-pre-wrap break-words text-sm leading-relaxed ${baseStyles[role]}`}
+        className={`max-w-2xl px-4 py-3 rounded-xl whitespace-pre-wrap break-words text-sm leading-relaxed ${baseStyles[role]}${highlightClass}`}
       >
         {content}
       </div>

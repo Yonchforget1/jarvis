@@ -235,7 +235,7 @@ export const api = {
   },
 
   async getSessionMessages(sessionId: string) {
-    return apiFetch<{ session_id: string; messages: { role: string; content: string }[] }>(
+    return apiFetch<{ session_id: string; messages: { role: string; content: string }[]; model?: string }>(
       `/api/sessions/${sessionId}/messages`
     );
   },

@@ -10,6 +10,7 @@ interface Session {
   message_count: number;
   last_active: string;
   pinned?: boolean;
+  model?: string;
 }
 
 interface SidebarProps {

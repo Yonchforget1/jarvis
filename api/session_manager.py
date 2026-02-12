@@ -35,6 +35,7 @@ class Session:
     custom_name: str = ""
     message_count: int = 0
     pinned: bool = False
+    model: str = ""
 
     def touch(self) -> None:
         self.last_active = datetime.now(timezone.utc)
@@ -143,6 +144,7 @@ class SessionManager:
                 "custom_name": session.custom_name,
                 "message_count": session.message_count,
                 "pinned": session.pinned,
+                "model": session.model,
                 "messages": self._serialize_messages(session.conversation.messages),
             }
             path = _SESSIONS_DIR / f"{session.session_id}.json"
@@ -189,6 +191,7 @@ class SessionManager:
                     custom_name=data.get("custom_name", ""),
                     message_count=data.get("message_count", 0),
                     pinned=data.get("pinned", False),
+                    model=data.get("model", ""),
                 )
                 # Check if session is expired
                 age = (datetime.now(timezone.utc) - session.last_active).total_seconds()
@@ -212,7 +215,7 @@ class SessionManager:
             # Create new session
             sid = session_id or uuid.uuid4().hex
             convo = self._make_conversation(model=model)
-            session = Session(session_id=sid, user_id=user_id, conversation=convo)
+            session = Session(session_id=sid, user_id=user_id, conversation=convo, model=model or "")
             self._sessions[sid] = session
             self._persist_session(session)
             return session

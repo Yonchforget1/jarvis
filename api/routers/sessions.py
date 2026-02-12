@@ -38,6 +38,7 @@ async def list_sessions(
                 created_at=s.created_at.isoformat(),
                 last_active=s.last_active.isoformat(),
                 pinned=s.pinned,
+                model=s.model,
             )
             for s in sessions
         ],
@@ -135,6 +136,7 @@ async def get_session_messages(
     return {
         "session_id": session_id,
         "messages": messages,
+        "model": session.model,
         "total": total,
         "offset": offset,
         "limit": limit,
