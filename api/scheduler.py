@@ -269,6 +269,7 @@ class Scheduler:
     def _loop(self) -> None:
         """Main scheduler loop – checks every 30 seconds."""
         last_check_minute = -1
+        last_cleanup_hour = -1
         while self._running:
             try:
                 now = datetime.now(timezone.utc)
@@ -279,6 +280,11 @@ class Scheduler:
                     last_check_minute = current_minute
                     self._check_schedules(now)
 
+                # Hourly session cleanup
+                if now.hour != last_cleanup_hour and now.minute == 0:
+                    last_cleanup_hour = now.hour
+                    self._run_session_cleanup()
+
                 # Sleep 15 seconds between checks
                 for _ in range(15):
                     if not self._running:
@@ -287,6 +293,16 @@ class Scheduler:
             except Exception as e:
                 log.exception("Scheduler loop error: %s", e)
                 time.sleep(5)
+
+    def _run_session_cleanup(self) -> None:
+        """Periodically clean up expired sessions."""
+        try:
+            from api.main import session_mgr
+            expired = session_mgr.cleanup_expired()
+            if expired > 0:
+                log.info("Session cleanup removed %d expired sessions", expired)
+        except Exception as e:
+            log.warning("Session cleanup error: %s", e)
 
     def _check_schedules(self, now: datetime) -> None:
         """Check all schedules and fire matching ones."""

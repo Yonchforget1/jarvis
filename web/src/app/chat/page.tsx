@@ -169,7 +169,7 @@ export default function ChatPage() {
       <div className="flex flex-col flex-1">
         {/* Header */}
         <header className="flex items-center justify-between px-5 py-3 bg-zinc-900 border-b border-zinc-800">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pl-10 md:pl-0">
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <h1 className="text-lg font-semibold">Jarvis</h1>
           </div>

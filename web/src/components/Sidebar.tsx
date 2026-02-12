@@ -29,6 +29,7 @@ export function Sidebar({
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     { session_id: string; title: string; matches: { role: string; content: string }[] }[]
@@ -38,6 +39,12 @@ export function Sidebar({
   useEffect(() => {
     loadSessions();
   }, [refreshTrigger]);
+
+  // Close mobile sidebar on session select
+  function selectSession(sid: string) {
+    onSelectSession(sid);
+    setMobileOpen(false);
+  }
 
   async function loadSessions() {
     try {
@@ -75,40 +82,55 @@ export function Sidebar({
     }
   }
 
+  // Mobile toggle button (always visible on small screens)
+  const mobileToggle = (
+    <button
+      onClick={() => setMobileOpen(!mobileOpen)}
+      className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 flex items-center justify-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors"
+      aria-label="Toggle sidebar"
+    >
+      {mobileOpen ? "\u2715" : "\u2630"}
+    </button>
+  );
+
+  // Desktop collapsed state
   if (collapsed) {
     return (
-      <div className="w-12 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-3 gap-3">
-        <button
-          onClick={() => setCollapsed(false)}
-          className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 text-lg"
-          title="Expand sidebar"
-        >
-          &raquo;
-        </button>
-        <button
-          onClick={onNewChat}
-          className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 text-lg"
-          title="New chat"
-        >
-          +
-        </button>
-      </div>
+      <>
+        {mobileToggle}
+        <div className="hidden md:flex w-12 bg-zinc-900 border-r border-zinc-800 flex-col items-center py-3 gap-3">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 text-lg"
+            title="Expand sidebar"
+          >
+            &raquo;
+          </button>
+          <button
+            onClick={onNewChat}
+            className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 text-lg"
+            title="New chat"
+          >
+            +
+          </button>
+        </div>
+      </>
     );
   }
 
-  return (
-    <div className="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+  const sidebarContent = (
+    <div className="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-zinc-800">
         <button
-          onClick={onNewChat}
+          onClick={() => { onNewChat(); setMobileOpen(false); }}
           className="flex-1 text-left text-sm text-zinc-300 hover:text-white px-2 py-1.5 rounded hover:bg-zinc-800 transition-colors"
         >
           + New Chat
         </button>
         <button
           onClick={() => setCollapsed(true)}
-          className="text-zinc-500 hover:text-zinc-300 px-1"
+          className="hidden md:block text-zinc-500 hover:text-zinc-300 px-1"
           title="Collapse"
         >
           &laquo;
@@ -139,7 +161,7 @@ export function Sidebar({
             <div
               key={r.session_id}
               onClick={() => {
-                onSelectSession(r.session_id);
+                selectSession(r.session_id);
                 setSearchQuery("");
                 setSearchResults([]);
               }}
@@ -164,7 +186,7 @@ export function Sidebar({
         {sessions.map((s) => (
           <div
             key={s.session_id}
-            onClick={() => onSelectSession(s.session_id)}
+            onClick={() => selectSession(s.session_id)}
             className={`group flex items-center gap-2 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
               s.session_id === currentSessionId
                 ? "bg-zinc-800 text-white"
@@ -197,7 +219,7 @@ export function Sidebar({
           ].map((link) => (
             <button
               key={link.path}
-              onClick={() => router.push(link.path)}
+              onClick={() => { router.push(link.path); setMobileOpen(false); }}
               className={`text-xs text-zinc-500 ${link.color} transition-colors`}
             >
               {link.label}
@@ -212,5 +234,29 @@ export function Sidebar({
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {mobileToggle}
+
+      {/* Desktop sidebar */}
+      <div className="hidden md:block">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile overlay sidebar */}
+      {mobileOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 bg-black/60 z-40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="md:hidden fixed inset-y-0 left-0 z-40">
+            {sidebarContent}
+          </div>
+        </>
+      )}
+    </>
   );
 }

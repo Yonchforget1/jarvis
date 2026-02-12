@@ -158,7 +158,9 @@ def test_sessions_list_empty(client):
     token = reg.json()["access_token"]
     res = client.get("/api/sessions", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
-    assert res.json() == []
+    data = res.json()
+    assert data["sessions"] == []
+    assert data["total"] == 0
 
 
 def test_sessions_appear_after_chat(client):
@@ -178,7 +180,7 @@ def test_sessions_appear_after_chat(client):
     # Now list sessions
     res = client.get("/api/sessions", headers=headers)
     assert res.status_code == 200
-    sessions = res.json()
+    sessions = res.json()["sessions"]
     assert len(sessions) >= 1
     assert any(s["session_id"] == session_id for s in sessions)
 
@@ -200,7 +202,7 @@ def test_session_rename(client):
     assert res.json()["name"] == "My Chat"
 
     # Verify title changed
-    sessions = client.get("/api/sessions", headers=headers).json()
+    sessions = client.get("/api/sessions", headers=headers).json()["sessions"]
     titles = [s["title"] for s in sessions]
     assert "My Chat" in titles
 
@@ -220,7 +222,7 @@ def test_session_delete(client):
     res = client.delete(f"/api/sessions/{session_id}", headers=headers)
     assert res.status_code == 200
 
-    sessions = client.get("/api/sessions", headers=headers).json()
+    sessions = client.get("/api/sessions", headers=headers).json()["sessions"]
     assert not any(s["session_id"] == session_id for s in sessions)
 
 

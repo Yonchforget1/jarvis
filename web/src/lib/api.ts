@@ -213,8 +213,9 @@ export const api = {
   },
 
   // Sessions
-  async getSessions() {
-    return apiFetch<SessionInfo[]>("/api/sessions");
+  async getSessions(limit = 50, offset = 0) {
+    const data = await apiFetch<{ sessions: SessionInfo[]; total: number }>(`/api/sessions?limit=${limit}&offset=${offset}`);
+    return data.sessions;
   },
 
   async renameSession(sessionId: string, name: string) {

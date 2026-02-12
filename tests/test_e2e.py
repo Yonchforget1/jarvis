@@ -71,8 +71,9 @@ def test_full_e2e_flow(client):
     # ---- 4. List sessions ----
     sessions = client.get("/api/sessions", headers=headers)
     assert sessions.status_code == 200
-    assert len(sessions.json()) >= 1
-    assert any(s["session_id"] == session_id for s in sessions.json())
+    session_list = sessions.json()["sessions"]
+    assert len(session_list) >= 1
+    assert any(s["session_id"] == session_id for s in session_list)
 
     # ---- 5. Get session messages ----
     messages = client.get(f"/api/sessions/{session_id}/messages", headers=headers)
@@ -226,7 +227,7 @@ def test_multi_user_isolation(client):
 
     # User should NOT see admin's sessions
     user_sessions = client.get("/api/sessions", headers=user_headers)
-    assert not any(s["session_id"] == admin_session_id for s in user_sessions.json())
+    assert not any(s["session_id"] == admin_session_id for s in user_sessions.json()["sessions"])
 
     # User should NOT access admin endpoints
     assert client.get("/api/admin/users", headers=user_headers).status_code == 403

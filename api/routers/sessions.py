@@ -11,22 +11,33 @@ from api.models import RenameRequest, SessionInfo, UserInfo
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
-@router.get("", response_model=list[SessionInfo])
-async def list_sessions(user: UserInfo = Depends(get_current_user)):
+@router.get("")
+async def list_sessions(
+    user: UserInfo = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=200, description="Max sessions to return"),
+    offset: int = Query(default=0, ge=0, description="Skip N sessions"),
+):
     from api.main import session_mgr
 
     sessions = session_mgr.get_user_sessions(user.id)
     sessions.sort(key=lambda s: s.last_active, reverse=True)
-    return [
-        SessionInfo(
-            session_id=s.session_id,
-            title=s.custom_name or s.auto_title or f"Session {s.session_id[:8]}",
-            message_count=s.message_count,
-            created_at=s.created_at.isoformat(),
-            last_active=s.last_active.isoformat(),
-        )
-        for s in sessions
-    ]
+    total = len(sessions)
+    sessions = sessions[offset: offset + limit]
+    return {
+        "sessions": [
+            SessionInfo(
+                session_id=s.session_id,
+                title=s.custom_name or s.auto_title or f"Session {s.session_id[:8]}",
+                message_count=s.message_count,
+                created_at=s.created_at.isoformat(),
+                last_active=s.last_active.isoformat(),
+            )
+            for s in sessions
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 @router.get("/search")

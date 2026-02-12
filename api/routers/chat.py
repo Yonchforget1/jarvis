@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -13,6 +14,9 @@ from api.models import ChatRequest, ChatResponse, UserInfo
 
 router = APIRouter(prefix="/api", tags=["chat"])
 log = logging.getLogger("jarvis.api.chat")
+
+_CHAT_TIMEOUT = 120  # seconds
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="chat")
 
 
 def _get_limiter():
@@ -47,7 +51,14 @@ async def chat(
     tokens_before_in = getattr(session.conversation, 'total_input_tokens', 0) or 0
     tokens_before_out = getattr(session.conversation, 'total_output_tokens', 0) or 0
     try:
-        response_text = session.conversation.send(req.message)
+        future = _executor.submit(session.conversation.send, req.message)
+        response_text = future.result(timeout=_CHAT_TIMEOUT)
+    except FuturesTimeout:
+        log.warning("Chat timeout after %ds for session %s", _CHAT_TIMEOUT, session.session_id)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Response timed out after {_CHAT_TIMEOUT}s",
+        )
     except Exception as exc:
         log.exception("Conversation error for session %s", session.session_id)
         raise HTTPException(
@@ -64,7 +75,7 @@ async def chat(
 
     # Auto-title from first exchange
     if not session.auto_title and session.message_count == 1:
-        session.auto_title = req.message[:60]
+        session.auto_title = _generate_title(req.message, response_text)
 
     # Persist session to disk
     session_mgr.save_session(session)
@@ -84,7 +95,12 @@ async def _stream_response(session, message: str):
     tokens_before_in = getattr(session.conversation, 'total_input_tokens', 0) or 0
     tokens_before_out = getattr(session.conversation, 'total_output_tokens', 0) or 0
     try:
-        response_text = session.conversation.send(message)
+        future = _executor.submit(session.conversation.send, message)
+        response_text = future.result(timeout=_CHAT_TIMEOUT)
+    except FuturesTimeout:
+        error_data = json.dumps({"error": f"Response timed out after {_CHAT_TIMEOUT}s"})
+        yield f"event: error\ndata: {error_data}\n\n"
+        return
     except Exception as exc:
         error_data = json.dumps({"error": str(exc)})
         yield f"event: error\ndata: {error_data}\n\n"
@@ -92,7 +108,7 @@ async def _stream_response(session, message: str):
 
     # Auto-title
     if not session.auto_title and session.message_count == 1:
-        session.auto_title = message[:60]
+        session.auto_title = _generate_title(message, response_text)
 
     # Send session info
     meta = json.dumps({"session_id": session.session_id})
@@ -121,3 +137,35 @@ async def _stream_response(session, message: str):
     # Signal completion
     done = json.dumps({"done": True, "full_text": response_text})
     yield f"event: done\ndata: {done}\n\n"
+
+
+def _generate_title(user_message: str, assistant_response: str) -> str:
+    """Generate a concise session title from the first exchange.
+
+    Tries a lightweight LLM call; falls back to truncating the user message.
+    """
+    try:
+        from jarvis.config import Config
+        from jarvis.backends import create_backend
+
+        config = Config.load()
+        backend = create_backend(config)
+        prompt = (
+            "Generate a short title (3-7 words, no quotes) for a conversation "
+            f"that starts with:\nUser: {user_message[:200]}\n"
+            f"Assistant: {assistant_response[:200]}\n"
+            "Title:"
+        )
+        resp = backend.send(
+            messages=[{"role": "user", "content": prompt}],
+            system="You generate concise conversation titles. Return ONLY the title, nothing else.",
+            tools=[],
+            max_tokens=30,
+        )
+        title = (resp.text or "").strip().strip('"').strip("'")
+        if 2 <= len(title) <= 80:
+            return title
+    except Exception:
+        log.debug("Title generation failed, using fallback")
+    # Fallback: first 60 chars of user message
+    return user_message[:60]
