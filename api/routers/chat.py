@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
@@ -15,8 +15,15 @@ router = APIRouter(prefix="/api", tags=["chat"])
 log = logging.getLogger("jarvis.api.chat")
 
 
+def _get_limiter():
+    from api.main import limiter
+    return limiter
+
+
 @router.post("/chat", response_model=ChatResponse)
+@_get_limiter().limit("30/minute")
 async def chat(
+    request: Request,
     req: ChatRequest,
     user: UserInfo = Depends(get_current_user),
     stream: bool = Query(False, description="Enable SSE streaming"),

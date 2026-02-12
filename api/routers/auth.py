@@ -11,7 +11,13 @@ from api.models import AuthRequest, AuthResponse, RegisterRequest, UserInfo
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _get_limiter():
+    from api.main import limiter
+    return limiter
+
+
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@_get_limiter().limit("5/minute")
 async def register(req: RegisterRequest, request: Request):
     user = create_user(req.username, req.password, req.email)
     if user is None:
@@ -30,6 +36,7 @@ async def register(req: RegisterRequest, request: Request):
 
 
 @router.post("/login", response_model=AuthResponse)
+@_get_limiter().limit("10/minute")
 async def login(req: AuthRequest, request: Request):
     user = authenticate_user(req.username, req.password)
     if user is None:

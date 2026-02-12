@@ -24,7 +24,10 @@ log = logging.getLogger("jarvis.api")
 session_mgr = SessionManager()
 task_runner = TaskRunner(max_concurrent=5)
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=os.environ.get("JARVIS_RATE_LIMIT", "1") != "0",
+)
 
 _STATIC_DIR = Path(__file__).parent / "static"
 

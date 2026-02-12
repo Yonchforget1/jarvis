@@ -1,5 +1,9 @@
 """Shared test fixtures."""
 
+import os
+# Disable rate limiting during tests
+os.environ["JARVIS_RATE_LIMIT"] = "0"
+
 import pytest
 from jarvis.tool_registry import ToolDef, ToolRegistry
 from jarvis.backends.base import Backend, BackendResponse, ToolCall, TokenUsage
