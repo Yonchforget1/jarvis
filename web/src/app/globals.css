@@ -2,8 +2,21 @@
 @plugin "@tailwindcss/typography";
 
 :root {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --surface: #f4f4f5;
+  --surface-2: #e4e4e7;
+  --border: #d4d4d8;
+  --muted: #71717a;
+}
+
+.dark {
   --background: #09090b;
   --foreground: #fafafa;
+  --surface: #18181b;
+  --surface-2: #27272a;
+  --border: #3f3f46;
+  --muted: #a1a1aa;
 }
 
 @theme inline {
@@ -26,6 +39,6 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--border);
   border-radius: 3px;
 }

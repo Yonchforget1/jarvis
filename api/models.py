@@ -48,6 +48,12 @@ class SessionInfo(BaseModel):
     message_count: int
     created_at: str
     last_active: str
+    pinned: bool = False
+
+
+class SessionUpdateRequest(BaseModel):
+    name: str | None = None
+    pinned: bool | None = None
 
 
 class RenameRequest(BaseModel):

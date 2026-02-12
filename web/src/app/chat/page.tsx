@@ -7,6 +7,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
 import { TemplateGrid } from "@/components/TemplateGrid";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -155,7 +156,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+    <div className="flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       {/* Sidebar */}
       <Sidebar
         currentSessionId={sessionId}
@@ -168,7 +169,7 @@ export default function ChatPage() {
       {/* Main chat area */}
       <div className="flex flex-col flex-1">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 py-3 bg-zinc-900 border-b border-zinc-800">
+        <header className="flex items-center justify-between px-5 py-3 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center gap-3 pl-10 md:pl-0">
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <h1 className="text-lg font-semibold">Jarvis</h1>
@@ -204,7 +205,7 @@ export default function ChatPage() {
           <select
             value={selectedModel || ""}
             onChange={(e) => setSelectedModel(e.target.value || null)}
-            className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1.5 rounded border border-zinc-700 focus:border-blue-500 focus:outline-none"
+            className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs px-2 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 focus:border-blue-500 focus:outline-none"
           >
             <option value="">Default Model</option>
             <optgroup label="Anthropic">
@@ -219,13 +220,25 @@ export default function ChatPage() {
               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </optgroup>
           </select>
+            <ThemeToggle />
           </div>
         </header>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
           {messages.map((msg, i) => (
-            <ChatMessage key={i} role={msg.role} content={msg.content} />
+            <ChatMessage
+              key={i}
+              role={msg.role}
+              content={msg.content}
+              onFork={sessionId ? async () => {
+                try {
+                  const result = await api.forkSession(sessionId, i);
+                  handleSelectSession(result.session_id);
+                  setSidebarRefresh((n) => n + 1);
+                } catch { /* ignore */ }
+              } : undefined}
+            />
           ))}
           {sending && (
             <div className="self-start text-xs text-zinc-500 animate-pulse">

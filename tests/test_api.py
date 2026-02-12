@@ -496,3 +496,105 @@ def test_session_search_requires_query(client):
     headers = {"Authorization": f"Bearer {token}"}
     res = client.get("/api/sessions/search", headers=headers)
     assert res.status_code == 422  # Missing required query param
+
+
+# ---- Session Pinning ----
+
+def test_session_pin_unpin(client):
+    reg = client.post("/api/auth/register", json={"username": "pinner", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi!"
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    # Pin
+    res = client.patch(f"/api/sessions/{session_id}", json={"pinned": True}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["pinned"] is True
+
+    # Verify pinned in listing
+    sessions = client.get("/api/sessions", headers=headers).json()["sessions"]
+    assert any(s["session_id"] == session_id and s["pinned"] for s in sessions)
+
+    # Unpin
+    res = client.patch(f"/api/sessions/{session_id}", json={"pinned": False}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["pinned"] is False
+
+
+# ---- Session Fork ----
+
+def test_session_fork(client):
+    reg = client.post("/api/auth/register", json={"username": "forker", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi there!"
+        mock_convo.messages = [
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "Hi there!"},
+            {"role": "user", "content": "how are you?"},
+            {"role": "assistant", "content": "I'm great!"},
+        ]
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    # Fork from index 1 (include first user + first assistant)
+    res = client.post(f"/api/sessions/{session_id}/fork?from_index=1", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "session_id" in data
+    assert data["session_id"] != session_id
+    assert data["title"].startswith("Fork of")
+
+    # Verify forked session exists
+    sessions = client.get("/api/sessions", headers=headers).json()["sessions"]
+    assert len(sessions) >= 2
+
+
+def test_session_fork_not_found(client):
+    reg = client.post("/api/auth/register", json={"username": "forknf", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.post("/api/sessions/nonexistent/fork", headers=headers)
+    assert res.status_code == 404
+
+
+# ---- Health Detailed ----
+
+def test_health_detailed(client):
+    res = client.get("/api/health/detailed")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ok"
+    assert "uptime_seconds" in data
+    assert "process" in data
+    assert "memory_mb" in data["process"]
+    assert "sessions" in data
+    assert "scheduler" in data
+    assert "usage" in data
+
+
+# ---- Session Pagination ----
+
+def test_session_pagination(client):
+    reg = client.post("/api/auth/register", json={"username": "paguser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.get("/api/sessions?limit=10&offset=0", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "sessions" in data
+    assert "total" in data
+    assert "offset" in data
+    assert data["offset"] == 0
+    assert data["limit"] == 10

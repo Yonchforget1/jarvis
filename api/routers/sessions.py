@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 
 from api.deps import get_current_user
-from api.models import RenameRequest, SessionInfo, UserInfo
+from api.models import RenameRequest, SessionInfo, SessionUpdateRequest, UserInfo
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -20,7 +20,13 @@ async def list_sessions(
     from api.main import session_mgr
 
     sessions = session_mgr.get_user_sessions(user.id)
-    sessions.sort(key=lambda s: s.last_active, reverse=True)
+    # Pinned sessions first, then by last_active
+    sessions.sort(key=lambda s: (not s.pinned, s.last_active), reverse=False)
+    sessions.sort(key=lambda s: s.pinned, reverse=True)
+    # Within pinned and unpinned groups, sort by last_active descending
+    pinned = sorted([s for s in sessions if s.pinned], key=lambda s: s.last_active, reverse=True)
+    unpinned = sorted([s for s in sessions if not s.pinned], key=lambda s: s.last_active, reverse=True)
+    sessions = pinned + unpinned
     total = len(sessions)
     sessions = sessions[offset: offset + limit]
     return {
@@ -31,6 +37,7 @@ async def list_sessions(
                 message_count=s.message_count,
                 created_at=s.created_at.isoformat(),
                 last_active=s.last_active.isoformat(),
+                pinned=s.pinned,
             )
             for s in sessions
         ],
@@ -83,9 +90,9 @@ async def search_sessions(
 
 
 @router.patch("/{session_id}")
-async def rename_session(
+async def update_session(
     session_id: str,
-    req: RenameRequest,
+    req: SessionUpdateRequest,
     user: UserInfo = Depends(get_current_user),
 ):
     from api.main import session_mgr
@@ -94,8 +101,14 @@ async def rename_session(
     if session is None or session.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
-    session_mgr.rename_session(session_id, req.name)
-    return {"status": "renamed", "name": req.name}
+    changed = {}
+    if req.name is not None:
+        session_mgr.rename_session(session_id, req.name)
+        changed["name"] = req.name
+    if req.pinned is not None:
+        session_mgr.pin_session(session_id, req.pinned)
+        changed["pinned"] = req.pinned
+    return {"status": "updated", **changed}
 
 
 @router.get("/{session_id}/messages")
@@ -169,6 +182,24 @@ async def export_session(
         media_type="text/markdown",
         headers={"Content-Disposition": f'attachment; filename="{session_id[:8]}_chat.md"'},
     )
+
+
+@router.post("/{session_id}/fork")
+async def fork_session(
+    session_id: str,
+    user: UserInfo = Depends(get_current_user),
+    from_index: int = Query(default=-1, ge=-1, description="Fork from this message index (-1=all)"),
+):
+    from api.main import session_mgr
+
+    forked = session_mgr.fork_session(session_id, user.id, from_index)
+    if not forked:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return {
+        "session_id": forked.session_id,
+        "title": forked.title,
+        "message_count": forked.message_count,
+    }
 
 
 @router.delete("/{session_id}")

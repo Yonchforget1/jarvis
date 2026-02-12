@@ -9,6 +9,7 @@ interface Session {
   title: string;
   message_count: number;
   last_active: string;
+  pinned?: boolean;
 }
 
 interface SidebarProps {
@@ -77,6 +78,20 @@ export function Sidebar({
     try {
       await api.deleteSession(sessionId);
       setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handlePin(e: React.MouseEvent, sessionId: string, currentlyPinned: boolean) {
+    e.stopPropagation();
+    try {
+      await api.pinSession(sessionId, !currentlyPinned);
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.session_id === sessionId ? { ...s, pinned: !currentlyPinned } : s
+        )
+      );
     } catch {
       // ignore
     }
@@ -187,13 +202,21 @@ export function Sidebar({
           <div
             key={s.session_id}
             onClick={() => selectSession(s.session_id)}
-            className={`group flex items-center gap-2 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
+            className={`group flex items-center gap-1.5 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
               s.session_id === currentSessionId
                 ? "bg-zinc-800 text-white"
                 : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
             }`}
           >
+            {s.pinned && <span className="text-xs text-yellow-500 shrink-0" title="Pinned">{"\u{1F4CC}"}</span>}
             <span className="flex-1 truncate">{s.title}</span>
+            <button
+              onClick={(e) => handlePin(e, s.session_id, !!s.pinned)}
+              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-yellow-400 text-xs transition-opacity"
+              title={s.pinned ? "Unpin" : "Pin"}
+            >
+              {s.pinned ? "\u{1F4CC}" : "\u{1F4CC}"}
+            </button>
             <button
               onClick={(e) => handleDelete(e, s.session_id)}
               className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-xs transition-opacity"
@@ -215,6 +238,7 @@ export function Sidebar({
             { path: "/usage", label: "Usage", color: "hover:text-green-400" },
             { path: "/keys", label: "Keys", color: "hover:text-yellow-400" },
             { path: "/settings", label: "Settings", color: "hover:text-blue-400" },
+            { path: "/status", label: "Status", color: "hover:text-emerald-400" },
             { path: "/admin", label: "Admin", color: "hover:text-purple-400" },
           ].map((link) => (
             <button

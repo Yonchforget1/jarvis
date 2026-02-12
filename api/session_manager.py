@@ -34,6 +34,7 @@ class Session:
     auto_title: str = ""
     custom_name: str = ""
     message_count: int = 0
+    pinned: bool = False
 
     def touch(self) -> None:
         self.last_active = datetime.now(timezone.utc)
@@ -91,6 +92,7 @@ class SessionManager:
                 "auto_title": session.auto_title,
                 "custom_name": session.custom_name,
                 "message_count": session.message_count,
+                "pinned": session.pinned,
                 "messages": self._serialize_messages(session.conversation.messages),
             }
             path = _SESSIONS_DIR / f"{session.session_id}.json"
@@ -136,6 +138,7 @@ class SessionManager:
                     auto_title=data.get("auto_title", ""),
                     custom_name=data.get("custom_name", ""),
                     message_count=data.get("message_count", 0),
+                    pinned=data.get("pinned", False),
                 )
                 # Check if session is expired
                 age = (datetime.now(timezone.utc) - session.last_active).total_seconds()
@@ -184,6 +187,38 @@ class SessionManager:
             self._persist_session(session)
             return True
         return False
+
+    def pin_session(self, session_id: str, pinned: bool) -> bool:
+        session = self._sessions.get(session_id)
+        if session:
+            session.pinned = pinned
+            self._persist_session(session)
+            return True
+        return False
+
+    def fork_session(self, session_id: str, user_id: str, from_index: int = -1) -> Session | None:
+        """Fork a session, creating a new one with messages up to from_index."""
+        source = self._sessions.get(session_id)
+        if not source or source.user_id != user_id:
+            return None
+
+        messages = self._serialize_messages(source.conversation.messages)
+        if from_index >= 0:
+            messages = messages[:from_index + 1]
+
+        convo = self._make_conversation(messages)
+        new_sid = uuid.uuid4().hex
+        forked = Session(
+            session_id=new_sid,
+            user_id=user_id,
+            conversation=convo,
+            auto_title=f"Fork of {source.title}",
+            message_count=len(messages),
+        )
+        with self._lock:
+            self._sessions[new_sid] = forked
+        self._persist_session(forked)
+        return forked
 
     def delete_session(self, session_id: str) -> bool:
         with self._lock:

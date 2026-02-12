@@ -225,9 +225,23 @@ export const api = {
     );
   },
 
+  async pinSession(sessionId: string, pinned: boolean) {
+    return apiFetch<{ status: string; pinned: boolean }>(
+      `/api/sessions/${sessionId}`,
+      { method: "PATCH", body: JSON.stringify({ pinned }) }
+    );
+  },
+
   async getSessionMessages(sessionId: string) {
     return apiFetch<{ session_id: string; messages: { role: string; content: string }[] }>(
       `/api/sessions/${sessionId}/messages`
+    );
+  },
+
+  async forkSession(sessionId: string, fromIndex = -1) {
+    return apiFetch<{ session_id: string; title: string; message_count: number }>(
+      `/api/sessions/${sessionId}/fork?from_index=${fromIndex}`,
+      { method: "POST" }
     );
   },
 
