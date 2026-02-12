@@ -269,6 +269,67 @@ export const api = {
     });
   },
 
+  // Admin
+  async getAdminUsers() {
+    return apiFetch<{ id: string; username: string; email: string; role: string; created_at: string }[]>("/api/admin/users");
+  },
+
+  async updateUserRole(userId: string, role: string) {
+    return apiFetch<{ status: string; changed: Record<string, string> }>(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  async deleteUser(userId: string) {
+    return apiFetch<{ status: string; username: string }>(`/api/admin/users/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
+  async getAdminStats() {
+    return apiFetch<{
+      total_users: number;
+      admin_users: number;
+      active_sessions: number;
+      uptime_seconds: number;
+      total_tasks: number;
+      running_tasks: number;
+      completed_tasks: number;
+      failed_tasks: number;
+    }>("/api/admin/stats");
+  },
+
+  async getAuditLog(limit = 50) {
+    return apiFetch<{ entries: { timestamp: string; username: string; action: string; ip: string }[]; total: number }>(`/api/admin/audit?limit=${limit}`);
+  },
+
+  async getUsage() {
+    return apiFetch<{
+      total_input_tokens: number;
+      total_output_tokens: number;
+      total_tokens: number;
+      total_requests: number;
+      estimated_cost_usd: number;
+    }>("/api/usage");
+  },
+
+  // API Keys
+  async getApiKeys() {
+    return apiFetch<{ key_id: string; name: string; prefix: string; created_at: string; usage_count: number }[]>("/api/keys");
+  },
+
+  async createApiKey(name: string) {
+    return apiFetch<{ key_id: string; name: string; key: string; warning: string }>("/api/keys", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  async revokeApiKey(keyId: string) {
+    return apiFetch<{ status: string }>(`/api/keys/${keyId}`, { method: "DELETE" });
+  },
+
   // Health (no auth needed)
   async health() {
     const res = await fetch(`${API_BASE}/api/health`);

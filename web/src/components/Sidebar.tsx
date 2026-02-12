@@ -137,6 +137,12 @@ export function Sidebar({
         <div className="flex gap-3">
           <SettingsLink />
           <button
+            onClick={() => window.location.href = "/admin"}
+            className="text-xs text-zinc-500 hover:text-purple-400 transition-colors"
+          >
+            Admin
+          </button>
+          <button
             onClick={onLogout}
             className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
           >
