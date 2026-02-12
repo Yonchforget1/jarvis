@@ -1,0 +1,13 @@
+"""Register all built-in tools."""
+
+from jarvis.tool_registry import ToolRegistry
+
+
+def register_all_tools(registry: ToolRegistry) -> None:
+    from jarvis.tools.filesystem import register as reg_fs
+    from jarvis.tools.shell import register as reg_shell
+    from jarvis.tools.web import register as reg_web
+
+    reg_fs(registry)
+    reg_shell(registry)
+    reg_web(registry)
