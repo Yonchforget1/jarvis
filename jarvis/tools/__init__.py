@@ -31,6 +31,12 @@ def register_all_tools(registry: ToolRegistry) -> None:
     except ImportError:
         pass
 
+    try:
+        from jarvis.tools.gamedev import register as reg_gamedev
+        reg_gamedev(registry)
+    except ImportError:
+        pass
+
     # Load plugins from plugins/ directory
     from jarvis.plugin_loader import load_plugins
     load_plugins(registry)
