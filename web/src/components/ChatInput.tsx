@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, KeyboardEvent } from "react";
+import { useRef, useState, useEffect, useCallback, KeyboardEvent } from "react";
 import { api } from "@/lib/api";
 
 interface Attachment {
@@ -30,6 +30,62 @@ export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputPro
   const [showCommands, setShowCommands] = useState(false);
   const [commandFilter, setCommandFilter] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setListening(false);
+  }, []);
+
+  function startListening() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      if (ref.current) {
+        ref.current.value = transcript;
+        setCharCount(transcript.length);
+        ref.current.style.height = "auto";
+        ref.current.style.height = Math.min(ref.current.scrollHeight, 150) + "px";
+      }
+    };
+
+    recognition.onerror = () => stopListening();
+    recognition.onend = () => setListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }
+
+  function toggleVoice() {
+    if (listening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const filteredCommands = commandFilter
     ? slashCommands.filter((c) => c.name.toLowerCase().startsWith(commandFilter.toLowerCase()))
@@ -215,6 +271,20 @@ export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputPro
         >
           {uploading ? "..." : "+"}
         </button>
+        {typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition) && (
+          <button
+            onClick={toggleVoice}
+            disabled={disabled}
+            className={`px-3 text-sm rounded-lg transition-colors border ${
+              listening
+                ? "bg-red-100 dark:bg-red-900/30 border-red-400 text-red-500 animate-pulse"
+                : "bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400"
+            } disabled:opacity-50`}
+            title={listening ? "Stop listening" : "Voice input"}
+          >
+            {listening ? "\u23F9" : "\u{1F3A4}"}
+          </button>
+        )}
         <textarea
           ref={ref}
           placeholder="Message Jarvis... (type / for commands)"

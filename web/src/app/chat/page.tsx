@@ -10,6 +10,7 @@ import { TemplateGrid } from "@/components/TemplateGrid";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { useToast } from "@/components/Toast";
+import { ShortcutsModal } from "@/components/ShortcutsModal";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -23,10 +24,13 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendingStartTime, setSendingStartTime] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -57,6 +61,18 @@ export default function ChatPage() {
     }
   }, [messages, autoScroll]);
 
+  // Elapsed time counter during sending
+  useEffect(() => {
+    if (!sending) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - sendingStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sending, sendingStartTime]);
+
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -83,8 +99,17 @@ export default function ChatPage() {
         const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Search"]');
         searchInput?.focus();
       }
-      // Escape: Clear search, focus chat input
+      // Ctrl+/ or Cmd+/: Show shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+      }
+      // Escape: Close modals or focus chat input
       if (e.key === "Escape") {
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
         const textarea = document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Message"]');
         textarea?.focus();
       }
@@ -107,6 +132,7 @@ export default function ChatPage() {
     abortRef.current = controller;
     setMessages((prev) => [...prev, { role: "user", content: text, timestamp: Date.now() }]);
     setSending(true);
+    setSendingStartTime(Date.now());
 
     // Add an empty assistant message that we'll stream into
     setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: Date.now() }]);
@@ -327,16 +353,19 @@ export default function ChatPage() {
             />
           ))}
           {sending && (
-            <div className="self-start flex items-center gap-2 px-4 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+            <div className="self-start flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
               <div className="flex gap-1">
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
               <span className="text-xs text-zinc-500">Jarvis is thinking</span>
+              {elapsedSeconds > 0 && (
+                <span className="text-xs text-zinc-400 font-mono">{elapsedSeconds}s</span>
+              )}
               <button
                 onClick={handleStop}
-                className="ml-2 text-xs text-zinc-500 hover:text-red-400 border border-zinc-600 rounded px-2 py-0.5 transition-colors"
+                className="text-xs text-zinc-500 hover:text-red-400 border border-zinc-300 dark:border-zinc-600 rounded px-2 py-0.5 transition-colors"
               >
                 Stop
               </button>
@@ -435,6 +464,11 @@ export default function ChatPage() {
           onClose={() => setShowWelcome(false)}
           onStartChat={(prompt) => { setShowWelcome(false); handleSend(prompt); }}
         />
+      )}
+
+      {/* Shortcuts Modal */}
+      {showShortcuts && (
+        <ShortcutsModal onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   );
