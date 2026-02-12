@@ -37,6 +37,9 @@ def register_all_tools(registry: ToolRegistry) -> None:
     except ImportError:
         pass
 
+    from jarvis.tools.planning import register as reg_planning
+    reg_planning(registry)
+
     # Load plugins from plugins/ directory
     from jarvis.plugin_loader import load_plugins
     load_plugins(registry)
