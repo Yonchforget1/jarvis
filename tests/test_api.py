@@ -9,7 +9,6 @@ from unittest.mock import patch, MagicMock
 from api.main import app, session_mgr
 from api.auth import _load_users, _save_users, _USERS_FILE, _DATA_DIR
 from api.models import UserInfo
-from jarvis.backends.base import BackendResponse
 
 
 @pytest.fixture(autouse=True)
@@ -115,10 +114,9 @@ def test_chat_sends_message(client):
     token = reg.json()["access_token"]
 
     # Mock the conversation.send to avoid calling real backend
-    mock_response = BackendResponse(text="Hello! I'm Jarvis.", tool_calls=[], raw=None)
     with patch.object(session_mgr, "_make_conversation") as mock_make:
         mock_convo = MagicMock()
-        mock_convo.send.return_value = mock_response
+        mock_convo.send.return_value = "Hello! I'm Jarvis."
         mock_make.return_value = mock_convo
 
         res = client.post(

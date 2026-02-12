@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
 import uuid
 from typing import TYPE_CHECKING
@@ -38,6 +39,7 @@ class ClaudeCodeBackend(Backend):
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config
+        self._cli = shutil.which("claude") or "claude"
 
     # ── send ──────────────────────────────────────────────────
 
@@ -52,7 +54,7 @@ class ClaudeCodeBackend(Backend):
 
         try:
             proc = subprocess.run(
-                ["claude", "-p", "--output-format", "json"],
+                [self._cli, "-p", "--output-format", "json"],
                 input=prompt,
                 capture_output=True,
                 text=True,
@@ -203,7 +205,7 @@ class ClaudeCodeBackend(Backend):
     def ping(self) -> bool:
         try:
             proc = subprocess.run(
-                ["claude", "--version"],
+                [self._cli, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,

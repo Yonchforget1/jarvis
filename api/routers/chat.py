@@ -24,7 +24,7 @@ async def chat(
     session.touch()
 
     try:
-        response = session.conversation.send(req.message)
+        response_text = session.conversation.send(req.message)
     except Exception as exc:
         log.exception("Conversation error for session %s", session.session_id)
         raise HTTPException(
@@ -38,8 +38,6 @@ async def chat(
 
     return ChatResponse(
         session_id=session.session_id,
-        response=response.text or "",
-        tool_calls=[
-            {"name": tc.name, "args": tc.args} for tc in (response.tool_calls or [])
-        ],
+        response=response_text,
+        tool_calls=[],
     )
