@@ -16,6 +16,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from api.api_keys import APIKeyManager
 from api.session_manager import SessionManager
 from api.task_runner import TaskRunner
 from api.usage import UsageTracker
@@ -27,6 +28,7 @@ session_mgr = SessionManager()
 task_runner = TaskRunner(max_concurrent=5)
 usage_tracker = UsageTracker()
 webhook_mgr = WebhookManager()
+key_mgr = APIKeyManager()
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -88,6 +90,7 @@ from api.routers.tasks import router as tasks_router  # noqa: E402
 from api.routers.admin import router as admin_router  # noqa: E402
 from api.routers.webhooks import router as webhooks_router  # noqa: E402
 from api.routers.usage import router as usage_router  # noqa: E402
+from api.routers.keys import router as keys_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
@@ -99,6 +102,7 @@ app.include_router(tasks_router)
 app.include_router(admin_router)
 app.include_router(webhooks_router)
 app.include_router(usage_router)
+app.include_router(keys_router)
 
 # ---------- Static files ----------
 if _STATIC_DIR.exists():
