@@ -1,16 +1,34 @@
+# Core
 fastapi>=0.115.0
 uvicorn>=0.32.0
 pydantic>=2.10.0
 python-dotenv>=1.0.0
 pyyaml>=6.0.0
+rich>=13.0.0
+
+# Web tools
 httpx>=0.28.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
+
+# Auth
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
 python-multipart>=0.0.9
 slowapi>=0.1.9
-rich>=13.0.0
+
+# Memory
 chromadb>=0.5.0
+
+# Computer control (optional – Windows)
+pywinauto>=0.6.8; sys_platform == "win32"
+pyautogui>=0.9.54
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Browser automation (optional)
+playwright>=1.40.0
+
+# Testing
 pytest>=9.0.0
 pytest-asyncio>=0.24.0

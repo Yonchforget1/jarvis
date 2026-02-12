@@ -14,3 +14,8 @@ memory/vector_db/
 .wwebjs_auth/
 *.log
 nul
+desktop/node_modules/
+desktop/dist/
+web/node_modules/
+web/.next/
+web/out/
