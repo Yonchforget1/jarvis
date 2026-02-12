@@ -24,3 +24,9 @@ def register_all_tools(registry: ToolRegistry) -> None:
         reg_browser(registry)
     except ImportError:
         pass
+
+    try:
+        from jarvis.tools.memory_tools import register as reg_memory
+        reg_memory(registry)
+    except ImportError:
+        pass
