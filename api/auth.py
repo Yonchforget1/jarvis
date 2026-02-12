@@ -9,12 +9,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+import os
+
 import bcrypt
 from jose import JWTError, jwt
 
 log = logging.getLogger("jarvis.api.auth")
 
-_SECRET_KEY = "jarvis-secret-change-in-production-" + uuid.uuid4().hex[:16]
+_SECRET_KEY = os.environ.get("JARVIS_SECRET_KEY", "jarvis-dev-" + uuid.uuid4().hex[:16])
+if "JARVIS_SECRET_KEY" not in os.environ:
+    log.warning("JARVIS_SECRET_KEY not set – using random key (sessions reset on restart)")
 _ALGORITHM = "HS256"
 _ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 _REMEMBER_ME_EXPIRE_DAYS = 30
