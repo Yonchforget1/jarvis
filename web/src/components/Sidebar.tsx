@@ -184,39 +184,25 @@ export function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
-        <div className="text-xs text-zinc-600 mb-1">{api.getUsername()}</div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => router.push("/settings")}
-            className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
-          >
-            Settings
-          </button>
-          <button
-            onClick={() => router.push("/keys")}
-            className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors"
-          >
-            API Keys
-          </button>
-          <button
-            onClick={() => router.push("/usage")}
-            className="text-xs text-zinc-500 hover:text-green-400 transition-colors"
-          >
-            Usage
-          </button>
-          <button
-            onClick={() => router.push("/schedules")}
-            className="text-xs text-zinc-500 hover:text-cyan-400 transition-colors"
-          >
-            Schedules
-          </button>
-          <button
-            onClick={() => router.push("/admin")}
-            className="text-xs text-zinc-500 hover:text-purple-400 transition-colors"
-          >
-            Admin
-          </button>
+      <div className="border-t border-zinc-800 px-3 py-2 space-y-1.5">
+        <div className="text-xs text-zinc-600">{api.getUsername()}</div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {[
+            { path: "/tools", label: "Tools", color: "hover:text-orange-400" },
+            { path: "/schedules", label: "Schedules", color: "hover:text-cyan-400" },
+            { path: "/usage", label: "Usage", color: "hover:text-green-400" },
+            { path: "/keys", label: "Keys", color: "hover:text-yellow-400" },
+            { path: "/settings", label: "Settings", color: "hover:text-blue-400" },
+            { path: "/admin", label: "Admin", color: "hover:text-purple-400" },
+          ].map((link) => (
+            <button
+              key={link.path}
+              onClick={() => router.push(link.path)}
+              className={`text-xs text-zinc-500 ${link.color} transition-colors`}
+            >
+              {link.label}
+            </button>
+          ))}
           <button
             onClick={onLogout}
             className="text-xs text-zinc-500 hover:text-red-400 transition-colors"

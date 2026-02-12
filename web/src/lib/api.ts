@@ -371,6 +371,35 @@ export const api = {
     }>("/api/schedules/cron-aliases");
   },
 
+  // Uploads
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = localStorage.getItem("jarvis_token");
+    const res = await fetch(`${API_BASE}/api/uploads`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(data.detail || "Upload failed");
+    }
+    return res.json() as Promise<{ file_id: string; filename: string; size: number }>;
+  },
+
+  async getUploads() {
+    return apiFetch<{ file_id: string; filename: string; size: number }[]>("/api/uploads");
+  },
+
+  async deleteUpload(fileId: string) {
+    return apiFetch<{ status: string }>(`/api/uploads/${fileId}`, { method: "DELETE" });
+  },
+
+  async getFileContent(fileId: string) {
+    return apiFetch<{ file_id: string; filename: string; content: string }>(`/api/uploads/${fileId}/content`);
+  },
+
   // Search
   async searchSessions(query: string) {
     return apiFetch<{

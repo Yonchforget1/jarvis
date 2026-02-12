@@ -91,6 +91,8 @@ async def rename_session(
 async def get_session_messages(
     session_id: str,
     user: UserInfo = Depends(get_current_user),
+    limit: int = Query(default=0, ge=0, le=1000, description="Max messages (0=all)"),
+    offset: int = Query(default=0, ge=0, description="Skip N messages from start"),
 ):
     from api.main import session_mgr
 
@@ -99,7 +101,20 @@ async def get_session_messages(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     messages = session_mgr.get_session_messages(session_id) or []
-    return {"session_id": session_id, "messages": messages}
+    total = len(messages)
+
+    if offset > 0:
+        messages = messages[offset:]
+    if limit > 0:
+        messages = messages[:limit]
+
+    return {
+        "session_id": session_id,
+        "messages": messages,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 @router.get("/{session_id}/export")
