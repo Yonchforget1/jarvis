@@ -35,6 +35,7 @@ COPY --from=frontend /web/.next/static api/static/_next/static/
 
 # Create data directories
 RUN mkdir -p api/data/sessions api/data/usage api/data/webhooks \
+    api/data/uploads api/data/schedules \
     memory/vector_db memory/plans logs
 
 # Environment
