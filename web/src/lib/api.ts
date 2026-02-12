@@ -129,12 +129,13 @@ export const api = {
   getUsername,
 
   // Chat
-  async chat(message: string, sessionId?: string | null) {
+  async chat(message: string, sessionId?: string | null, model?: string | null) {
     return apiFetch<ChatResponse>("/api/chat", {
       method: "POST",
       body: JSON.stringify({
         message,
         session_id: sessionId || undefined,
+        model: model || undefined,
       }),
     });
   },
@@ -146,7 +147,8 @@ export const api = {
     onChunk: (text: string) => void,
     onMeta: (data: { session_id: string }) => void,
     onDone: (fullText: string) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    model?: string | null
   ) {
     const token = getToken();
     const res = await fetch(`${API_BASE}/api/chat?stream=true`, {
@@ -158,6 +160,7 @@ export const api = {
       body: JSON.stringify({
         message,
         session_id: sessionId || undefined,
+        model: model || undefined,
       }),
     });
 
@@ -369,6 +372,30 @@ export const api = {
       aliases: Record<string, string>;
       examples: { cron: string; description: string }[];
     }>("/api/schedules/cron-aliases");
+  },
+
+  // Templates
+  async getTemplates() {
+    return apiFetch<{
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+      icon: string;
+      prompt: string;
+      custom: boolean;
+    }[]>("/api/templates");
+  },
+
+  async createTemplate(name: string, description: string, category: string, prompt: string) {
+    return apiFetch<Record<string, unknown>>("/api/templates", {
+      method: "POST",
+      body: JSON.stringify({ name, description, category, prompt }),
+    });
+  },
+
+  async deleteTemplate(templateId: string) {
+    return apiFetch<{ status: string }>(`/api/templates/${templateId}`, { method: "DELETE" });
   },
 
   // Uploads

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
+import { TemplateGrid } from "@/components/TemplateGrid";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -18,6 +19,7 @@ export default function ChatPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -82,7 +84,8 @@ export default function ChatPage() {
             );
             return [...updated, { role: "system", content: `Error: ${error}` }];
           });
-        }
+        },
+        selectedModel
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -140,11 +143,29 @@ export default function ChatPage() {
       {/* Main chat area */}
       <div className="flex flex-col flex-1">
         {/* Header */}
-        <header className="flex items-center px-5 py-3 bg-zinc-900 border-b border-zinc-800">
+        <header className="flex items-center justify-between px-5 py-3 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <h1 className="text-lg font-semibold">Jarvis</h1>
           </div>
+          <select
+            value={selectedModel || ""}
+            onChange={(e) => setSelectedModel(e.target.value || null)}
+            className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1.5 rounded border border-zinc-700 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="">Default Model</option>
+            <optgroup label="Anthropic">
+              <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+            </optgroup>
+            <optgroup label="OpenAI">
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+            </optgroup>
+            <optgroup label="Google">
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            </optgroup>
+          </select>
         </header>
 
         {/* Messages */}
@@ -155,6 +176,12 @@ export default function ChatPage() {
           {sending && (
             <div className="self-start text-xs text-zinc-500 animate-pulse">
               Jarvis is thinking...
+            </div>
+          )}
+          {/* Show templates when no active conversation */}
+          {!sessionId && messages.length <= 1 && !sending && (
+            <div className="mt-4">
+              <TemplateGrid onSelect={(prompt) => handleSend(prompt)} />
             </div>
           )}
           <div ref={bottomRef} />

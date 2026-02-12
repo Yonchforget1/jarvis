@@ -96,7 +96,9 @@ from api.routers.webhooks import router as webhooks_router  # noqa: E402
 from api.routers.usage import router as usage_router  # noqa: E402
 from api.routers.keys import router as keys_router  # noqa: E402
 from api.routers.schedules import router as schedules_router  # noqa: E402
+from api.routers.templates import router as templates_router  # noqa: E402
 from api.routers.uploads import router as uploads_router  # noqa: E402
+from api.routers.ws import router as ws_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
@@ -110,7 +112,9 @@ app.include_router(webhooks_router)
 app.include_router(usage_router)
 app.include_router(keys_router)
 app.include_router(schedules_router)
+app.include_router(templates_router)
 app.include_router(uploads_router)
+app.include_router(ws_router)
 
 # ---------- Static files ----------
 if _STATIC_DIR.exists():

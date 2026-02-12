@@ -27,6 +27,7 @@ class AuthResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     session_id: str | None = None
+    model: str | None = None  # Override model for this conversation
 
 
 class ChatResponse(BaseModel):

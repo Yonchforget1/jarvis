@@ -58,16 +58,22 @@ class SessionManager:
         _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
         self._load_persisted_sessions()
 
-    def _make_conversation(self, messages: list[dict] | None = None) -> Conversation:
-        backend = create_backend(self.config)
+    def _make_conversation(self, messages: list[dict] | None = None, model: str | None = None) -> Conversation:
+        config = self.config
+        if model:
+            # Create a temporary config with the overridden model
+            import copy
+            config = copy.copy(self.config)
+            config.model = model
+        backend = create_backend(config)
         registry = ToolRegistry()
         register_all_tools(registry)
         router = ToolRouter(registry.all_tools())
         convo = Conversation(
             backend=backend,
             registry=registry,
-            system=self.config.system_prompt,
-            max_tokens=self.config.max_tokens,
+            system=config.system_prompt,
+            max_tokens=config.max_tokens,
             router=router,
         )
         if messages:
@@ -143,7 +149,7 @@ class SessionManager:
         if loaded:
             log.info("Loaded %d persisted sessions", loaded)
 
-    def get_or_create_session(self, session_id: str | None, user_id: str) -> Session:
+    def get_or_create_session(self, session_id: str | None, user_id: str, model: str | None = None) -> Session:
         with self._lock:
             if session_id and session_id in self._sessions:
                 session = self._sessions[session_id]
@@ -152,7 +158,7 @@ class SessionManager:
 
             # Create new session
             sid = session_id or uuid.uuid4().hex
-            convo = self._make_conversation()
+            convo = self._make_conversation(model=model)
             session = Session(session_id=sid, user_id=user_id, conversation=convo)
             self._sessions[sid] = session
             self._persist_session(session)

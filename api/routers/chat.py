@@ -30,7 +30,7 @@ async def chat(
 ):
     from api.main import session_mgr
 
-    session = session_mgr.get_or_create_session(req.session_id, user.id)
+    session = session_mgr.get_or_create_session(req.session_id, user.id, model=req.model)
     session.touch()
 
     if stream:
