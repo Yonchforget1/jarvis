@@ -16,4 +16,12 @@ def create_backend(config: Config) -> Backend:
         from jarvis.backends.claude_code import ClaudeCodeBackend
         return ClaudeCodeBackend(config)
 
+    if name == "openai":
+        from jarvis.backends.openai_backend import OpenAIBackend
+        return OpenAIBackend(config)
+
+    if name == "gemini":
+        from jarvis.backends.gemini import GeminiBackend
+        return GeminiBackend(config)
+
     raise ValueError(f"Unknown backend: {name!r}")

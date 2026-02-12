@@ -45,11 +45,20 @@ class Config:
         # claude_code backend needs no API key
         if config.backend == "claude_code":
             config.api_key = ""
-        elif config.api_key_env:
-            config.api_key = os.getenv(config.api_key_env, "")
-            if not config.api_key:
-                raise ValueError(
-                    f"API key not found in env var {config.api_key_env!r}. "
-                    f"Set it in .env or your environment."
-                )
+        else:
+            # Auto-detect env var name from backend if not explicitly set
+            if not config.api_key_env:
+                env_map = {
+                    "openai": "OPENAI_API_KEY",
+                    "gemini": "GOOGLE_API_KEY",
+                }
+                config.api_key_env = env_map.get(config.backend, "")
+
+            if config.api_key_env:
+                config.api_key = os.getenv(config.api_key_env, "")
+                if not config.api_key:
+                    raise ValueError(
+                        f"API key not found in env var {config.api_key_env!r}. "
+                        f"Set it in .env or your environment."
+                    )
         return config
