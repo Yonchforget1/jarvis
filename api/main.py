@@ -17,10 +17,12 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from api.session_manager import SessionManager
+from api.task_runner import TaskRunner
 
 log = logging.getLogger("jarvis.api")
 
 session_mgr = SessionManager()
+task_runner = TaskRunner(max_concurrent=5)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -75,6 +77,7 @@ from api.routers.sessions import router as sessions_router  # noqa: E402
 from api.routers.stats import router as stats_router  # noqa: E402
 from api.routers.tools import router as tools_router  # noqa: E402
 from api.routers.settings import router as settings_router  # noqa: E402
+from api.routers.tasks import router as tasks_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
@@ -82,6 +85,7 @@ app.include_router(sessions_router)
 app.include_router(tools_router)
 app.include_router(stats_router)
 app.include_router(settings_router)
+app.include_router(tasks_router)
 
 # ---------- Static files ----------
 if _STATIC_DIR.exists():
