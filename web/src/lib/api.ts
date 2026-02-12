@@ -245,6 +245,30 @@ export const api = {
     return apiFetch<StatsResponse>("/api/stats");
   },
 
+  // Settings
+  async getSettings() {
+    return apiFetch<{
+      backend: string;
+      model: string;
+      max_tokens: number;
+      system_prompt: string;
+      available_backends: string[];
+    }>("/api/settings");
+  },
+
+  async updateSettings(settings: {
+    backend?: string;
+    model?: string;
+    max_tokens?: number;
+    system_prompt?: string;
+    api_key?: string;
+  }) {
+    return apiFetch<{ status: string; changed: string[] }>("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify(settings),
+    });
+  },
+
   // Health (no auth needed)
   async health() {
     const res = await fetch(`${API_BASE}/api/health`);

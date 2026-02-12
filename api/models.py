@@ -51,3 +51,19 @@ class SessionInfo(BaseModel):
 
 class RenameRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class SettingsResponse(BaseModel):
+    backend: str
+    model: str
+    max_tokens: int
+    system_prompt: str
+    available_backends: list[str]
+
+
+class SettingsUpdateRequest(BaseModel):
+    backend: str | None = None
+    model: str | None = None
+    max_tokens: int | None = None
+    system_prompt: str | None = None
+    api_key: str | None = None

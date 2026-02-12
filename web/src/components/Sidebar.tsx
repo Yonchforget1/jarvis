@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 interface Session {
@@ -16,6 +17,18 @@ interface SidebarProps {
   onNewChat: () => void;
   onLogout: () => void;
   refreshTrigger: number;
+}
+
+function SettingsLink() {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() => router.push("/settings")}
+      className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
+    >
+      Settings
+    </button>
+  );
 }
 
 export function Sidebar({
@@ -119,14 +132,17 @@ export function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-zinc-800 px-3 py-2">
+      <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
         <div className="text-xs text-zinc-600 mb-1">{api.getUsername()}</div>
-        <button
-          onClick={onLogout}
-          className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
-        >
-          Logout
-        </button>
+        <div className="flex gap-3">
+          <SettingsLink />
+          <button
+            onClick={onLogout}
+            className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );

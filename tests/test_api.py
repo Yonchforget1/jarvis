@@ -297,6 +297,31 @@ def test_chat_stream(client):
         assert "Hello" in text
 
 
+# ---- Settings ----
+
+def test_settings_get(client):
+    reg = client.post("/api/auth/register", json={"username": "settuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    res = client.get("/api/settings", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "backend" in data
+    assert "available_backends" in data
+    assert "claude_code" in data["available_backends"]
+    assert "anthropic" in data["available_backends"]
+
+
+def test_settings_update_requires_admin(client):
+    reg = client.post("/api/auth/register", json={"username": "normuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    res = client.patch(
+        "/api/settings",
+        json={"max_tokens": 8192},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 403
+
+
 def test_chat_stream_error(client):
     reg = client.post("/api/auth/register", json={"username": "streamerr", "password": "pass123"})
     token = reg.json()["access_token"]
