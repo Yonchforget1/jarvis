@@ -19,18 +19,6 @@ interface SidebarProps {
   refreshTrigger: number;
 }
 
-function SettingsLink() {
-  const router = useRouter();
-  return (
-    <button
-      onClick={() => router.push("/settings")}
-      className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
-    >
-      Settings
-    </button>
-  );
-}
-
 export function Sidebar({
   currentSessionId,
   onSelectSession,
@@ -38,8 +26,14 @@ export function Sidebar({
   onLogout,
   refreshTrigger,
 }: SidebarProps) {
+  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    { session_id: string; title: string; matches: { role: string; content: string }[] }[]
+  >([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     loadSessions();
@@ -51,6 +45,23 @@ export function Sidebar({
       setSessions(data);
     } catch {
       // ignore - might not be logged in yet
+    }
+  }
+
+  async function handleSearch(query: string) {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const data = await api.searchSessions(query);
+      setSearchResults(data.results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
     }
   }
 
@@ -104,6 +115,47 @@ export function Sidebar({
         </button>
       </div>
 
+      {/* Search */}
+      <div className="px-3 py-2 border-b border-zinc-800">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search conversations..."
+          className="w-full bg-zinc-800 text-zinc-300 text-xs px-2.5 py-1.5 rounded border border-zinc-700 focus:border-blue-500 focus:outline-none placeholder-zinc-600"
+        />
+      </div>
+
+      {/* Search Results */}
+      {searchQuery && (
+        <div className="overflow-y-auto py-1 border-b border-zinc-800 max-h-48">
+          {searching && (
+            <p className="text-xs text-zinc-500 px-4 py-2 animate-pulse">Searching...</p>
+          )}
+          {!searching && searchResults.length === 0 && (
+            <p className="text-xs text-zinc-600 px-4 py-2">No results</p>
+          )}
+          {searchResults.map((r) => (
+            <div
+              key={r.session_id}
+              onClick={() => {
+                onSelectSession(r.session_id);
+                setSearchQuery("");
+                setSearchResults([]);
+              }}
+              className="px-3 py-2 mx-1 rounded cursor-pointer hover:bg-zinc-800/50 transition-colors"
+            >
+              <p className="text-xs font-medium text-zinc-300 truncate">{r.title}</p>
+              {r.matches[0] && (
+                <p className="text-xs text-zinc-500 truncate mt-0.5">
+                  {r.matches[0].content}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Session list */}
       <div className="flex-1 overflow-y-auto py-2">
         {sessions.length === 0 && (
@@ -135,15 +187,32 @@ export function Sidebar({
       <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
         <div className="text-xs text-zinc-600 mb-1">{api.getUsername()}</div>
         <div className="flex gap-3">
-          <SettingsLink />
           <button
-            onClick={() => window.location.href = "/keys"}
+            onClick={() => router.push("/settings")}
+            className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => router.push("/keys")}
             className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors"
           >
             API Keys
           </button>
           <button
-            onClick={() => window.location.href = "/admin"}
+            onClick={() => router.push("/usage")}
+            className="text-xs text-zinc-500 hover:text-green-400 transition-colors"
+          >
+            Usage
+          </button>
+          <button
+            onClick={() => router.push("/schedules")}
+            className="text-xs text-zinc-500 hover:text-cyan-400 transition-colors"
+          >
+            Schedules
+          </button>
+          <button
+            onClick={() => router.push("/admin")}
             className="text-xs text-zinc-500 hover:text-purple-400 transition-colors"
           >
             Admin

@@ -92,13 +92,13 @@ export default function AdminPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
           <p className="text-red-400">{error}</p>
           <button
             onClick={() => router.push("/chat")}
-            className="mt-4 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+            className="mt-4 px-4 py-2 bg-zinc-700 rounded hover:bg-zinc-600"
           >
             Back to Chat
           </button>
@@ -108,21 +108,21 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <button
             onClick={() => router.push("/chat")}
-            className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm"
+            className="px-4 py-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 text-sm"
           >
             Back to Chat
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-gray-900 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 mb-6 bg-zinc-900 rounded-lg p-1 w-fit">
           {(["overview", "users", "audit"] as const).map((t) => (
             <button
               key={t}
@@ -130,7 +130,7 @@ export default function AdminPage() {
               className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                 tab === t
                   ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -154,40 +154,40 @@ export default function AdminPage() {
 
         {/* Users Tab */}
         {tab === "users" && (
-          <div className="bg-gray-900 rounded-xl overflow-hidden">
+          <div className="bg-zinc-900 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Username</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Email</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Role</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Created</th>
-                  <th className="text-right px-4 py-3 text-sm text-gray-400">Actions</th>
+                <tr className="border-b border-zinc-800">
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Username</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Email</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Role</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Created</th>
+                  <th className="text-right px-4 py-3 text-sm text-zinc-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                  <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
                     <td className="px-4 py-3 font-medium">{u.username}</td>
-                    <td className="px-4 py-3 text-gray-400">{u.email || "-"}</td>
+                    <td className="px-4 py-3 text-zinc-400">{u.email || "-"}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${
                           u.role === "admin"
                             ? "bg-purple-900/50 text-purple-300"
-                            : "bg-gray-800 text-gray-300"
+                            : "bg-zinc-800 text-zinc-300"
                         }`}
                       >
                         {u.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
+                    <td className="px-4 py-3 text-zinc-400 text-sm">
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button
                         onClick={() => toggleRole(u)}
-                        className="px-3 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600"
+                        className="px-3 py-1 bg-zinc-700 rounded text-xs hover:bg-zinc-600"
                       >
                         {u.role === "admin" ? "Demote" : "Promote"}
                       </button>
@@ -207,27 +207,27 @@ export default function AdminPage() {
 
         {/* Audit Tab */}
         {tab === "audit" && (
-          <div className="bg-gray-900 rounded-xl overflow-hidden">
+          <div className="bg-zinc-900 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Time</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">User</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">Action</th>
-                  <th className="text-left px-4 py-3 text-sm text-gray-400">IP</th>
+                <tr className="border-b border-zinc-800">
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Time</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">User</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">Action</th>
+                  <th className="text-left px-4 py-3 text-sm text-zinc-400">IP</th>
                 </tr>
               </thead>
               <tbody>
                 {audit.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">
                       No audit entries yet
                     </td>
                   </tr>
                 ) : (
                   audit.map((entry, i) => (
-                    <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                      <td className="px-4 py-3 text-sm text-gray-400">
+                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                      <td className="px-4 py-3 text-sm text-zinc-400">
                         {new Date(entry.timestamp).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">{entry.username || "-"}</td>
@@ -238,13 +238,13 @@ export default function AdminPage() {
                               ? "bg-red-900/30 text-red-300"
                               : entry.action === "register"
                               ? "bg-green-900/30 text-green-300"
-                              : "bg-gray-800 text-gray-300"
+                              : "bg-zinc-800 text-zinc-300"
                           }`}
                         >
                           {entry.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 text-sm font-mono">{entry.ip || "-"}</td>
+                      <td className="px-4 py-3 text-zinc-400 text-sm font-mono">{entry.ip || "-"}</td>
                     </tr>
                   ))
                 )}
@@ -276,8 +276,8 @@ function StatCard({
       : "text-white";
 
   return (
-    <div className="bg-gray-900 rounded-xl p-4">
-      <p className="text-sm text-gray-400 mb-1">{label}</p>
+    <div className="bg-zinc-900 rounded-xl p-4">
+      <p className="text-sm text-zinc-400 mb-1">{label}</p>
       <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
     </div>
   );

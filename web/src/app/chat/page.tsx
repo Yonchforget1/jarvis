@@ -25,8 +25,14 @@ export default function ChatPage() {
       router.push("/");
       return;
     }
-    const name = api.getUsername() || "there";
-    setMessages([{ role: "system", content: `Welcome back, ${name}. How can I help?` }]);
+    // Resume last active session if available
+    const savedSession = localStorage.getItem("jarvis_active_session");
+    if (savedSession) {
+      handleSelectSession(savedSession);
+    } else {
+      const name = api.getUsername() || "there";
+      setMessages([{ role: "system", content: `Welcome back, ${name}. How can I help?` }]);
+    }
   }, [router]);
 
   useEffect(() => {
@@ -61,6 +67,7 @@ export default function ChatPage() {
         // onMeta: set session ID
         (meta) => {
           setSessionId(meta.session_id);
+          localStorage.setItem("jarvis_active_session", meta.session_id);
         },
         // onDone: finalize
         () => {
@@ -91,10 +98,12 @@ export default function ChatPage() {
   function handleNewChat() {
     setMessages([{ role: "system", content: "New session started." }]);
     setSessionId(null);
+    localStorage.removeItem("jarvis_active_session");
   }
 
   async function handleSelectSession(sid: string) {
     setSessionId(sid);
+    localStorage.setItem("jarvis_active_session", sid);
     setMessages([{ role: "system", content: "Loading conversation..." }]);
     try {
       const data = await api.getSessionMessages(sid);

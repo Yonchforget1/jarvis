@@ -17,6 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from api.api_keys import APIKeyManager
+from api.scheduler import Scheduler
 from api.session_manager import SessionManager
 from api.task_runner import TaskRunner
 from api.usage import UsageTracker
@@ -29,6 +30,7 @@ task_runner = TaskRunner(max_concurrent=5)
 usage_tracker = UsageTracker()
 webhook_mgr = WebhookManager()
 key_mgr = APIKeyManager()
+scheduler = Scheduler(task_runner=task_runner)
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -41,7 +43,9 @@ _STATIC_DIR = Path(__file__).parent / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Jarvis API starting up")
+    scheduler.start()
     yield
+    scheduler.stop()
     expired = session_mgr.cleanup_expired()
     log.info("Jarvis API shutting down – cleaned %d expired sessions", expired)
 
@@ -91,6 +95,7 @@ from api.routers.admin import router as admin_router  # noqa: E402
 from api.routers.webhooks import router as webhooks_router  # noqa: E402
 from api.routers.usage import router as usage_router  # noqa: E402
 from api.routers.keys import router as keys_router  # noqa: E402
+from api.routers.schedules import router as schedules_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
@@ -103,6 +108,7 @@ app.include_router(admin_router)
 app.include_router(webhooks_router)
 app.include_router(usage_router)
 app.include_router(keys_router)
+app.include_router(schedules_router)
 
 # ---------- Static files ----------
 if _STATIC_DIR.exists():

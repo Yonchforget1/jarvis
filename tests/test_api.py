@@ -456,3 +456,41 @@ def test_session_export_not_found(client):
     headers = {"Authorization": f"Bearer {token}"}
     res = client.get("/api/sessions/nonexistent/export", headers=headers)
     assert res.status_code == 404
+
+
+# ---- Session Search ----
+
+def test_session_search(client):
+    reg = client.post("/api/auth/register", json={"username": "searcher", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "The weather today is sunny and warm!"
+        mock_convo.messages = [
+            {"role": "user", "content": "what's the weather?"},
+            {"role": "assistant", "content": "The weather today is sunny and warm!"},
+        ]
+        mock_make.return_value = mock_convo
+        client.post("/api/chat", json={"message": "what's the weather?"}, headers=headers)
+
+    # Search for existing content
+    res = client.get("/api/sessions/search?q=sunny", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_sessions"] >= 1
+    assert "sunny" in data["results"][0]["matches"][0]["content"].lower()
+
+    # Search for nonexistent content
+    res = client.get("/api/sessions/search?q=nonexistent_xyz", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["total_sessions"] == 0
+
+
+def test_session_search_requires_query(client):
+    reg = client.post("/api/auth/register", json={"username": "searchnq", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get("/api/sessions/search", headers=headers)
+    assert res.status_code == 422  # Missing required query param

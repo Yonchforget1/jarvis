@@ -29,6 +29,48 @@ async def list_sessions(user: UserInfo = Depends(get_current_user)):
     ]
 
 
+@router.get("/search")
+async def search_sessions(
+    q: str = Query(..., min_length=1, max_length=200),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Full-text search across all user sessions."""
+    from api.main import session_mgr
+
+    sessions = session_mgr.get_user_sessions(user.id)
+    query_lower = q.lower()
+    results = []
+
+    for s in sessions:
+        messages = session_mgr.get_session_messages(s.session_id) or []
+        matches = []
+        for msg in messages:
+            content = msg.get("content", "")
+            if query_lower in content.lower():
+                # Return a snippet around the match
+                idx = content.lower().index(query_lower)
+                start = max(0, idx - 50)
+                end = min(len(content), idx + len(q) + 50)
+                snippet = content[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(content):
+                    snippet = snippet + "..."
+                matches.append({
+                    "role": msg.get("role", ""),
+                    "content": snippet,
+                })
+        if matches:
+            title = s.custom_name or s.auto_title or f"Session {s.session_id[:8]}"
+            results.append({
+                "session_id": s.session_id,
+                "title": title,
+                "matches": matches[:5],  # Limit to 5 matches per session
+            })
+
+    return {"results": results, "query": q, "total_sessions": len(results)}
+
+
 @router.patch("/{session_id}")
 async def rename_session(
     session_id: str,

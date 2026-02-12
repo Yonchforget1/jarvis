@@ -330,6 +330,54 @@ export const api = {
     return apiFetch<{ status: string }>(`/api/keys/${keyId}`, { method: "DELETE" });
   },
 
+  // Schedules
+  async getSchedules() {
+    return apiFetch<{
+      schedule_id: string;
+      name: string;
+      cron: string;
+      task_type: string;
+      payload: Record<string, unknown>;
+      enabled: boolean;
+      last_run: string | null;
+      last_status: string | null;
+      run_count: number;
+      consecutive_failures: number;
+    }[]>("/api/schedules");
+  },
+
+  async createSchedule(name: string, cron: string, taskType: string, payload: Record<string, unknown>) {
+    return apiFetch<Record<string, unknown>>("/api/schedules", {
+      method: "POST",
+      body: JSON.stringify({ name, cron, task_type: taskType, payload }),
+    });
+  },
+
+  async updateSchedule(scheduleId: string, updates: { name?: string; cron?: string; enabled?: boolean }) {
+    return apiFetch<Record<string, unknown>>(`/api/schedules/${scheduleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+  },
+
+  async deleteSchedule(scheduleId: string) {
+    return apiFetch<{ status: string }>(`/api/schedules/${scheduleId}`, { method: "DELETE" });
+  },
+
+  async getCronAliases() {
+    return apiFetch<{
+      aliases: Record<string, string>;
+      examples: { cron: string; description: string }[];
+    }>("/api/schedules/cron-aliases");
+  },
+
+  // Search
+  async searchSessions(query: string) {
+    return apiFetch<{
+      results: { session_id: string; title: string; matches: { role: string; content: string }[] }[];
+    }>(`/api/sessions/search?q=${encodeURIComponent(query)}`);
+  },
+
   // Health (no auth needed)
   async health() {
     const res = await fetch(`${API_BASE}/api/health`);
