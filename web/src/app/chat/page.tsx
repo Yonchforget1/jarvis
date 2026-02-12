@@ -20,6 +20,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +41,30 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyboard(e: KeyboardEvent) {
+      // Ctrl+N / Cmd+N: New chat
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        handleNewChat();
+      }
+      // Ctrl+K / Cmd+K: Focus search (in sidebar)
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Search"]');
+        searchInput?.focus();
+      }
+      // Escape: Clear search, focus chat input
+      if (e.key === "Escape") {
+        const textarea = document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="Message"]');
+        textarea?.focus();
+      }
+    }
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, []);
 
   async function handleSend(text: string) {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
@@ -148,6 +173,34 @@ export default function ChatPage() {
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <h1 className="text-lg font-semibold">Jarvis</h1>
           </div>
+          <div className="flex items-center gap-2">
+            {sessionId && (
+              <button
+                onClick={async () => {
+                  try {
+                    const result = await api.shareSession(sessionId);
+                    const url = `${window.location.origin}${result.url}`;
+                    navigator.clipboard.writeText(url);
+                    setShareUrl(url);
+                    setTimeout(() => setShareUrl(null), 3000);
+                  } catch { /* ignore */ }
+                }}
+                className="text-xs text-zinc-500 hover:text-blue-400 transition-colors px-2 py-1"
+              >
+                {shareUrl ? "Link copied!" : "Share"}
+              </button>
+            )}
+            {sessionId && (
+              <button
+                onClick={async () => {
+                  const url = `${window.location.origin.replace(':3001', ':3000')}/api/sessions/${sessionId}/export?format=markdown`;
+                  window.open(url, "_blank");
+                }}
+                className="text-xs text-zinc-500 hover:text-green-400 transition-colors px-2 py-1"
+              >
+                Export
+              </button>
+            )}
           <select
             value={selectedModel || ""}
             onChange={(e) => setSelectedModel(e.target.value || null)}
@@ -166,6 +219,7 @@ export default function ChatPage() {
               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </optgroup>
           </select>
+          </div>
         </header>
 
         {/* Messages */}

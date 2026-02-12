@@ -374,6 +374,22 @@ export const api = {
     }>("/api/schedules/cron-aliases");
   },
 
+  // Sharing
+  async shareSession(sessionId: string, expiresHours?: number) {
+    return apiFetch<{ share_id: string; url: string; expires_at: string | null }>("/api/share", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId, expires_hours: expiresHours || undefined }),
+    });
+  },
+
+  async getShares() {
+    return apiFetch<{ share_id: string; title: string; created_at: string; expires_at: string | null; view_count: number }[]>("/api/share");
+  },
+
+  async deleteShare(shareId: string) {
+    return apiFetch<{ status: string }>(`/api/share/${shareId}`, { method: "DELETE" });
+  },
+
   // Templates
   async getTemplates() {
     return apiFetch<{
