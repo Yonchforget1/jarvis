@@ -49,6 +49,9 @@ def register_all_tools(registry: ToolRegistry) -> None:
     from jarvis.tools.system import register as reg_system
     reg_system(registry)
 
+    from jarvis.tools.email_tool import register as reg_email
+    reg_email(registry)
+
     # Load plugins from plugins/ directory
     from jarvis.plugin_loader import load_plugins
     load_plugins(registry)
