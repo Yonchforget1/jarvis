@@ -18,6 +18,14 @@ interface ChatResponse {
   tool_calls: { name: string; args: Record<string, unknown> }[];
 }
 
+interface SessionInfo {
+  session_id: string;
+  title: string;
+  message_count: number;
+  created_at: string;
+  last_active: string;
+}
+
 interface StatsResponse {
   uptime_seconds: number;
   active_sessions: number;
@@ -129,6 +137,25 @@ export const api = {
         session_id: sessionId || undefined,
       }),
     });
+  },
+
+  // Sessions
+  async getSessions() {
+    return apiFetch<SessionInfo[]>("/api/sessions");
+  },
+
+  async renameSession(sessionId: string, name: string) {
+    return apiFetch<{ status: string; name: string }>(
+      `/api/sessions/${sessionId}`,
+      { method: "PATCH", body: JSON.stringify({ name }) }
+    );
+  },
+
+  async deleteSession(sessionId: string) {
+    return apiFetch<{ status: string }>(
+      `/api/sessions/${sessionId}`,
+      { method: "DELETE" }
+    );
   },
 
   // Tools
