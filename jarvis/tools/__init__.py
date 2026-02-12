@@ -46,6 +46,9 @@ def register_all_tools(registry: ToolRegistry) -> None:
     from jarvis.tools.http_tools import register as reg_http
     reg_http(registry)
 
+    from jarvis.tools.system import register as reg_system
+    reg_system(registry)
+
     # Load plugins from plugins/ directory
     from jarvis.plugin_loader import load_plugins
     load_plugins(registry)
