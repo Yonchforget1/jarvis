@@ -11,3 +11,10 @@ def register_all_tools(registry: ToolRegistry) -> None:
     reg_fs(registry)
     reg_shell(registry)
     reg_web(registry)
+
+    # Optional tools – only register if deps are available
+    try:
+        from jarvis.tools.computer import register as reg_computer
+        reg_computer(registry)
+    except ImportError:
+        pass
