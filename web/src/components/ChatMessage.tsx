@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CodeBlock } from "@/components/CodeBlock";
 
 interface ChatMessageProps {
   role: "user" | "assistant" | "system";
@@ -100,7 +101,28 @@ export function ChatMessage({ role, content, onFork, onEdit, onRegenerate, onCop
             prose-a:text-blue-500 dark:prose-a:text-blue-400 prose-headings:text-zinc-900 dark:prose-headings:text-zinc-100
             ${baseStyles[role]}`}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              pre({ children }) {
+                return <>{children}</>;
+              },
+              code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "");
+                const codeString = String(children).replace(/\n$/, "");
+                // Block code (has language class or is multi-line)
+                if (match || codeString.includes("\n")) {
+                  return (
+                    <CodeBlock language={match?.[1]}>
+                      {codeString}
+                    </CodeBlock>
+                  );
+                }
+                // Inline code
+                return <code className={className} {...props}>{children}</code>;
+              },
+            }}
+          >{content}</ReactMarkdown>
         </div>
       </div>
     );

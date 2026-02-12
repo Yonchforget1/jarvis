@@ -474,6 +474,23 @@ export const api = {
     }>(`/api/sessions/search?q=${encodeURIComponent(query)}`);
   },
 
+  // Memory
+  async searchMemory(query: string, limit = 5) {
+    return apiFetch<{ results: { id: string; text: string; distance: number }[]; query: string }>(
+      `/api/memory/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
+  },
+
+  async getMemoryLearnings(category = "", limit = 50) {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    params.set("limit", String(limit));
+    return apiFetch<{
+      learnings: { id: string; category: string; insight: string; context: string; task_description: string; timestamp: string }[];
+      total: number;
+    }>(`/api/memory/learnings?${params}`);
+  },
+
   // Health (no auth needed)
   async health() {
     const res = await fetch(`${API_BASE}/api/health`);

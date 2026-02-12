@@ -320,6 +320,7 @@ export function Sidebar({
         <div className="text-xs text-zinc-600">{api.getUsername()}</div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {[
+            { path: "/memory", label: "Memory", color: "hover:text-pink-400" },
             { path: "/tools", label: "Tools", color: "hover:text-orange-400" },
             { path: "/schedules", label: "Schedules", color: "hover:text-cyan-400" },
             { path: "/usage", label: "Usage", color: "hover:text-green-400" },

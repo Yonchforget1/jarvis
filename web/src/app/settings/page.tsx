@@ -182,13 +182,28 @@ export default function SettingsPage() {
 
         {/* System Prompt */}
         <div>
-          <label className="block text-sm font-medium text-zinc-400 mb-1">System Prompt</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-zinc-400">System Prompt</label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500">{systemPrompt.length.toLocaleString()} chars</span>
+              <button
+                onClick={() => setSystemPrompt("You are Jarvis, an advanced AI agent.")}
+                className="text-xs text-zinc-500 hover:text-orange-400 transition-colors"
+              >
+                Reset to default
+              </button>
+            </div>
+          </div>
           <textarea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            rows={4}
+            rows={6}
             className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 resize-y font-mono"
+            placeholder="Define Jarvis's personality and capabilities..."
           />
+          <p className="mt-1 text-xs text-zinc-500">
+            Controls how Jarvis responds. Memory context is automatically appended to this prompt.
+          </p>
         </div>
 
         {/* Save */}
