@@ -398,3 +398,61 @@ def test_session_persistence(tmp_path):
             assert data["auto_title"] == "Test Chat"
     finally:
         sm._SESSIONS_DIR = orig_dir
+
+
+# ---- Session Export ----
+
+def test_session_export_markdown(client):
+    reg = client.post("/api/auth/register", json={"username": "exporter", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi there!"
+        mock_convo.messages = [
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "Hi there!"},
+        ]
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    res = client.get(f"/api/sessions/{session_id}/export?format=markdown", headers=headers)
+    assert res.status_code == 200
+    assert "text/markdown" in res.headers.get("content-type", "")
+    text = res.text
+    assert "**You:**" in text
+    assert "**Jarvis:**" in text
+
+
+def test_session_export_json(client):
+    reg = client.post("/api/auth/register", json={"username": "jsonexp", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Response!"
+        mock_convo.messages = [
+            {"role": "user", "content": "test"},
+            {"role": "assistant", "content": "Response!"},
+        ]
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "test"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    res = client.get(f"/api/sessions/{session_id}/export?format=json", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "title" in data
+    assert "messages" in data
+    assert data["session_id"] == session_id
+
+
+def test_session_export_not_found(client):
+    reg = client.post("/api/auth/register", json={"username": "expnf", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get("/api/sessions/nonexistent/export", headers=headers)
+    assert res.status_code == 404
