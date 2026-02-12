@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from jarvis.backends.base import Backend, BackendResponse
     from jarvis.tool_registry import ToolRegistry
+    from jarvis.tool_router import ToolRouter
 
 log = logging.getLogger("jarvis.conversation")
 
@@ -24,11 +25,13 @@ class Conversation:
         registry: ToolRegistry,
         system: str = "",
         max_tokens: int = 4096,
+        router: ToolRouter | None = None,
     ) -> None:
         self.backend = backend
         self.registry = registry
         self.system = system
         self.max_tokens = max_tokens
+        self.router = router
         self.messages: list[dict] = []
 
         # Tracking
@@ -40,7 +43,13 @@ class Conversation:
     def send(self, user_input: str) -> str:
         """Send a user message and return the final assistant text."""
         self.messages.append(self.backend.format_user_message(user_input))
-        tools = self.registry.all_tools()
+
+        # Use smart tool routing if available, otherwise send all tools
+        if self.router:
+            tools = self.router.select(user_input)
+            log.info("Tool router selected %d tools for: %s", len(tools), user_input[:80])
+        else:
+            tools = self.registry.all_tools()
         tool_turns = 0
 
         while True:

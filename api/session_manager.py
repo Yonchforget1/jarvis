@@ -15,6 +15,7 @@ from jarvis.backends import create_backend
 from jarvis.config import Config
 from jarvis.conversation import Conversation
 from jarvis.tool_registry import ToolRegistry
+from jarvis.tool_router import ToolRouter
 from jarvis.tools import register_all_tools
 
 log = logging.getLogger("jarvis.api.session_manager")
@@ -55,11 +56,13 @@ class SessionManager:
         backend = create_backend(self.config)
         registry = ToolRegistry()
         register_all_tools(registry)
+        router = ToolRouter(registry.all_tools())
         return Conversation(
             backend=backend,
             registry=registry,
             system=self.config.system_prompt,
             max_tokens=self.config.max_tokens,
+            router=router,
         )
 
     def get_or_create_session(self, session_id: str | None, user_id: str) -> Session:

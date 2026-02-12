@@ -13,6 +13,7 @@ from jarvis.config import Config
 from jarvis.conversation import Conversation
 from jarvis.memory import Memory
 from jarvis.tool_registry import ToolRegistry
+from jarvis.tool_router import ToolRouter
 from jarvis.tools import register_all_tools
 
 console = Console()
@@ -32,11 +33,13 @@ def main() -> None:
         insights = "\n".join(f"- {l['insight']}" for l in learnings)
         system += f"\n\nPast learnings to build on:\n{insights}"
 
+    router = ToolRouter(registry.all_tools())
     convo = Conversation(
         backend=backend,
         registry=registry,
         system=system,
         max_tokens=config.max_tokens,
+        router=router,
     )
 
     tool_count = len(registry.all_tools())
