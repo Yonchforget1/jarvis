@@ -37,15 +37,46 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setSending(true);
 
+    // Add an empty assistant message that we'll stream into
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
     try {
-      const res = await api.chat(text, sessionId);
-      setSessionId(res.session_id);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: res.response },
-      ]);
-      // Refresh sidebar to show new/updated session
-      setSidebarRefresh((n) => n + 1);
+      await api.chatStream(
+        text,
+        sessionId,
+        // onChunk: append text to the last message
+        (chunk) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last && last.role === "assistant") {
+              updated[updated.length - 1] = {
+                ...last,
+                content: last.content + chunk,
+              };
+            }
+            return updated;
+          });
+        },
+        // onMeta: set session ID
+        (meta) => {
+          setSessionId(meta.session_id);
+        },
+        // onDone: finalize
+        () => {
+          setSidebarRefresh((n) => n + 1);
+        },
+        // onError
+        (error) => {
+          setMessages((prev) => {
+            // Remove the empty assistant message and add error
+            const updated = prev.filter(
+              (m, i) => !(i === prev.length - 1 && m.role === "assistant" && !m.content)
+            );
+            return [...updated, { role: "system", content: `Error: ${error}` }];
+          });
+        }
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setMessages((prev) => [

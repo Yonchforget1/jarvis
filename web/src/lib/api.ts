@@ -139,6 +139,76 @@ export const api = {
     });
   },
 
+  // Streaming chat
+  async chatStream(
+    message: string,
+    sessionId: string | null | undefined,
+    onChunk: (text: string) => void,
+    onMeta: (data: { session_id: string }) => void,
+    onDone: (fullText: string) => void,
+    onError: (error: string) => void
+  ) {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/chat?stream=true`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        message,
+        session_id: sessionId || undefined,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ detail: res.statusText }));
+      onError(data.detail || `HTTP ${res.status}`);
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      onError("No response body");
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      let eventType = "message";
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (eventType === "meta") {
+              onMeta(data);
+            } else if (eventType === "done") {
+              onDone(data.full_text);
+            } else if (eventType === "error") {
+              onError(data.error);
+            } else if (data.text !== undefined) {
+              onChunk(data.text);
+            }
+          } catch {
+            // ignore parse errors
+          }
+          eventType = "message";
+        }
+      }
+    }
+  },
+
   // Sessions
   async getSessions() {
     return apiFetch<SessionInfo[]>("/api/sessions");
