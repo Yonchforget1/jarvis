@@ -268,6 +268,57 @@ def test_session_messages_not_found(client):
 
 # ---- Session Persistence ----
 
+# ---- Streaming ----
+
+def test_chat_stream(client):
+    reg = client.post("/api/auth/register", json={"username": "streamer", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hello world"
+        mock_convo.messages = []
+        mock_make.return_value = mock_convo
+
+        res = client.post(
+            "/api/chat?stream=true",
+            json={"message": "hi"},
+            headers=headers,
+        )
+        assert res.status_code == 200
+        assert res.headers.get("content-type", "").startswith("text/event-stream")
+
+        # Parse SSE events
+        text = res.text
+        assert "event: meta" in text
+        assert "event: done" in text
+        assert '"session_id"' in text
+        assert "Hello" in text
+
+
+def test_chat_stream_error(client):
+    reg = client.post("/api/auth/register", json={"username": "streamerr", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.side_effect = RuntimeError("Backend failed")
+        mock_make.return_value = mock_convo
+
+        res = client.post(
+            "/api/chat?stream=true",
+            json={"message": "hi"},
+            headers=headers,
+        )
+        assert res.status_code == 200  # SSE always returns 200, errors in stream
+        assert "event: error" in res.text
+        assert "Backend failed" in res.text
+
+
+# ---- Session Persistence ----
+
 def test_session_persistence(tmp_path):
     """Test that sessions persist to disk and load back."""
     from api.session_manager import SessionManager, _SESSIONS_DIR
