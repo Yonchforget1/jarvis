@@ -5,7 +5,10 @@ from __future__ import annotations
 import platform
 import sys
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+
+from api.deps import get_current_user
+from api.models import UserInfo
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
@@ -19,6 +22,32 @@ async def stats():
         "active_sessions": session_mgr.active_session_count,
         "memory_entries": session_mgr.memory.count,
     }
+
+
+@router.get("/memory/search")
+async def memory_search(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(default=5, ge=1, le=20),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Search Jarvis's memory for relevant learnings."""
+    from api.main import session_mgr
+
+    results = session_mgr.memory.search(q, n_results=limit)
+    return {"results": results, "query": q}
+
+
+@router.get("/memory/learnings")
+async def memory_learnings(
+    category: str = Query(default="", description="Filter by category"),
+    limit: int = Query(default=20, ge=1, le=100),
+    user: UserInfo = Depends(get_current_user),
+):
+    """Get recent learnings from memory."""
+    from api.main import session_mgr
+
+    learnings = session_mgr.memory.get_learnings(category=category, limit=limit)
+    return {"learnings": learnings, "total": session_mgr.memory.count}
 
 
 @router.get("/health")

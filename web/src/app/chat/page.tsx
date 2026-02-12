@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TemplateGrid } from "@/components/TemplateGrid";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { useToast } from "@/components/Toast";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -17,12 +18,12 @@ interface Message {
 
 export default function ChatPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -218,20 +219,22 @@ export default function ChatPage() {
                     const result = await api.shareSession(sessionId);
                     const url = `${window.location.origin}${result.url}`;
                     navigator.clipboard.writeText(url);
-                    setShareUrl(url);
-                    setTimeout(() => setShareUrl(null), 3000);
-                  } catch { /* ignore */ }
+                    toast("Share link copied to clipboard");
+                  } catch {
+                    toast("Failed to create share link", "error");
+                  }
                 }}
                 className="text-xs text-zinc-500 hover:text-blue-400 transition-colors px-2 py-1"
               >
-                {shareUrl ? "Link copied!" : "Share"}
+                Share
               </button>
             )}
             {sessionId && (
               <button
-                onClick={async () => {
+                onClick={() => {
                   const url = `${window.location.origin.replace(':3001', ':3000')}/api/sessions/${sessionId}/export?format=markdown`;
                   window.open(url, "_blank");
+                  toast("Exporting conversation...", "info");
                 }}
                 className="text-xs text-zinc-500 hover:text-green-400 transition-colors px-2 py-1"
               >

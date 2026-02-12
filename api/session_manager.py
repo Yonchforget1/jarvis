@@ -59,6 +59,56 @@ class SessionManager:
         _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
         self._load_persisted_sessions()
 
+    def enrich_system_prompt(self, session: Session, user_message: str) -> None:
+        """Inject relevant memory context into the session's system prompt."""
+        base_prompt = self.config.system_prompt
+        memory_context = self._build_memory_context(user_message)
+        if memory_context:
+            session.conversation.system = f"{base_prompt}\n\n{memory_context}"
+        else:
+            session.conversation.system = base_prompt
+
+    def _build_memory_context(self, query: str) -> str:
+        """Search memory for relevant learnings and format as context."""
+        try:
+            results = self.memory.search(query, n_results=3)
+            if not results:
+                return ""
+            lines = ["## Relevant past learnings:"]
+            for r in results:
+                text = r.get("text", "")
+                if text:
+                    lines.append(f"- {text}")
+            return "\n".join(lines) if len(lines) > 1 else ""
+        except Exception:
+            log.debug("Memory search failed for context enrichment")
+            return ""
+
+    def save_conversation_learning(self, session: Session, user_msg: str, assistant_msg: str) -> None:
+        """Save a learning from a conversation exchange if it seems valuable."""
+        try:
+            # Only save learnings from substantive exchanges
+            if len(user_msg) < 20 or len(assistant_msg) < 50:
+                return
+            # Don't save too frequently - check last learning timestamp
+            learnings = self.memory.get_learnings(limit=1)
+            if learnings:
+                from datetime import datetime, timezone
+                last = learnings[-1].get("timestamp", "")
+                if last:
+                    last_dt = datetime.fromisoformat(last)
+                    age = (datetime.now(timezone.utc) - last_dt).total_seconds()
+                    if age < 300:  # Don't save more than once per 5 minutes
+                        return
+            self.memory.save_learning(
+                category="conversation",
+                insight=f"User asked about: {user_msg[:100]}",
+                context=f"Response summary: {assistant_msg[:200]}",
+                task_description=session.title,
+            )
+        except Exception:
+            log.debug("Failed to save conversation learning")
+
     def _make_conversation(self, messages: list[dict] | None = None, model: str | None = None) -> Conversation:
         config = self.config
         if model:

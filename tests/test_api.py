@@ -623,3 +623,51 @@ def test_session_pagination(client):
     assert "offset" in data
     assert data["offset"] == 0
     assert data["limit"] == 10
+
+
+# ---- Memory Endpoints ----
+
+def test_memory_search(client):
+    reg = client.post("/api/auth/register", json={"username": "memuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.get("/api/memory/search?q=test", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "results" in data
+    assert "query" in data
+    assert data["query"] == "test"
+
+
+def test_memory_learnings(client):
+    reg = client.post("/api/auth/register", json={"username": "memlearn", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.get("/api/memory/learnings", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "learnings" in data
+    assert "total" in data
+
+
+def test_memory_search_requires_auth(client):
+    res = client.get("/api/memory/search?q=test")
+    assert res.status_code in (401, 403)
+
+
+# ---- Memory Context Enrichment ----
+
+def test_session_manager_enrich_system_prompt():
+    """Test that enrich_system_prompt modifies the conversation system prompt."""
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.system = "You are Jarvis."
+        mock_convo.messages = []
+        mock_make.return_value = mock_convo
+
+        session = session_mgr.get_or_create_session(None, "enrichtest")
+        session_mgr.enrich_system_prompt(session, "hello world")
+        # System prompt should still start with the base prompt
+        assert session.conversation.system.startswith(session_mgr.config.system_prompt)

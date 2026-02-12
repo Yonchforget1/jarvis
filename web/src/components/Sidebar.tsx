@@ -122,6 +122,43 @@ export function Sidebar({
     }
   }
 
+  function groupSessionsByDate(sessions: Session[]): { label: string; sessions: Session[] }[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const weekAgo = new Date(today.getTime() - 7 * 86400000);
+    const monthAgo = new Date(today.getTime() - 30 * 86400000);
+
+    const pinned: Session[] = [];
+    const todayList: Session[] = [];
+    const yesterdayList: Session[] = [];
+    const weekList: Session[] = [];
+    const monthList: Session[] = [];
+    const olderList: Session[] = [];
+
+    for (const s of sessions) {
+      if (s.pinned) {
+        pinned.push(s);
+        continue;
+      }
+      const d = new Date(s.last_active);
+      if (d >= today) todayList.push(s);
+      else if (d >= yesterday) yesterdayList.push(s);
+      else if (d >= weekAgo) weekList.push(s);
+      else if (d >= monthAgo) monthList.push(s);
+      else olderList.push(s);
+    }
+
+    const groups: { label: string; sessions: Session[] }[] = [];
+    if (pinned.length) groups.push({ label: "Pinned", sessions: pinned });
+    if (todayList.length) groups.push({ label: "Today", sessions: todayList });
+    if (yesterdayList.length) groups.push({ label: "Yesterday", sessions: yesterdayList });
+    if (weekList.length) groups.push({ label: "This Week", sessions: weekList });
+    if (monthList.length) groups.push({ label: "This Month", sessions: monthList });
+    if (olderList.length) groups.push({ label: "Older", sessions: olderList });
+    return groups;
+  }
+
   // Mobile toggle button (always visible on small screens)
   const mobileToggle = (
     <button
@@ -218,53 +255,62 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Session list */}
-      <div className="flex-1 overflow-y-auto py-2">
+      {/* Session list grouped by date */}
+      <div className="flex-1 overflow-y-auto py-1">
         {sessions.length === 0 && (
           <p className="text-xs text-zinc-600 px-4 py-2">No conversations yet</p>
         )}
-        {sessions.map((s) => (
-          <div
-            key={s.session_id}
-            onClick={() => renamingId !== s.session_id && selectSession(s.session_id)}
-            onDoubleClick={(e) => startRename(e, s)}
-            className={`group flex items-center gap-1.5 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
-              s.session_id === currentSessionId
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
-            }`}
-          >
-            {s.pinned && <span className="text-xs text-yellow-500 shrink-0" title="Pinned">{"\u{1F4CC}"}</span>}
-            {renamingId === s.session_id ? (
-              <input
-                ref={renameRef}
-                value={renameText}
-                onChange={(e) => setRenameText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitRename(s.session_id);
-                  if (e.key === "Escape") setRenamingId(null);
-                }}
-                onBlur={() => submitRename(s.session_id)}
-                className="flex-1 bg-zinc-700 text-zinc-100 text-sm px-1 py-0.5 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span className="flex-1 truncate">{s.title}</span>
-            )}
-            <button
-              onClick={(e) => handlePin(e, s.session_id, !!s.pinned)}
-              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-yellow-400 text-xs transition-opacity shrink-0"
-              title={s.pinned ? "Unpin" : "Pin"}
-            >
-              {"\u{1F4CC}"}
-            </button>
-            <button
-              onClick={(e) => handleDelete(e, s.session_id)}
-              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-xs transition-opacity shrink-0"
-              title="Delete"
-            >
-              x
-            </button>
+        {groupSessionsByDate(sessions).map((group) => (
+          <div key={group.label}>
+            <div className="px-3 pt-3 pb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+                {group.label}
+              </span>
+            </div>
+            {group.sessions.map((s) => (
+              <div
+                key={s.session_id}
+                onClick={() => renamingId !== s.session_id && selectSession(s.session_id)}
+                onDoubleClick={(e) => startRename(e, s)}
+                className={`group flex items-center gap-1.5 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
+                  s.session_id === currentSessionId
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                }`}
+              >
+                {s.pinned && <span className="text-xs text-yellow-500 shrink-0" title="Pinned">{"\u{1F4CC}"}</span>}
+                {renamingId === s.session_id ? (
+                  <input
+                    ref={renameRef}
+                    value={renameText}
+                    onChange={(e) => setRenameText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") submitRename(s.session_id);
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    onBlur={() => submitRename(s.session_id)}
+                    className="flex-1 bg-zinc-700 text-zinc-100 text-sm px-1 py-0.5 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span className="flex-1 truncate">{s.title}</span>
+                )}
+                <button
+                  onClick={(e) => handlePin(e, s.session_id, !!s.pinned)}
+                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-yellow-400 text-xs transition-opacity shrink-0"
+                  title={s.pinned ? "Unpin" : "Pin"}
+                >
+                  {"\u{1F4CC}"}
+                </button>
+                <button
+                  onClick={(e) => handleDelete(e, s.session_id)}
+                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-xs transition-opacity shrink-0"
+                  title="Delete"
+                >
+                  x
+                </button>
+              </div>
+            ))}
           </div>
         ))}
       </div>

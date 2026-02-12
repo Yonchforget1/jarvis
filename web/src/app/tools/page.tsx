@@ -69,7 +69,7 @@ export default function ToolsPage() {
   async function loadTools() {
     try {
       const data = await api.getTools();
-      setTools(data.tools);
+      setTools(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load tools");
     }
@@ -187,7 +187,9 @@ export default function ToolsPage() {
                   <div className="space-y-2">
                     {Object.entries(
                       (tool.parameters as Record<string, Record<string, unknown>>)?.properties || {}
-                    ).map(([name, schema]) => (
+                    ).map(([name, rawSchema]) => {
+                      const schema = rawSchema as Record<string, unknown>;
+                      return (
                       <div key={name} className="flex items-start gap-3">
                         <code className="text-xs font-mono text-yellow-400 min-w-[120px]">
                           {name}
@@ -195,13 +197,14 @@ export default function ToolsPage() {
                         <span className="text-xs text-zinc-500">
                           {String(schema.type || "any")}
                         </span>
-                        {schema.description && (
+                        {typeof schema.description === "string" && (
                           <span className="text-xs text-zinc-400">
-                            — {String(schema.description)}
+                            — {schema.description}
                           </span>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

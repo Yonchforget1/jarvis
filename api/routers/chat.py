@@ -37,6 +37,12 @@ async def chat(
     session = session_mgr.get_or_create_session(req.session_id, user.id, model=req.model)
     session.touch()
 
+    # Enrich system prompt with relevant memory context
+    try:
+        session_mgr.enrich_system_prompt(session, req.message)
+    except Exception:
+        log.debug("Memory enrichment failed, continuing without context")
+
     if stream:
         return StreamingResponse(
             _stream_response(session, req.message),
@@ -76,6 +82,12 @@ async def chat(
     # Auto-title from first exchange
     if not session.auto_title and session.message_count == 1:
         session.auto_title = _generate_title(req.message, response_text)
+
+    # Save conversation learning to memory
+    try:
+        session_mgr.save_conversation_learning(session, req.message, response_text)
+    except Exception:
+        log.debug("Failed to save conversation learning")
 
     # Persist session to disk
     session_mgr.save_session(session)
@@ -133,6 +145,12 @@ async def _stream_response(session, message: str):
     output_used = getattr(session.conversation, 'total_output_tokens', 0) - tokens_before_out
     if isinstance(input_used, int) and isinstance(output_used, int):
         usage_tracker.record_usage(session.user_id, input_used, output_used)
+
+    # Save conversation learning to memory
+    try:
+        session_mgr.save_conversation_learning(session, message, response_text)
+    except Exception:
+        log.debug("Failed to save conversation learning")
 
     # Persist session to disk
     session_mgr.save_session(session)
