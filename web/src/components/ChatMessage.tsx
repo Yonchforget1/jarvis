@@ -8,13 +8,24 @@ import { CodeBlock } from "@/components/CodeBlock";
 interface ChatMessageProps {
   role: "user" | "assistant" | "system";
   content: string;
+  timestamp?: number;
   onFork?: () => void;
   onEdit?: (newContent: string) => void;
   onRegenerate?: () => void;
   onCopy?: () => void;
 }
 
-export function ChatMessage({ role, content, onFork, onEdit, onRegenerate, onCopy }: ChatMessageProps) {
+function formatTime(ts?: number): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export function ChatMessage({ role, content, timestamp, onFork, onEdit, onRegenerate, onCopy }: ChatMessageProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
   const [copied, setCopied] = useState(false);
@@ -90,6 +101,17 @@ export function ChatMessage({ role, content, onFork, onEdit, onRegenerate, onCop
     );
   }
 
+  const meta = (
+    <div className="flex items-center gap-2 mt-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+      {timestamp && (
+        <span className="text-[10px] text-zinc-400">{formatTime(timestamp)}</span>
+      )}
+      {role === "assistant" && content && (
+        <span className="text-[10px] text-zinc-400">{wordCount(content)} words</span>
+      )}
+    </div>
+  );
+
   if (role === "assistant") {
     return (
       <div className="group/msg relative">
@@ -110,7 +132,6 @@ export function ChatMessage({ role, content, onFork, onEdit, onRegenerate, onCop
               code({ className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || "");
                 const codeString = String(children).replace(/\n$/, "");
-                // Block code (has language class or is multi-line)
                 if (match || codeString.includes("\n")) {
                   return (
                     <CodeBlock language={match?.[1]}>
@@ -118,24 +139,25 @@ export function ChatMessage({ role, content, onFork, onEdit, onRegenerate, onCop
                     </CodeBlock>
                   );
                 }
-                // Inline code
                 return <code className={className} {...props}>{children}</code>;
               },
             }}
           >{content}</ReactMarkdown>
         </div>
+        {meta}
       </div>
     );
   }
 
   return (
-    <div className="group/msg relative">
+    <div className="group/msg relative self-end">
       {actions}
       <div
         className={`max-w-2xl px-4 py-3 rounded-xl whitespace-pre-wrap break-words text-sm leading-relaxed ${baseStyles[role]}`}
       >
         {content}
       </div>
+      {meta}
     </div>
   );
 }

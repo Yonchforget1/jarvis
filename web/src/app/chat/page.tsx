@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -14,6 +14,7 @@ import { useToast } from "@/components/Toast";
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
+  timestamp?: number;
 }
 
 export default function ChatPage() {
@@ -28,6 +29,8 @@ export default function ChatPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   useEffect(() => {
     if (!api.isLoggedIn()) {
@@ -49,8 +52,22 @@ export default function ChatPage() {
   }, [router]);
 
   useEffect(() => {
+    if (autoScroll) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, autoScroll]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setAutoScroll(distanceFromBottom < 100);
+  }, []);
+
+  function scrollToBottom() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setAutoScroll(true);
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -88,11 +105,11 @@ export default function ChatPage() {
     setLastFailedMessage(null);
     const controller = new AbortController();
     abortRef.current = controller;
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setMessages((prev) => [...prev, { role: "user", content: text, timestamp: Date.now() }]);
     setSending(true);
 
     // Add an empty assistant message that we'll stream into
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: Date.now() }]);
 
     try {
       await api.chatStream(
@@ -264,12 +281,17 @@ export default function ChatPage() {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3 relative"
+        >
           {messages.map((msg, i) => (
             <ChatMessage
               key={i}
               role={msg.role}
               content={msg.content}
+              timestamp={msg.timestamp}
               onFork={sessionId ? async () => {
                 try {
                   const result = await api.forkSession(sessionId, i);
@@ -340,8 +362,71 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Scroll to bottom button */}
+        {!autoScroll && (
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10">
+            <button
+              onClick={scrollToBottom}
+              className="bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 rounded-full px-4 py-1.5 text-xs shadow-lg transition-colors"
+            >
+              {"\u2193"} Scroll to bottom
+            </button>
+          </div>
+        )}
+
         {/* Input */}
-        <ChatInput onSend={handleSend} disabled={sending} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={sending}
+          slashCommands={[
+            { name: "clear", description: "Start a new chat", action: handleNewChat },
+            {
+              name: "export",
+              description: "Export this conversation",
+              action: () => {
+                if (sessionId) {
+                  const url = `${window.location.origin.replace(':3001', ':3000')}/api/sessions/${sessionId}/export?format=markdown`;
+                  window.open(url, "_blank");
+                  toast("Exporting conversation...", "info");
+                } else {
+                  toast("No active conversation to export", "error");
+                }
+              },
+            },
+            {
+              name: "share",
+              description: "Share this conversation",
+              action: async () => {
+                if (sessionId) {
+                  try {
+                    const result = await api.shareSession(sessionId);
+                    const url = `${window.location.origin}${result.url}`;
+                    navigator.clipboard.writeText(url);
+                    toast("Share link copied to clipboard");
+                  } catch {
+                    toast("Failed to create share link", "error");
+                  }
+                } else {
+                  toast("No active conversation to share", "error");
+                }
+              },
+            },
+            {
+              name: "help",
+              description: "Show available commands",
+              action: () => {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: "system",
+                    content:
+                      "Available commands:\n/clear - Start a new chat\n/export - Export conversation as markdown\n/share - Share conversation link\n/help - Show this help\n\nKeyboard shortcuts:\nCtrl+N - New chat\nCtrl+K - Search conversations\nEsc - Focus chat input",
+                  },
+                ]);
+              },
+            },
+          ]}
+        />
       </div>
 
       {/* Welcome Modal */}

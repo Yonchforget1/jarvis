@@ -9,28 +9,100 @@ interface Attachment {
   size: number;
 }
 
+interface SlashCommand {
+  name: string;
+  description: string;
+  action: () => void;
+}
+
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  slashCommands?: SlashCommand[];
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [showCommands, setShowCommands] = useState(false);
+  const [commandFilter, setCommandFilter] = useState("");
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  const filteredCommands = commandFilter
+    ? slashCommands.filter((c) => c.name.toLowerCase().startsWith(commandFilter.toLowerCase()))
+    : slashCommands;
 
   function handleKey(e: KeyboardEvent) {
+    if (showCommands && filteredCommands.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedCommandIndex((i) => Math.min(i + 1, filteredCommands.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedCommandIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+        e.preventDefault();
+        executeCommand(filteredCommands[selectedCommandIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setShowCommands(false);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
     }
   }
 
+  function executeCommand(cmd: SlashCommand) {
+    cmd.action();
+    if (ref.current) ref.current.value = "";
+    setShowCommands(false);
+    setCommandFilter("");
+    setCharCount(0);
+  }
+
+  function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
+    const el = e.currentTarget;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 150) + "px";
+    setCharCount(el.value.length);
+
+    // Detect slash commands
+    const val = el.value;
+    if (val.startsWith("/") && !val.includes(" ") && slashCommands.length > 0) {
+      setCommandFilter(val.slice(1));
+      setShowCommands(true);
+      setSelectedCommandIndex(0);
+    } else {
+      setShowCommands(false);
+    }
+  }
+
   async function submit() {
     const text = ref.current?.value.trim();
     if ((!text && attachments.length === 0) || disabled) return;
+
+    // Check for slash commands
+    if (text && text.startsWith("/") && !text.includes(" ")) {
+      const cmd = slashCommands.find(
+        (c) => c.name.toLowerCase() === text.slice(1).toLowerCase()
+      );
+      if (cmd) {
+        executeCommand(cmd);
+        return;
+      }
+    }
 
     // Build message with file context
     let message = text || "";
@@ -53,6 +125,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     if (ref.current) ref.current.value = "";
     setAttachments([]);
     setCharCount(0);
+    setShowCommands(false);
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -66,7 +139,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         setAttachments((prev) => [...prev, result]);
       }
     } catch (err: unknown) {
-      // Could show error but keep it simple
       console.error("Upload failed:", err);
     } finally {
       setUploading(false);
@@ -85,16 +157,36 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }
 
   return (
-    <div className="bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
+    <div className="bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 relative">
+      {/* Slash command autocomplete */}
+      {showCommands && filteredCommands.length > 0 && (
+        <div className="absolute bottom-full left-3 right-3 mb-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg shadow-lg overflow-hidden">
+          {filteredCommands.map((cmd, i) => (
+            <button
+              key={cmd.name}
+              onClick={() => executeCommand(cmd)}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                i === selectedCommandIndex
+                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                  : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              }`}
+            >
+              <span className="font-mono text-xs text-zinc-500">/{cmd.name}</span>
+              <span className="text-xs text-zinc-400">{cmd.description}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Attachments preview */}
       {attachments.length > 0 && (
         <div className="flex gap-2 px-3 pt-2 flex-wrap">
           {attachments.map((att) => (
             <div
               key={att.file_id}
-              className="flex items-center gap-1.5 bg-zinc-800 rounded-lg px-2.5 py-1 text-xs"
+              className="flex items-center gap-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg px-2.5 py-1 text-xs"
             >
-              <span className="text-zinc-300 max-w-[150px] truncate">{att.filename}</span>
+              <span className="text-zinc-700 dark:text-zinc-300 max-w-[150px] truncate">{att.filename}</span>
               <span className="text-zinc-500">{formatSize(att.size)}</span>
               <button
                 onClick={() => removeAttachment(att.file_id)}
@@ -125,17 +217,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         </button>
         <textarea
           ref={ref}
-          placeholder="Message Jarvis..."
+          placeholder="Message Jarvis... (type / for commands)"
           rows={1}
           disabled={disabled}
           onKeyDown={handleKey}
           className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 resize-none outline-none focus:border-blue-500 disabled:opacity-50"
-          onInput={(e) => {
-            const el = e.currentTarget;
-            el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 150) + "px";
-            setCharCount(el.value.length);
-          }}
+          onInput={handleInput}
           maxLength={10000}
         />
         <button
@@ -146,7 +233,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           Send
         </button>
       </div>
-      {charCount > 0 && (
+      {charCount > 0 && !showCommands && (
         <div className="px-3 pb-1 text-right">
           <span className={`text-xs ${charCount > 9000 ? "text-orange-400" : "text-zinc-500"}`}>
             {charCount.toLocaleString()}/10,000
