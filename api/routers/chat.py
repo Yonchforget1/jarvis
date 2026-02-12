@@ -44,6 +44,8 @@ async def chat(
         )
 
     # Non-streaming path
+    tokens_before_in = getattr(session.conversation, 'total_input_tokens', 0) or 0
+    tokens_before_out = getattr(session.conversation, 'total_output_tokens', 0) or 0
     try:
         response_text = session.conversation.send(req.message)
     except Exception as exc:
@@ -52,6 +54,13 @@ async def chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Agent error: {exc}",
         ) from exc
+
+    # Track token usage
+    from api.main import usage_tracker
+    input_used = getattr(session.conversation, 'total_input_tokens', 0) - tokens_before_in
+    output_used = getattr(session.conversation, 'total_output_tokens', 0) - tokens_before_out
+    if isinstance(input_used, int) and isinstance(output_used, int):
+        usage_tracker.record_usage(user.id, input_used, output_used)
 
     # Auto-title from first exchange
     if not session.auto_title and session.message_count == 1:
@@ -72,6 +81,8 @@ async def _stream_response(session, message: str):
     import asyncio
 
     # Get the full response first (backend doesn't support true streaming yet)
+    tokens_before_in = getattr(session.conversation, 'total_input_tokens', 0) or 0
+    tokens_before_out = getattr(session.conversation, 'total_output_tokens', 0) or 0
     try:
         response_text = session.conversation.send(message)
     except Exception as exc:
@@ -97,8 +108,14 @@ async def _stream_response(session, message: str):
         # Small delay for streaming feel (10-30ms per word)
         await asyncio.sleep(0.02)
 
+    # Track token usage
+    from api.main import session_mgr, usage_tracker
+    input_used = getattr(session.conversation, 'total_input_tokens', 0) - tokens_before_in
+    output_used = getattr(session.conversation, 'total_output_tokens', 0) - tokens_before_out
+    if isinstance(input_used, int) and isinstance(output_used, int):
+        usage_tracker.record_usage(session.user_id, input_used, output_used)
+
     # Persist session to disk
-    from api.main import session_mgr
     session_mgr.save_session(session)
 
     # Signal completion
