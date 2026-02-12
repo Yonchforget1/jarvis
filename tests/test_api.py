@@ -149,3 +149,85 @@ def test_tools_list(client):
     names = [t["name"] for t in data["tools"]]
     assert "read_file" in names
     assert "run_shell" in names
+
+
+# ---- Sessions ----
+
+def test_sessions_list_empty(client):
+    reg = client.post("/api/auth/register", json={"username": "sessuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    res = client.get("/api/sessions", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_sessions_appear_after_chat(client):
+    reg = client.post("/api/auth/register", json={"username": "sessuser2", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Send a chat message (mocked)
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi!"
+        mock_make.return_value = mock_convo
+
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    # Now list sessions
+    res = client.get("/api/sessions", headers=headers)
+    assert res.status_code == 200
+    sessions = res.json()
+    assert len(sessions) >= 1
+    assert any(s["session_id"] == session_id for s in sessions)
+
+
+def test_session_rename(client):
+    reg = client.post("/api/auth/register", json={"username": "renamer", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi!"
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    res = client.patch(f"/api/sessions/{session_id}", json={"name": "My Chat"}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["name"] == "My Chat"
+
+    # Verify title changed
+    sessions = client.get("/api/sessions", headers=headers).json()
+    titles = [s["title"] for s in sessions]
+    assert "My Chat" in titles
+
+
+def test_session_delete(client):
+    reg = client.post("/api/auth/register", json={"username": "deleter", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with patch.object(session_mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.send.return_value = "Hi!"
+        mock_make.return_value = mock_convo
+        chat_res = client.post("/api/chat", json={"message": "hello"}, headers=headers)
+        session_id = chat_res.json()["session_id"]
+
+    res = client.delete(f"/api/sessions/{session_id}", headers=headers)
+    assert res.status_code == 200
+
+    sessions = client.get("/api/sessions", headers=headers).json()
+    assert not any(s["session_id"] == session_id for s in sessions)
+
+
+def test_session_not_found(client):
+    reg = client.post("/api/auth/register", json={"username": "nfuser", "password": "pass123"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.delete("/api/sessions/nonexistent", headers=headers)
+    assert res.status_code == 404

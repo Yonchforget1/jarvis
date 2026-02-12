@@ -53,11 +53,13 @@ app.add_middleware(
 # ---------- Routers ----------
 from api.routers.auth import router as auth_router  # noqa: E402
 from api.routers.chat import router as chat_router  # noqa: E402
+from api.routers.sessions import router as sessions_router  # noqa: E402
 from api.routers.stats import router as stats_router  # noqa: E402
 from api.routers.tools import router as tools_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(sessions_router)
 app.include_router(tools_router)
 app.include_router(stats_router)
 
