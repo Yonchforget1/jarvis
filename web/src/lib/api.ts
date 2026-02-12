@@ -145,7 +145,7 @@ export const api = {
     message: string,
     sessionId: string | null | undefined,
     onChunk: (text: string) => void,
-    onMeta: (data: { session_id: string }) => void,
+    onMeta: (data: { session_id: string; title?: string }) => void,
     onDone: (fullText: string) => void,
     onError: (error: string) => void,
     model?: string | null

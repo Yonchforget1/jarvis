@@ -110,8 +110,11 @@ async def _stream_response(session, message: str):
     if not session.auto_title and session.message_count == 1:
         session.auto_title = _generate_title(message, response_text)
 
-    # Send session info
-    meta = json.dumps({"session_id": session.session_id})
+    # Send session info (include title for sidebar update)
+    meta = json.dumps({
+        "session_id": session.session_id,
+        "title": session.title,
+    })
     yield f"event: meta\ndata: {meta}\n\n"
 
     # Stream words progressively for a natural feel

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -36,6 +36,9 @@ export function Sidebar({
     { session_id: string; title: string; matches: { role: string; content: string }[] }[]
   >([]);
   const [searching, setSearching] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
+  const renameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSessions();
@@ -81,6 +84,28 @@ export function Sidebar({
     } catch {
       // ignore
     }
+  }
+
+  function startRename(e: React.MouseEvent, session: Session) {
+    e.preventDefault();
+    e.stopPropagation();
+    setRenamingId(session.session_id);
+    setRenameText(session.title);
+    setTimeout(() => renameRef.current?.focus(), 50);
+  }
+
+  async function submitRename(sessionId: string) {
+    if (renameText.trim() && renameText !== sessions.find(s => s.session_id === sessionId)?.title) {
+      try {
+        await api.renameSession(sessionId, renameText.trim());
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.session_id === sessionId ? { ...s, title: renameText.trim() } : s
+          )
+        );
+      } catch { /* ignore */ }
+    }
+    setRenamingId(null);
   }
 
   async function handlePin(e: React.MouseEvent, sessionId: string, currentlyPinned: boolean) {
@@ -201,7 +226,8 @@ export function Sidebar({
         {sessions.map((s) => (
           <div
             key={s.session_id}
-            onClick={() => selectSession(s.session_id)}
+            onClick={() => renamingId !== s.session_id && selectSession(s.session_id)}
+            onDoubleClick={(e) => startRename(e, s)}
             className={`group flex items-center gap-1.5 px-3 py-2 mx-1 rounded cursor-pointer text-sm transition-colors ${
               s.session_id === currentSessionId
                 ? "bg-zinc-800 text-white"
@@ -209,17 +235,32 @@ export function Sidebar({
             }`}
           >
             {s.pinned && <span className="text-xs text-yellow-500 shrink-0" title="Pinned">{"\u{1F4CC}"}</span>}
-            <span className="flex-1 truncate">{s.title}</span>
+            {renamingId === s.session_id ? (
+              <input
+                ref={renameRef}
+                value={renameText}
+                onChange={(e) => setRenameText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitRename(s.session_id);
+                  if (e.key === "Escape") setRenamingId(null);
+                }}
+                onBlur={() => submitRename(s.session_id)}
+                className="flex-1 bg-zinc-700 text-zinc-100 text-sm px-1 py-0.5 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className="flex-1 truncate">{s.title}</span>
+            )}
             <button
               onClick={(e) => handlePin(e, s.session_id, !!s.pinned)}
-              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-yellow-400 text-xs transition-opacity"
+              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-yellow-400 text-xs transition-opacity shrink-0"
               title={s.pinned ? "Unpin" : "Pin"}
             >
-              {s.pinned ? "\u{1F4CC}" : "\u{1F4CC}"}
+              {"\u{1F4CC}"}
             </button>
             <button
               onClick={(e) => handleDelete(e, s.session_id)}
-              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-xs transition-opacity"
+              className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-xs transition-opacity shrink-0"
               title="Delete"
             >
               x

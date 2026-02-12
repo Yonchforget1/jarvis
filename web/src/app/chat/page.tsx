@@ -8,6 +8,7 @@ import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
 import { TemplateGrid } from "@/components/TemplateGrid";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { WelcomeModal } from "@/components/WelcomeModal";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -23,12 +24,17 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!api.isLoggedIn()) {
       router.push("/");
       return;
+    }
+    // Show welcome modal for first-time users
+    if (!localStorage.getItem("jarvis_onboarded")) {
+      setShowWelcome(true);
     }
     // Resume last active session if available
     const savedSession = localStorage.getItem("jarvis_active_session");
@@ -311,6 +317,14 @@ export default function ChatPage() {
         {/* Input */}
         <ChatInput onSend={handleSend} disabled={sending} />
       </div>
+
+      {/* Welcome Modal */}
+      {showWelcome && (
+        <WelcomeModal
+          onClose={() => setShowWelcome(false)}
+          onStartChat={(prompt) => { setShowWelcome(false); handleSend(prompt); }}
+        />
+      )}
     </div>
   );
 }
