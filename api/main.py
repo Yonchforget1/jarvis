@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -42,6 +43,21 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """Log every request with method, path, status, and duration."""
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = (time.time() - start_time) * 1000
+    log.info(
+        "%s %s -> %d (%.0fms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
 _cors_origins = os.environ.get("JARVIS_CORS_ORIGINS", "*").split(",")
 app.add_middleware(
@@ -83,8 +99,9 @@ async def root():
 def start():
     """Entry point for running the server."""
     import uvicorn
+    from jarvis.logging_config import setup_logging
 
-    logging.basicConfig(level=logging.INFO)
+    setup_logging()
     uvicorn.run(app, host="0.0.0.0", port=3000)
 
 
