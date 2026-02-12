@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  jarvis:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    volumes:
+      - jarvis-data:/app/api/data
+      - jarvis-memory:/app/memory
+    restart: unless-stopped
+
+volumes:
+  jarvis-data:
+  jarvis-memory:

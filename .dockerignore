@@ -1,0 +1,15 @@
+node_modules
+.next
+__pycache__
+*.pyc
+.git
+.env
+.wwebjs_cache
+desktop/node_modules
+web/node_modules
+web/.next
+tests/
+*.egg-info
+dist/
+build/
+nul
