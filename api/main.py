@@ -51,9 +51,21 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Jarvis AI Agent",
+    title="Jarvis AI Agent Platform",
+    description=(
+        "Production-ready AI agent API with multi-model support, tool calling, "
+        "session management, scheduled tasks, and real-time streaming.\n\n"
+        "## Authentication\n"
+        "All endpoints (except /api/health) require a Bearer token. "
+        "Get one via POST /api/auth/register or /api/auth/login.\n\n"
+        "## Streaming\n"
+        "POST /api/chat?stream=true returns Server-Sent Events (SSE) with "
+        "word-by-word streaming for a natural chat experience."
+    ),
     version="2.0.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.state.limiter = limiter

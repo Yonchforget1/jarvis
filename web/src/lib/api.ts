@@ -148,7 +148,8 @@ export const api = {
     onMeta: (data: { session_id: string; title?: string }) => void,
     onDone: (fullText: string) => void,
     onError: (error: string) => void,
-    model?: string | null
+    model?: string | null,
+    signal?: AbortSignal
   ) {
     const token = getToken();
     const res = await fetch(`${API_BASE}/api/chat?stream=true`, {
@@ -162,6 +163,7 @@ export const api = {
         session_id: sessionId || undefined,
         model: model || undefined,
       }),
+      signal,
     });
 
     if (!res.ok) {

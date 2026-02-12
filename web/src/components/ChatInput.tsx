@@ -19,6 +19,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [charCount, setCharCount] = useState(0);
 
   function handleKey(e: KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -51,6 +52,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     onSend(message);
     if (ref.current) ref.current.value = "";
     setAttachments([]);
+    setCharCount(0);
   }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -83,7 +85,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }
 
   return (
-    <div className="bg-zinc-900 border-t border-zinc-800">
+    <div className="bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
       {/* Attachments preview */}
       {attachments.length > 0 && (
         <div className="flex gap-2 px-3 pt-2 flex-wrap">
@@ -116,7 +118,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={disabled || uploading}
-          className="px-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-400 text-sm rounded-lg transition-colors border border-zinc-700"
+          className="px-3 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50 text-zinc-500 dark:text-zinc-400 text-sm rounded-lg transition-colors border border-zinc-300 dark:border-zinc-700"
           title="Attach file"
         >
           {uploading ? "..." : "+"}
@@ -127,12 +129,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           rows={1}
           disabled={disabled}
           onKeyDown={handleKey}
-          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 resize-none outline-none focus:border-blue-500 disabled:opacity-50"
+          className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 resize-none outline-none focus:border-blue-500 disabled:opacity-50"
           onInput={(e) => {
             const el = e.currentTarget;
             el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 120) + "px";
+            el.style.height = Math.min(el.scrollHeight, 150) + "px";
+            setCharCount(el.value.length);
           }}
+          maxLength={10000}
         />
         <button
           onClick={submit}
@@ -142,6 +146,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           Send
         </button>
       </div>
+      {charCount > 0 && (
+        <div className="px-3 pb-1 text-right">
+          <span className={`text-xs ${charCount > 9000 ? "text-orange-400" : "text-zinc-500"}`}>
+            {charCount.toLocaleString()}/10,000
+          </span>
+        </div>
+      )}
     </div>
   );
 }

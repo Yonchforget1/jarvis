@@ -25,6 +25,7 @@ export default function ChatPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,8 +75,18 @@ export default function ChatPage() {
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, []);
 
+  function handleStop() {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+      setSending(false);
+    }
+  }
+
   async function handleSend(text: string) {
     setLastFailedMessage(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setSending(true);
 
@@ -124,9 +135,14 @@ export default function ChatPage() {
             return [...updated, { role: "system", content: friendly }];
           });
         },
-        selectedModel
+        selectedModel,
+        controller.signal
       );
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // User stopped generation - keep partial response
+        return;
+      }
       setLastFailedMessage(text);
       const msg = err instanceof Error ? err.message : "Unknown error";
       const friendly = msg.includes("timed out")
@@ -139,6 +155,7 @@ export default function ChatPage() {
         { role: "system", content: friendly },
       ]);
     } finally {
+      abortRef.current = null;
       setSending(false);
     }
   }
@@ -292,6 +309,12 @@ export default function ChatPage() {
                 <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
               <span className="text-xs text-zinc-500">Jarvis is thinking</span>
+              <button
+                onClick={handleStop}
+                className="ml-2 text-xs text-zinc-500 hover:text-red-400 border border-zinc-600 rounded px-2 py-0.5 transition-colors"
+              >
+                Stop
+              </button>
             </div>
           )}
           {/* Retry button on error */}
