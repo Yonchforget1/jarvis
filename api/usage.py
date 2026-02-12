@@ -1,17 +1,15 @@
-"""Usage tracking – track token consumption per user for billing."""
+"""Usage tracking – track token consumption per user for billing – backed by Supabase."""
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+
+from api.db import db
 
 log = logging.getLogger("jarvis.api.usage")
-
-_USAGE_DIR = Path(__file__).parent / "data" / "usage"
 
 # Approximate cost per 1M tokens (USD) for common models
 MODEL_PRICING = {
@@ -54,7 +52,7 @@ class UsageRecord:
 
 
 class UsageTracker:
-    """Track and persist token usage per user."""
+    """Track and persist token usage per user via Supabase."""
 
     def __init__(self):
         self.records: dict[str, UsageRecord] = {}
@@ -62,30 +60,23 @@ class UsageTracker:
         self._load()
 
     def _load(self) -> None:
-        """Load persisted usage data from disk."""
-        if not _USAGE_DIR.exists():
+        """Load persisted usage data from Supabase (aggregated across all dates)."""
+        rows = db.select("usage", order="date.asc")
+        if not rows:
             return
-        for file in _USAGE_DIR.glob("*.json"):
-            try:
-                data = json.loads(file.read_text())
-                record = UsageRecord(
-                    user_id=data["user_id"],
-                    total_input_tokens=data.get("total_input_tokens", 0),
-                    total_output_tokens=data.get("total_output_tokens", 0),
-                    total_requests=data.get("total_requests", 0),
-                    estimated_cost_usd=data.get("estimated_cost_usd", 0.0),
-                    first_request=data.get("first_request", ""),
-                    last_request=data.get("last_request", ""),
+        for row in rows:
+            uid = row["user_id"]
+            if uid not in self.records:
+                self.records[uid] = UsageRecord(
+                    user_id=uid,
+                    first_request=str(row.get("date", "")),
                 )
-                self.records[record.user_id] = record
-            except Exception as e:
-                log.warning("Failed to load usage %s: %s", file.name, e)
-
-    def _persist(self, record: UsageRecord) -> None:
-        """Save a usage record to disk."""
-        _USAGE_DIR.mkdir(parents=True, exist_ok=True)
-        path = _USAGE_DIR / f"{record.user_id}.json"
-        path.write_text(json.dumps(record.to_dict(), indent=2))
+            record = self.records[uid]
+            record.total_input_tokens += row.get("input_tokens", 0)
+            record.total_output_tokens += row.get("output_tokens", 0)
+            record.total_requests += row.get("requests", 0)
+            record.estimated_cost_usd += row.get("estimated_cost_usd", 0.0)
+            record.last_request = str(row.get("date", ""))
 
     def record_usage(
         self,
@@ -96,6 +87,12 @@ class UsageTracker:
     ) -> None:
         """Record token usage for a request."""
         now = datetime.now(timezone.utc).isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
+
+        # Estimate cost
+        pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
+        cost = (input_tokens / 1_000_000) * pricing["input"] + \
+               (output_tokens / 1_000_000) * pricing["output"]
 
         with self._lock:
             if user_id not in self.records:
@@ -106,14 +103,35 @@ class UsageTracker:
             record.total_output_tokens += output_tokens
             record.total_requests += 1
             record.last_request = now
-
-            # Estimate cost
-            pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
-            cost = (input_tokens / 1_000_000) * pricing["input"] + \
-                   (output_tokens / 1_000_000) * pricing["output"]
             record.estimated_cost_usd += cost
 
-            self._persist(record)
+        # Upsert today's usage row (incremental update via RPC would be ideal,
+        # but for simplicity we read-then-update)
+        existing = db.select(
+            "usage",
+            filters={"user_id": user_id, "date.eq": today},
+            single=True,
+        )
+        if existing:
+            db.update(
+                "usage",
+                {"user_id": user_id, "date.eq": today},
+                {
+                    "input_tokens": existing["input_tokens"] + input_tokens,
+                    "output_tokens": existing["output_tokens"] + output_tokens,
+                    "requests": existing["requests"] + 1,
+                    "estimated_cost_usd": existing["estimated_cost_usd"] + cost,
+                },
+            )
+        else:
+            db.insert("usage", {
+                "user_id": user_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "requests": 1,
+                "estimated_cost_usd": round(cost, 6),
+                "date": today,
+            })
 
     def get_user_usage(self, user_id: str) -> UsageRecord | None:
         return self.records.get(user_id)

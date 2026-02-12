@@ -97,19 +97,13 @@ class TestScheduler:
     """Test the Scheduler class."""
 
     @pytest.fixture
-    def tmp_data_dir(self, tmp_path):
-        """Redirect scheduler data dir to temp."""
-        with patch("api.scheduler.DATA_DIR", tmp_path):
-            yield tmp_path
-
-    @pytest.fixture
     def mock_task_runner(self):
         runner = MagicMock()
         runner.submit.return_value = MagicMock(task_id="test123")
         return runner
 
     @pytest.fixture
-    def scheduler(self, tmp_data_dir, mock_task_runner):
+    def scheduler(self, mock_task_runner):
         from api.scheduler import Scheduler
         return Scheduler(task_runner=mock_task_runner)
 
@@ -165,12 +159,12 @@ class TestScheduler:
         with pytest.raises(ValueError):
             scheduler.update_schedule(sched.schedule_id, cron="bad")
 
-    def test_delete_schedule(self, scheduler, tmp_data_dir):
+    def test_delete_schedule(self, scheduler):
         sched = scheduler.create_schedule("user1", "Job", "@hourly", "shell", {"command": "ls"})
         assert scheduler.delete_schedule(sched.schedule_id) is True
         assert scheduler.get_schedule(sched.schedule_id) is None
 
-    def test_persistence(self, tmp_data_dir, mock_task_runner):
+    def test_persistence(self, mock_task_runner):
         from api.scheduler import Scheduler
 
         # Create with one instance
@@ -191,7 +185,7 @@ class TestScheduler:
         assert call_kwargs.kwargs.get("user_id") == "user1"
         assert "Scheduled" in call_kwargs.kwargs.get("description", "")
 
-    def test_no_task_runner_warning(self, tmp_data_dir):
+    def test_no_task_runner_warning(self):
         from api.scheduler import Scheduler
         s = Scheduler(task_runner=None)
         sched = s.create_schedule("user1", "Job", "@hourly", "shell", {"command": "ls"})

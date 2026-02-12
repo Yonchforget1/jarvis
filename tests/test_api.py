@@ -7,21 +7,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
 from api.main import app, session_mgr
-from api.auth import _load_users, _save_users, _USERS_FILE, _DATA_DIR
 from api.models import UserInfo
-
-
-@pytest.fixture(autouse=True)
-def clean_users(tmp_path, monkeypatch):
-    """Use a temp directory for user data so tests don't pollute real data."""
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    users_file = data_dir / "users.json"
-    audit_file = data_dir / "audit.json"
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", users_file)
-    monkeypatch.setattr("api.auth._AUDIT_FILE", audit_file)
-    yield
 
 
 @pytest.fixture
@@ -364,42 +350,28 @@ def test_chat_stream_error(client):
 
 # ---- Session Persistence ----
 
-def test_session_persistence(tmp_path):
-    """Test that sessions persist to disk and load back."""
-    from api.session_manager import SessionManager, _SESSIONS_DIR
-    import api.session_manager as sm
+def test_session_persistence(mock_database):
+    """Test that sessions persist to Supabase and can be read back."""
+    from api.session_manager import SessionManager
 
-    # Use temp directory for session storage
-    orig_dir = sm._SESSIONS_DIR
-    sm._SESSIONS_DIR = tmp_path / "sessions"
-    sm._SESSIONS_DIR.mkdir()
+    mgr = SessionManager()
+    with patch.object(mgr, "_make_conversation") as mock_make:
+        mock_convo = MagicMock()
+        mock_convo.messages = [
+            {"role": "user", "content": "test"},
+            {"role": "assistant", "content": "response"},
+        ]
+        mock_make.return_value = mock_convo
 
-    try:
-        mgr = SessionManager()
-        with patch.object(mgr, "_make_conversation") as mock_make:
-            mock_convo = MagicMock()
-            mock_convo.messages = [
-                {"role": "user", "content": "test"},
-                {"role": "assistant", "content": "response"},
-            ]
-            mock_make.return_value = mock_convo
+        session = mgr.get_or_create_session(None, "user1")
+        session.auto_title = "Test Chat"
+        session.touch()
+        mgr.save_session(session)
 
-            session = mgr.get_or_create_session(None, "user1")
-            session.auto_title = "Test Chat"
-            session.touch()
-            mgr.save_session(session)
-
-            # Verify file was written
-            files = list(sm._SESSIONS_DIR.glob("*.json"))
-            assert len(files) == 1
-
-            # Verify file contents
-            import json
-            data = json.loads(files[0].read_text())
-            assert data["user_id"] == "user1"
-            assert data["auto_title"] == "Test Chat"
-    finally:
-        sm._SESSIONS_DIR = orig_dir
+        # Verify data was written to mock DB
+        sessions = mock_database.tables.get("sessions", [])
+        assert len(sessions) >= 1
+        assert any(s["user_id"] == "user1" and s["auto_title"] == "Test Chat" for s in sessions)
 
 
 # ---- Session Export ----

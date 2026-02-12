@@ -8,18 +8,6 @@ from fastapi.testclient import TestClient
 from api.main import app
 
 
-@pytest.fixture(autouse=True)
-def clean_users(tmp_path, monkeypatch):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    users_file = data_dir / "users.json"
-    audit_file = data_dir / "audit.json"
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", users_file)
-    monkeypatch.setattr("api.auth._AUDIT_FILE", audit_file)
-    yield
-
-
 @pytest.fixture
 def client():
     return TestClient(app)

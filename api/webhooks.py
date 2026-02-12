@@ -1,4 +1,4 @@
-"""Webhook system – register URLs and fire events asynchronously."""
+"""Webhook system – register URLs and fire events asynchronously – backed by Supabase."""
 
 from __future__ import annotations
 
@@ -8,12 +8,11 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-log = logging.getLogger("jarvis.api.webhooks")
+from api.db import db
 
-_WEBHOOKS_DIR = Path(__file__).parent / "data" / "webhooks"
+log = logging.getLogger("jarvis.api.webhooks")
 
 
 @dataclass
@@ -61,30 +60,40 @@ class WebhookManager:
         self._load()
 
     def _load(self) -> None:
-        """Load persisted webhooks from disk."""
-        if not _WEBHOOKS_DIR.exists():
+        """Load persisted webhooks from Supabase."""
+        rows = db.select("webhooks")
+        if not rows:
             return
-        for file in _WEBHOOKS_DIR.glob("*.json"):
+        for data in rows:
             try:
-                data = json.loads(file.read_text())
+                events = data.get("events", [])
+                if isinstance(events, str):
+                    events = json.loads(events)
                 wh = Webhook(
                     webhook_id=data["webhook_id"],
                     user_id=data["user_id"],
                     url=data["url"],
-                    events=data["events"],
+                    events=events,
                     active=data.get("active", True),
                     fire_count=data.get("fire_count", 0),
                     last_error=data.get("last_error", ""),
                 )
                 self.webhooks[wh.webhook_id] = wh
             except Exception as e:
-                log.warning("Failed to load webhook %s: %s", file.name, e)
+                log.warning("Failed to load webhook %s: %s", data.get("webhook_id"), e)
 
     def _persist(self, wh: Webhook) -> None:
-        """Save a webhook to disk."""
-        _WEBHOOKS_DIR.mkdir(parents=True, exist_ok=True)
-        path = _WEBHOOKS_DIR / f"{wh.webhook_id}.json"
-        path.write_text(json.dumps(wh.to_dict(), default=str))
+        """Save a webhook to Supabase."""
+        db.upsert("webhooks", {
+            "webhook_id": wh.webhook_id,
+            "user_id": wh.user_id,
+            "url": wh.url,
+            "events": wh.events,
+            "active": wh.active,
+            "last_fired": wh.last_fired.isoformat() if wh.last_fired else None,
+            "fire_count": wh.fire_count,
+            "last_error": wh.last_error,
+        }, on_conflict="webhook_id")
 
     def register(self, user_id: str, url: str, events: list[str]) -> Webhook:
         """Register a new webhook."""
@@ -108,9 +117,7 @@ class WebhookManager:
         with self._lock:
             wh = self.webhooks.pop(webhook_id, None)
             if wh:
-                path = _WEBHOOKS_DIR / f"{webhook_id}.json"
-                if path.exists():
-                    path.unlink()
+                db.delete("webhooks", {"webhook_id": webhook_id})
                 return True
         return False
 
@@ -163,7 +170,7 @@ class WebhookManager:
                 wh.last_error = str(e)
 
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s
+                time.sleep(2 ** attempt)
 
         self._persist(wh)
         log.warning("Webhook %s failed after %d retries: %s", wh.webhook_id, max_retries, wh.last_error)

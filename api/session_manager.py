@@ -1,16 +1,15 @@
-"""Session management for the API with persistent storage."""
+"""Session management for the API with Supabase persistence."""
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from threading import Lock
 
+from api.db import db
 from jarvis.backends import create_backend
 from jarvis.config import Config
 from jarvis.conversation import Conversation
@@ -20,7 +19,6 @@ from jarvis.tools import register_all_tools
 
 log = logging.getLogger("jarvis.api.session_manager")
 
-_SESSIONS_DIR = Path(__file__).parent / "data" / "sessions"
 _SESSION_TTL = 86400  # 24 hours
 
 
@@ -36,6 +34,7 @@ class Session:
     message_count: int = 0
     pinned: bool = False
     model: str = ""
+    _persisted_msg_count: int = field(default=0, repr=False)
 
     def touch(self) -> None:
         self.last_active = datetime.now(timezone.utc)
@@ -57,7 +56,6 @@ class SessionManager:
             self.memory = Memory()
         except Exception:
             self.memory = _MemoryStub()
-        _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
         self._load_persisted_sessions()
 
     def enrich_system_prompt(self, session: Session, user_message: str) -> None:
@@ -88,18 +86,15 @@ class SessionManager:
     def save_conversation_learning(self, session: Session, user_msg: str, assistant_msg: str) -> None:
         """Save a learning from a conversation exchange if it seems valuable."""
         try:
-            # Only save learnings from substantive exchanges
             if len(user_msg) < 20 or len(assistant_msg) < 50:
                 return
-            # Don't save too frequently - check last learning timestamp
             learnings = self.memory.get_learnings(limit=1)
             if learnings:
-                from datetime import datetime, timezone
                 last = learnings[-1].get("timestamp", "")
                 if last:
                     last_dt = datetime.fromisoformat(last)
                     age = (datetime.now(timezone.utc) - last_dt).total_seconds()
-                    if age < 300:  # Don't save more than once per 5 minutes
+                    if age < 300:
                         return
             self.memory.save_learning(
                 category="conversation",
@@ -113,7 +108,6 @@ class SessionManager:
     def _make_conversation(self, messages: list[dict] | None = None, model: str | None = None) -> Conversation:
         config = self.config
         if model:
-            # Create a temporary config with the overridden model
             import copy
             config = copy.copy(self.config)
             config.model = model
@@ -133,37 +127,48 @@ class SessionManager:
         return convo
 
     def _persist_session(self, session: Session) -> None:
-        """Save session metadata and messages to disk."""
+        """Save session metadata and new messages to Supabase."""
         try:
-            data = {
+            # Upsert session metadata
+            db.upsert("sessions", {
                 "session_id": session.session_id,
                 "user_id": session.user_id,
-                "created_at": session.created_at.isoformat(),
-                "last_active": session.last_active.isoformat(),
                 "auto_title": session.auto_title,
                 "custom_name": session.custom_name,
                 "message_count": session.message_count,
                 "pinned": session.pinned,
                 "model": session.model,
-                "messages": self._serialize_messages(session.conversation.messages),
-            }
-            path = _SESSIONS_DIR / f"{session.session_id}.json"
-            path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+                "created_at": session.created_at.isoformat(),
+                "last_active": session.last_active.isoformat(),
+            }, on_conflict="session_id")
+
+            # Persist only new messages (avoid re-inserting all)
+            all_msgs = self._serialize_messages(session.conversation.messages)
+            new_msgs = all_msgs[session._persisted_msg_count:]
+            if new_msgs:
+                rows = [
+                    {
+                        "session_id": session.session_id,
+                        "role": m["role"],
+                        "content": m["content"],
+                    }
+                    for m in new_msgs
+                ]
+                db.insert("messages", rows)
+                session._persisted_msg_count = len(all_msgs)
         except Exception:
             log.exception("Failed to persist session %s", session.session_id)
 
     def _serialize_messages(self, messages: list[dict]) -> list[dict]:
-        """Serialize messages for JSON storage, keeping only role+content."""
+        """Serialize messages for storage, keeping only role+content."""
         serialized = []
         for msg in messages:
             role = msg.get("role", "")
             content = msg.get("content", "")
-            # Only persist user and assistant messages (skip tool results)
             if role in ("user", "assistant"):
                 if isinstance(content, str):
                     serialized.append({"role": role, "content": content})
                 elif isinstance(content, list):
-                    # Extract text content from structured messages
                     text_parts = []
                     for part in content:
                         if isinstance(part, dict) and part.get("type") == "text":
@@ -173,37 +178,55 @@ class SessionManager:
         return serialized
 
     def _load_persisted_sessions(self) -> None:
-        """Load persisted sessions from disk on startup."""
+        """Load persisted sessions from Supabase on startup."""
+        sessions = db.select("sessions", order="last_active.desc")
+        if not sessions:
+            return
+
         loaded = 0
-        for path in _SESSIONS_DIR.glob("*.json"):
+        for data in sessions:
             try:
-                data = json.loads(path.read_text(encoding="utf-8"))
                 sid = data["session_id"]
-                messages = data.get("messages", [])
-                convo = self._make_conversation(messages)
+                last_active = datetime.fromisoformat(data["last_active"])
+
+                # Check if session is expired
+                age = (datetime.now(timezone.utc) - last_active).total_seconds()
+                if age > _SESSION_TTL:
+                    db.delete("sessions", {"session_id.eq": sid})
+                    continue
+
+                # Load messages for this session
+                msg_rows = db.select(
+                    "messages",
+                    filters={"session_id": sid},
+                    order="created_at.asc",
+                )
+                msg_list = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in (msg_rows or [])
+                ]
+
+                convo = self._make_conversation(msg_list, model=data.get("model") or None)
                 session = Session(
                     session_id=sid,
                     user_id=data["user_id"],
                     conversation=convo,
                     created_at=datetime.fromisoformat(data["created_at"]),
-                    last_active=datetime.fromisoformat(data["last_active"]),
+                    last_active=last_active,
                     auto_title=data.get("auto_title", ""),
                     custom_name=data.get("custom_name", ""),
                     message_count=data.get("message_count", 0),
                     pinned=data.get("pinned", False),
                     model=data.get("model", ""),
+                    _persisted_msg_count=len(msg_list),
                 )
-                # Check if session is expired
-                age = (datetime.now(timezone.utc) - session.last_active).total_seconds()
-                if age > _SESSION_TTL:
-                    path.unlink()
-                    continue
                 self._sessions[sid] = session
                 loaded += 1
             except Exception:
-                log.exception("Failed to load session from %s", path)
+                log.exception("Failed to load session %s", data.get("session_id", "?"))
+
         if loaded:
-            log.info("Loaded %d persisted sessions", loaded)
+            log.info("Loaded %d persisted sessions from database", loaded)
 
     def get_or_create_session(self, session_id: str | None, user_id: str, model: str | None = None) -> Session:
         with self._lock:
@@ -277,8 +300,8 @@ class SessionManager:
         with self._lock:
             session = self._sessions.pop(session_id, None)
             if session:
-                path = _SESSIONS_DIR / f"{session_id}.json"
-                path.unlink(missing_ok=True)
+                db.delete("messages", {"session_id": session_id})
+                db.delete("sessions", {"session_id": session_id})
                 return True
             return False
 
@@ -307,8 +330,8 @@ class SessionManager:
                     expired.append(sid)
             for sid in expired:
                 del self._sessions[sid]
-                path = _SESSIONS_DIR / f"{sid}.json"
-                path.unlink(missing_ok=True)
+                db.delete("messages", {"session_id": sid})
+                db.delete("sessions", {"session_id": sid})
         return len(expired)
 
 

@@ -78,20 +78,6 @@ def test_webhook_to_dict():
 
 # ---- API tests ----
 
-@pytest.fixture(autouse=True)
-def clean_users(tmp_path, monkeypatch):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    users_file = data_dir / "users.json"
-    audit_file = data_dir / "audit.json"
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", users_file)
-    monkeypatch.setattr("api.auth._AUDIT_FILE", audit_file)
-    # Use temp dir for webhooks too
-    monkeypatch.setattr("api.webhooks._WEBHOOKS_DIR", tmp_path / "webhooks")
-    yield
-
-
 @pytest.fixture
 def client():
     return TestClient(app)

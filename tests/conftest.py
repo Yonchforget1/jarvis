@@ -8,6 +8,24 @@ import pytest
 from jarvis.tool_registry import ToolDef, ToolRegistry
 from jarvis.backends.base import Backend, BackendResponse, ToolCall, TokenUsage
 
+from tests.mock_db import MockDB
+
+
+@pytest.fixture(autouse=True)
+def mock_database(monkeypatch):
+    """Replace the global db object's methods with an in-memory mock for all tests."""
+    from api.db import db as real_db
+
+    mock = MockDB()
+    # Replace methods on the real singleton so all modules see the mock
+    for attr in [
+        "insert", "select", "update", "delete", "upsert",
+        "count", "rpc", "health_check",
+    ]:
+        monkeypatch.setattr(real_db, attr, getattr(mock, attr))
+    monkeypatch.setattr(real_db, "available", True)
+    yield mock
+
 
 class FakeBackend(Backend):
     """Backend that returns pre-configured responses for testing."""

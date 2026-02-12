@@ -1,22 +1,20 @@
-"""Scheduled task system – cron-like recurring tasks for background automation."""
+"""Scheduled task system – cron-like recurring tasks for background automation – backed by Supabase."""
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-log = logging.getLogger("jarvis.api.scheduler")
+from api.db import db
 
-DATA_DIR = Path(__file__).parent / "data" / "schedules"
+log = logging.getLogger("jarvis.api.scheduler")
 
 
 @dataclass
@@ -128,7 +126,6 @@ def validate_cron(cron_expr: str) -> bool:
     parts = expr.split()
     if len(parts) != 5:
         return False
-    # Basic validation - no garbage chars
     if not re.match(r'^[\d\s\*\/\-\,]+$', expr):
         return False
     try:
@@ -154,26 +151,51 @@ class Scheduler:
         self._load_schedules()
 
     def _load_schedules(self) -> None:
-        """Load saved schedules from disk."""
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        for fpath in DATA_DIR.glob("*.json"):
+        """Load saved schedules from Supabase."""
+        rows = db.select("schedules")
+        if not rows:
+            return
+        for data in rows:
             try:
-                data = json.loads(fpath.read_text())
-                sched = ScheduledTask(**data)
+                payload = data.get("payload", {})
+                if isinstance(payload, str):
+                    payload = json.loads(payload)
+                sched = ScheduledTask(
+                    schedule_id=data["schedule_id"],
+                    user_id=data["user_id"],
+                    name=data["name"],
+                    cron=data["cron"],
+                    task_type=data["task_type"],
+                    payload=payload,
+                    enabled=data.get("enabled", True),
+                    created_at=data.get("created_at", ""),
+                    last_run=data.get("last_run"),
+                    last_status=data.get("last_status"),
+                    last_error=data.get("last_error"),
+                    run_count=data.get("run_count", 0),
+                    consecutive_failures=data.get("consecutive_failures", 0),
+                )
                 self.schedules[sched.schedule_id] = sched
             except Exception as e:
-                log.warning("Failed to load schedule %s: %s", fpath.name, e)
+                log.warning("Failed to load schedule %s: %s", data.get("schedule_id"), e)
 
     def _save_schedule(self, sched: ScheduledTask) -> None:
-        """Persist a schedule to disk."""
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        fpath = DATA_DIR / f"{sched.schedule_id}.json"
-        fpath.write_text(json.dumps(sched.to_dict(), indent=2))
-
-    def _delete_schedule_file(self, schedule_id: str) -> None:
-        fpath = DATA_DIR / f"{schedule_id}.json"
-        if fpath.exists():
-            fpath.unlink()
+        """Persist a schedule to Supabase."""
+        db.upsert("schedules", {
+            "schedule_id": sched.schedule_id,
+            "user_id": sched.user_id,
+            "name": sched.name,
+            "cron": sched.cron,
+            "task_type": sched.task_type,
+            "payload": sched.payload,
+            "enabled": sched.enabled,
+            "created_at": sched.created_at,
+            "last_run": sched.last_run,
+            "last_status": sched.last_status,
+            "last_error": sched.last_error,
+            "run_count": sched.run_count,
+            "consecutive_failures": sched.consecutive_failures,
+        }, on_conflict="schedule_id")
 
     def create_schedule(
         self,
@@ -226,7 +248,7 @@ class Scheduler:
         if enabled is not None:
             sched.enabled = enabled
             if enabled:
-                sched.consecutive_failures = 0  # Reset on re-enable
+                sched.consecutive_failures = 0
         if name is not None:
             sched.name = name
         if cron is not None:
@@ -240,7 +262,7 @@ class Scheduler:
         with self._lock:
             sched = self.schedules.pop(schedule_id, None)
         if sched:
-            self._delete_schedule_file(schedule_id)
+            db.delete("schedules", {"schedule_id": schedule_id})
             log.info("Schedule %s deleted", schedule_id)
             return True
         return False
@@ -275,17 +297,14 @@ class Scheduler:
                 now = datetime.now(timezone.utc)
                 current_minute = now.hour * 60 + now.minute
 
-                # Only fire at most once per minute
                 if current_minute != last_check_minute:
                     last_check_minute = current_minute
                     self._check_schedules(now)
 
-                # Hourly session cleanup
                 if now.hour != last_cleanup_hour and now.minute == 0:
                     last_cleanup_hour = now.hour
                     self._run_session_cleanup()
 
-                # Sleep 15 seconds between checks
                 for _ in range(15):
                     if not self._running:
                         break
@@ -382,7 +401,6 @@ class Scheduler:
             message = sched.payload.get("message", "")
             if not message:
                 raise ValueError("No message specified")
-            # Import here to avoid circular imports
             from jarvis.conversation import Conversation
             from jarvis.config import Config
 

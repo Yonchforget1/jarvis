@@ -112,19 +112,6 @@ def test_cleanup_completed():
 # ---- API tests ----
 
 from api.main import app, task_runner as global_runner
-from api.auth import _load_users, _save_users, _USERS_FILE, _DATA_DIR
-
-
-@pytest.fixture(autouse=True)
-def clean_users(tmp_path, monkeypatch):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    users_file = data_dir / "users.json"
-    audit_file = data_dir / "audit.json"
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", users_file)
-    monkeypatch.setattr("api.auth._AUDIT_FILE", audit_file)
-    yield
 
 
 @pytest.fixture

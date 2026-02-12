@@ -1,19 +1,17 @@
-"""API key management for programmatic access."""
+"""API key management for programmatic access – backed by Supabase."""
 
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import secrets
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+
+from api.db import db
 
 log = logging.getLogger("jarvis.api.keys")
-
-_KEYS_FILE = Path(__file__).parent / "data" / "api_keys.json"
 
 
 @dataclass
@@ -48,21 +46,22 @@ class APIKeyManager:
         self._load()
 
     def _load(self) -> None:
-        if not _KEYS_FILE.exists():
+        rows = db.select("api_keys")
+        if not rows:
             return
-        try:
-            data = json.loads(_KEYS_FILE.read_text())
-            for item in data:
-                key = APIKey(**item)
-                self.keys[key.key_id] = key
-                self._hash_index[key.key_hash] = key.key_id
-        except Exception as e:
-            log.warning("Failed to load API keys: %s", e)
-
-    def _save(self) -> None:
-        _KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        data = [k.to_dict() | {"key_hash": k.key_hash} for k in self.keys.values()]
-        _KEYS_FILE.write_text(json.dumps(data, indent=2))
+        for item in rows:
+            key = APIKey(
+                key_id=item["key_id"],
+                user_id=item["user_id"],
+                name=item["name"],
+                key_hash=item["key_hash"],
+                prefix=item["prefix"],
+                created_at=item.get("created_at", ""),
+                last_used=item.get("last_used") or "",
+                usage_count=item.get("usage_count", 0),
+            )
+            self.keys[key.key_id] = key
+            self._hash_index[key.key_hash] = key.key_id
 
     def create_key(self, user_id: str, name: str) -> tuple[APIKey, str]:
         """Create a new API key. Returns (key_metadata, raw_key).
@@ -82,9 +81,16 @@ class APIKeyManager:
             created_at=datetime.now(timezone.utc).isoformat(),
         )
 
+        db.insert("api_keys", {
+            "key_id": key_id,
+            "user_id": user_id,
+            "name": name,
+            "key_hash": key_hash,
+            "prefix": raw_key[:12],
+        })
+
         self.keys[key_id] = api_key
         self._hash_index[key_hash] = key_id
-        self._save()
 
         log.info("API key created for user %s: %s (%s...)", user_id, name, raw_key[:12])
         return api_key, raw_key
@@ -98,9 +104,14 @@ class APIKeyManager:
 
         api_key = self.keys.get(key_id)
         if api_key:
-            api_key.last_used = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc).isoformat()
+            api_key.last_used = now
             api_key.usage_count += 1
-            self._save()
+            db.update(
+                "api_keys",
+                {"key_id": key_id},
+                {"last_used": now, "usage_count": api_key.usage_count},
+            )
         return api_key
 
     def get_user_keys(self, user_id: str) -> list[APIKey]:
@@ -110,7 +121,7 @@ class APIKeyManager:
         key = self.keys.pop(key_id, None)
         if key:
             self._hash_index.pop(key.key_hash, None)
-            self._save()
+            db.delete("api_keys", {"key_id": key_id})
             log.info("API key revoked: %s", key_id)
             return True
         return False

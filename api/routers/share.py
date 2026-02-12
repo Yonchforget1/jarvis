@@ -1,52 +1,24 @@
-"""Shared conversations router – public read-only links."""
+"""Shared conversations router – public read-only links – backed by Supabase."""
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.db import db
 from api.deps import UserInfo, get_current_user
 
 log = logging.getLogger("jarvis.api.share")
 router = APIRouter(tags=["share"])
 
-_SHARES_DIR = Path(__file__).parent.parent / "data" / "shares"
-
 
 class CreateShareReq(BaseModel):
     session_id: str
     expires_hours: int | None = Field(None, ge=1, le=720)  # Max 30 days
-
-
-def _load_shares() -> dict[str, dict]:
-    """Load all share records."""
-    shares = {}
-    _SHARES_DIR.mkdir(parents=True, exist_ok=True)
-    for f in _SHARES_DIR.glob("*.json"):
-        try:
-            data = json.loads(f.read_text())
-            shares[data["share_id"]] = data
-        except Exception:
-            pass
-    return shares
-
-
-def _save_share(share: dict) -> None:
-    _SHARES_DIR.mkdir(parents=True, exist_ok=True)
-    path = _SHARES_DIR / f"{share['share_id']}.json"
-    path.write_text(json.dumps(share, indent=2))
-
-
-def _delete_share(share_id: str) -> None:
-    path = _SHARES_DIR / f"{share_id}.json"
-    if path.exists():
-        path.unlink()
 
 
 @router.post("/api/share")
@@ -69,7 +41,7 @@ async def create_share(
     messages = session_mgr.get_session_messages(req.session_id) or []
     title = session.custom_name or session.auto_title or "Shared Conversation"
 
-    share = {
+    db.insert("shares", {
         "share_id": share_id,
         "session_id": req.session_id,
         "user_id": user.id,
@@ -78,9 +50,7 @@ async def create_share(
         "messages": messages,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires_at,
-        "view_count": 0,
-    }
-    _save_share(share)
+    })
 
     log.info("Share %s created for session %s by %s", share_id, req.session_id, user.username)
     return {
@@ -93,9 +63,11 @@ async def create_share(
 @router.get("/api/share")
 async def list_shares(user: UserInfo = Depends(get_current_user)):
     """List all shares created by the current user."""
-    shares = _load_shares()
-    user_shares = [s for s in shares.values() if s["user_id"] == user.id]
-    user_shares.sort(key=lambda s: s["created_at"], reverse=True)
+    rows = db.select(
+        "shares",
+        filters={"user_id": user.id},
+        order="created_at.desc",
+    )
     return [
         {
             "share_id": s["share_id"],
@@ -104,7 +76,7 @@ async def list_shares(user: UserInfo = Depends(get_current_user)):
             "expires_at": s.get("expires_at"),
             "view_count": s.get("view_count", 0),
         }
-        for s in user_shares
+        for s in (rows or [])
     ]
 
 
@@ -114,38 +86,35 @@ async def delete_share(
     user: UserInfo = Depends(get_current_user),
 ):
     """Delete a share link."""
-    shares = _load_shares()
-    share = shares.get(share_id)
+    share = db.select("shares", filters={"share_id": share_id}, single=True)
     if not share or share["user_id"] != user.id:
         raise HTTPException(404, "Share not found")
-    _delete_share(share_id)
+    db.delete("shares", {"share_id": share_id})
     return {"status": "deleted"}
 
 
 @router.get("/api/shared/{share_id}")
 async def view_shared(share_id: str):
     """View a shared conversation (public, no auth required)."""
-    path = _SHARES_DIR / f"{share_id}.json"
-    if not path.exists():
+    share = db.select("shares", filters={"share_id": share_id}, single=True)
+    if not share:
         raise HTTPException(404, "Share not found or expired")
-
-    share = json.loads(path.read_text())
 
     # Check expiration
     if share.get("expires_at"):
         expires = datetime.fromisoformat(share["expires_at"])
         if datetime.now(timezone.utc) > expires:
-            _delete_share(share_id)
+            db.delete("shares", {"share_id": share_id})
             raise HTTPException(404, "Share has expired")
 
     # Increment view count
-    share["view_count"] = share.get("view_count", 0) + 1
-    _save_share(share)
+    new_count = share.get("view_count", 0) + 1
+    db.update("shares", {"share_id": share_id}, {"view_count": new_count})
 
     return {
         "title": share["title"],
         "username": share["username"],
         "messages": share["messages"],
         "created_at": share["created_at"],
-        "view_count": share["view_count"],
+        "view_count": new_count,
     }

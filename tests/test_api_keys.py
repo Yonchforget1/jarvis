@@ -11,8 +11,7 @@ from api.main import app
 
 # ---- Unit tests ----
 
-def test_create_and_verify_key(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
+def test_create_and_verify_key():
     mgr = APIKeyManager()
 
     api_key, raw_key = mgr.create_key("user1", "My Test Key")
@@ -27,15 +26,13 @@ def test_create_and_verify_key(tmp_path, monkeypatch):
     assert verified.usage_count == 1
 
 
-def test_verify_invalid_key(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
+def test_verify_invalid_key():
     mgr = APIKeyManager()
 
     assert mgr.verify_key("jrv_invalid_key_here") is None
 
 
-def test_revoke_key(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
+def test_revoke_key():
     mgr = APIKeyManager()
 
     api_key, raw_key = mgr.create_key("user1", "Temp Key")
@@ -43,8 +40,7 @@ def test_revoke_key(tmp_path, monkeypatch):
     assert mgr.verify_key(raw_key) is None
 
 
-def test_get_user_keys(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
+def test_get_user_keys():
     mgr = APIKeyManager()
 
     mgr.create_key("user1", "Key A")
@@ -55,14 +51,11 @@ def test_get_user_keys(tmp_path, monkeypatch):
     assert len(mgr.get_user_keys("user2")) == 1
 
 
-def test_key_persistence(tmp_path, monkeypatch):
-    keys_file = tmp_path / "keys.json"
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", keys_file)
-
+def test_key_persistence():
     mgr1 = APIKeyManager()
     api_key, raw_key = mgr1.create_key("user1", "Persistent Key")
 
-    # New manager should load from disk
+    # New manager should load from db
     mgr2 = APIKeyManager()
     verified = mgr2.verify_key(raw_key)
     assert verified is not None
@@ -70,17 +63,6 @@ def test_key_persistence(tmp_path, monkeypatch):
 
 
 # ---- API tests ----
-
-@pytest.fixture(autouse=True)
-def clean_state(tmp_path, monkeypatch):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", data_dir / "users.json")
-    monkeypatch.setattr("api.auth._AUDIT_FILE", data_dir / "audit.json")
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
-    yield
-
 
 @pytest.fixture
 def client():

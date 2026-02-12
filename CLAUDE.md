@@ -6,6 +6,17 @@
 3. Never spend more than 30 minutes on any feature without testing the full chat flow end-to-end.
 4. If any test fails, stop all other work and fix it immediately.
 
+### ARCHITECTURE CHECKLIST - Review before any new feature:
+- Database: Is data in a real database (Supabase/Postgres), not files?
+- Auth: Production-ready with JWT + refresh tokens?
+- API: All endpoints secured and rate-limited?
+- Error handling: Try/catch with logging everywhere?
+- Tests: Every new feature has automated tests?
+- Scalability: Works with 1000 users, not just 1?
+- Security: Secrets in env vars, not hardcoded?
+- Monitoring: Can we see errors and usage in production?
+If ANY answer is "no", fix that BEFORE adding new features.
+
 ## Architecture
 
 ```

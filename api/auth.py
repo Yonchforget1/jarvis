@@ -1,18 +1,16 @@
-"""JWT authentication and user management."""
+"""JWT authentication and user management – backed by Supabase."""
 
 from __future__ import annotations
 
-import json
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any
-
-import os
 
 import bcrypt
 from jose import JWTError, jwt
+
+from api.db import db
 
 log = logging.getLogger("jarvis.api.auth")
 
@@ -23,9 +21,6 @@ _ALGORITHM = "HS256"
 _ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 _REMEMBER_ME_EXPIRE_DAYS = 30
 
-_DATA_DIR = Path(__file__).parent / "data"
-_USERS_FILE = _DATA_DIR / "users.json"
-
 
 def _hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -34,49 +29,40 @@ def _hash_password(password: str) -> str:
 def _verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-# Audit log
-_AUDIT_FILE = _DATA_DIR / "audit.json"
-
-
-def _load_users() -> list[dict]:
-    if _USERS_FILE.exists():
-        return json.loads(_USERS_FILE.read_text())
-    return []
-
-
-def _save_users(users: list[dict]) -> None:
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    _USERS_FILE.write_text(json.dumps(users, indent=2))
-
 
 def create_user(username: str, password: str, email: str = "") -> dict | None:
     """Create a new user. Returns user dict or None if duplicate.
     The first registered user automatically becomes admin.
     """
-    users = _load_users()
-    if any(u["username"] == username for u in users):
+    # Check if username already exists
+    existing = db.select("users", filters={"username": username}, single=True)
+    if existing:
         return None
+
     # First user is admin
-    role = "admin" if len(users) == 0 else "user"
-    user = {
-        "id": uuid.uuid4().hex,
+    count = db.count("users")
+    role = "admin" if count == 0 else "user"
+
+    user_data = {
         "username": username,
         "password_hash": _hash_password(password),
         "email": email,
         "role": role,
-        "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    users.append(user)
-    _save_users(users)
-    return user
+    result = db.insert("users", user_data)
+    if result:
+        user = result[0]
+        user["id"] = str(user["id"])
+        return user
+    return None
 
 
 def authenticate_user(username: str, password: str) -> dict | None:
     """Authenticate and return user dict or None."""
-    users = _load_users()
-    for u in users:
-        if u["username"] == username and _verify_password(password, u["password_hash"]):
-            return u
+    user = db.select("users", filters={"username": username}, single=True)
+    if user and _verify_password(password, user["password_hash"]):
+        user["id"] = str(user["id"])
+        return user
     return None
 
 
@@ -107,11 +93,21 @@ def verify_token(token: str) -> dict | None:
 
 
 def get_user_by_id(user_id: str) -> dict | None:
-    users = _load_users()
-    for u in users:
-        if u["id"] == user_id:
-            return u
+    user = db.select("users", filters={"id.eq": user_id}, single=True)
+    if user:
+        user["id"] = str(user["id"])
+        return user
     return None
+
+
+def get_all_users() -> list[dict]:
+    """Get all users (for admin)."""
+    users = db.select("users", order="created_at.asc")
+    if not users:
+        return []
+    for u in users:
+        u["id"] = str(u["id"])
+    return users
 
 
 def audit_log(
@@ -122,21 +118,20 @@ def audit_log(
     detail: str = "",
 ) -> None:
     """Append an audit log entry."""
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    entries = []
-    if _AUDIT_FILE.exists():
-        try:
-            entries = json.loads(_AUDIT_FILE.read_text())
-        except json.JSONDecodeError:
-            entries = []
-    entries.append({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "user_id": user_id,
+    db.insert("audit_log", {
         "username": username,
         "action": action,
         "ip": ip,
-        "detail": detail,
+        "details": {"user_id": user_id, "detail": detail},
     })
-    # Keep last 10000 entries
-    entries = entries[-10000:]
-    _AUDIT_FILE.write_text(json.dumps(entries, indent=2))
+
+
+def get_audit_log(limit: int = 100, offset: int = 0) -> list[dict]:
+    """Get recent audit log entries."""
+    result = db.select(
+        "audit_log",
+        order="created_at.desc",
+        limit=limit,
+        offset=offset,
+    )
+    return result or []

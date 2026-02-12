@@ -1,4 +1,4 @@
-"""End-to-end integration test – exercises the full Jarvis flow."""
+"""End-to-end integration test -- exercises the full Jarvis flow."""
 
 from __future__ import annotations
 
@@ -12,16 +12,8 @@ from api.main import app, session_mgr, task_runner
 
 
 @pytest.fixture(autouse=True)
-def clean_state(tmp_path, monkeypatch):
-    """Isolate all data to temp directory."""
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", data_dir / "users.json")
-    monkeypatch.setattr("api.auth._AUDIT_FILE", data_dir / "audit.json")
-    monkeypatch.setattr("api.api_keys._KEYS_FILE", tmp_path / "keys.json")
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
-    monkeypatch.setattr("api.webhooks._WEBHOOKS_DIR", tmp_path / "webhooks")
+def clean_state():
+    """Clear task runner state between tests."""
     task_runner.tasks.clear()
     yield
 

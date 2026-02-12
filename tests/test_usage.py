@@ -17,8 +17,7 @@ def test_usage_record_empty():
     assert tracker.get_user_usage("nonexistent") is None
 
 
-def test_usage_record_basic(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
+def test_usage_record_basic():
     tracker = UsageTracker()
 
     tracker.record_usage("user1", 100, 50, "default")
@@ -30,8 +29,7 @@ def test_usage_record_basic(tmp_path, monkeypatch):
     assert record.estimated_cost_usd > 0
 
 
-def test_usage_accumulates(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
+def test_usage_accumulates():
     tracker = UsageTracker()
 
     tracker.record_usage("user1", 100, 50)
@@ -43,8 +41,7 @@ def test_usage_accumulates(tmp_path, monkeypatch):
     assert record.total_requests == 2
 
 
-def test_usage_multiple_users(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
+def test_usage_multiple_users():
     tracker = UsageTracker()
 
     tracker.record_usage("user1", 100, 50)
@@ -54,8 +51,7 @@ def test_usage_multiple_users(tmp_path, monkeypatch):
     assert len(all_usage) == 2
 
 
-def test_usage_total_stats(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
+def test_usage_total_stats():
     tracker = UsageTracker()
 
     tracker.record_usage("user1", 100, 50)
@@ -68,8 +64,7 @@ def test_usage_total_stats(tmp_path, monkeypatch):
     assert stats["total_requests"] == 2
 
 
-def test_usage_to_dict(tmp_path, monkeypatch):
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
+def test_usage_to_dict():
     tracker = UsageTracker()
     tracker.record_usage("user1", 1000, 500, "gpt-4o")
 
@@ -81,14 +76,11 @@ def test_usage_to_dict(tmp_path, monkeypatch):
     assert d["last_request"]
 
 
-def test_usage_persistence(tmp_path, monkeypatch):
-    usage_dir = tmp_path / "usage"
-    monkeypatch.setattr("api.usage._USAGE_DIR", usage_dir)
-
+def test_usage_persistence():
     tracker1 = UsageTracker()
     tracker1.record_usage("user1", 100, 50)
 
-    # Create new tracker — should load from disk
+    # Create new tracker -- should load from db
     tracker2 = UsageTracker()
     record = tracker2.get_user_usage("user1")
     assert record is not None
@@ -96,17 +88,6 @@ def test_usage_persistence(tmp_path, monkeypatch):
 
 
 # ---- API tests ----
-
-@pytest.fixture(autouse=True)
-def clean_state(tmp_path, monkeypatch):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    monkeypatch.setattr("api.auth._DATA_DIR", data_dir)
-    monkeypatch.setattr("api.auth._USERS_FILE", data_dir / "users.json")
-    monkeypatch.setattr("api.auth._AUDIT_FILE", data_dir / "audit.json")
-    monkeypatch.setattr("api.usage._USAGE_DIR", tmp_path / "usage")
-    yield
-
 
 @pytest.fixture
 def client():

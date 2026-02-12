@@ -1,21 +1,18 @@
-"""Prompt templates router – pre-built conversation starters."""
+"""Prompt templates router – pre-built conversation starters – backed by Supabase."""
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.db import db
 from api.deps import UserInfo, get_current_user
 
 log = logging.getLogger("jarvis.api.templates")
 router = APIRouter(prefix="/api/templates", tags=["templates"])
-
-_TEMPLATES_DIR = Path(__file__).parent.parent / "data" / "templates"
 
 # Built-in templates available to all users
 BUILTIN_TEMPLATES = [
@@ -125,29 +122,21 @@ class CreateTemplateReq(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
 
 
-def _load_user_templates(user_id: str) -> list[dict]:
-    """Load custom templates for a user."""
-    user_file = _TEMPLATES_DIR / f"{user_id}.json"
-    if user_file.exists():
-        try:
-            return json.loads(user_file.read_text())
-        except Exception:
-            return []
-    return []
-
-
-def _save_user_templates(user_id: str, templates: list[dict]) -> None:
-    _TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
-    user_file = _TEMPLATES_DIR / f"{user_id}.json"
-    user_file.write_text(json.dumps(templates, indent=2))
-
-
 @router.get("")
 async def list_templates(user: UserInfo = Depends(get_current_user)):
     """List all available templates (built-in + user custom)."""
-    custom = _load_user_templates(user.id)
-    for t in custom:
-        t["custom"] = True
+    rows = db.select("templates", filters={"user_id": user.id})
+    custom = []
+    for r in (rows or []):
+        custom.append({
+            "id": r["template_id"],
+            "name": r["name"],
+            "description": r.get("description", ""),
+            "category": r.get("category", "Custom"),
+            "prompt": r["prompt"],
+            "icon": r.get("icon", "custom"),
+            "custom": True,
+        })
     builtin = [dict(t, custom=False) for t in BUILTIN_TEMPLATES]
     return builtin + custom
 
@@ -158,7 +147,8 @@ async def list_categories(user: UserInfo = Depends(get_current_user)):
     cats = set()
     for t in BUILTIN_TEMPLATES:
         cats.add(t["category"])
-    for t in _load_user_templates(user.id):
+    rows = db.select("templates", filters={"user_id": user.id})
+    for t in (rows or []):
         cats.add(t.get("category", "Custom"))
     return sorted(cats)
 
@@ -169,21 +159,30 @@ async def create_template(
     user: UserInfo = Depends(get_current_user),
 ):
     """Create a custom prompt template."""
-    templates = _load_user_templates(user.id)
-    if len(templates) >= 50:
+    count = db.count("templates", filters={"user_id": user.id})
+    if count >= 50:
         raise HTTPException(400, "Maximum 50 custom templates per user")
 
-    template = {
-        "id": uuid.uuid4().hex[:12],
+    template_id = uuid.uuid4().hex[:12]
+    db.insert("templates", {
+        "template_id": template_id,
+        "user_id": user.id,
         "name": req.name,
         "description": req.description,
         "category": req.category,
         "prompt": req.prompt,
         "icon": "custom",
+    })
+
+    return {
+        "id": template_id,
+        "name": req.name,
+        "description": req.description,
+        "category": req.category,
+        "prompt": req.prompt,
+        "icon": "custom",
+        "custom": True,
     }
-    templates.append(template)
-    _save_user_templates(user.id, templates)
-    return dict(template, custom=True)
 
 
 @router.delete("/{template_id}")
@@ -192,10 +191,12 @@ async def delete_template(
     user: UserInfo = Depends(get_current_user),
 ):
     """Delete a custom template."""
-    templates = _load_user_templates(user.id)
-    before = len(templates)
-    templates = [t for t in templates if t.get("id") != template_id]
-    if len(templates) == before:
+    existing = db.select(
+        "templates",
+        filters={"template_id": template_id, "user_id": user.id},
+        single=True,
+    )
+    if not existing:
         raise HTTPException(404, "Template not found")
-    _save_user_templates(user.id, templates)
+    db.delete("templates", {"template_id": template_id})
     return {"status": "deleted"}

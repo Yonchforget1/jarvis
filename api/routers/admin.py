@@ -7,6 +7,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
+from api.auth import get_all_users, get_audit_log as _get_audit_log, get_user_by_id
+from api.db import db
 from api.deps import get_current_user
 from api.models import UserInfo
 
@@ -29,8 +31,7 @@ class UpdateUserRequest(BaseModel):
 
 @router.get("/users")
 async def list_users(admin: UserInfo = Depends(_require_admin)):
-    from api.auth import _load_users
-    users = _load_users()
+    users = get_all_users()
     return [
         {
             "id": u["id"],
@@ -49,10 +50,7 @@ async def update_user(
     req: UpdateUserRequest,
     admin: UserInfo = Depends(_require_admin),
 ):
-    from api.auth import _load_users, _save_users
-
-    users = _load_users()
-    target = next((u for u in users if u["id"] == user_id), None)
+    target = get_user_by_id(user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -62,13 +60,13 @@ async def update_user(
             raise HTTPException(status_code=400, detail="Role must be 'admin' or 'user'")
         # Prevent removing the last admin
         if target["role"] == "admin" and req.role != "admin":
+            users = get_all_users()
             admin_count = sum(1 for u in users if u.get("role") == "admin")
             if admin_count <= 1:
                 raise HTTPException(status_code=400, detail="Cannot remove the last admin")
-        target["role"] = req.role
+        db.update("users", {"id.eq": user_id}, {"role": req.role})
         changed["role"] = req.role
 
-    _save_users(users)
     log.info("Admin %s updated user %s: %s", admin.username, target["username"], changed)
     return {"status": "updated", "changed": changed}
 
@@ -78,10 +76,7 @@ async def delete_user(
     user_id: str,
     admin: UserInfo = Depends(_require_admin),
 ):
-    from api.auth import _load_users, _save_users
-
-    users = _load_users()
-    target = next((u for u in users if u["id"] == user_id), None)
+    target = get_user_by_id(user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -91,13 +86,12 @@ async def delete_user(
 
     # Prevent deleting the last admin
     if target.get("role") == "admin":
+        users = get_all_users()
         admin_count = sum(1 for u in users if u.get("role") == "admin")
         if admin_count <= 1:
             raise HTTPException(status_code=400, detail="Cannot delete the last admin")
 
-    users = [u for u in users if u["id"] != user_id]
-    _save_users(users)
-
+    db.delete("users", {"id.eq": user_id})
     log.info("Admin %s deleted user %s", admin.username, target["username"])
     return {"status": "deleted", "username": target["username"]}
 
@@ -110,32 +104,18 @@ async def get_audit_log(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
-    import json
-    from api.auth import _AUDIT_FILE
-
-    if not _AUDIT_FILE.exists():
-        return {"entries": [], "total": 0}
-
-    try:
-        entries = json.loads(_AUDIT_FILE.read_text())
-    except Exception:
-        entries = []
-
-    total = len(entries)
-    # Return newest first
-    entries.reverse()
-    page = entries[offset : offset + limit]
-    return {"entries": page, "total": total}
+    entries = _get_audit_log(limit=limit, offset=offset)
+    total = db.count("audit_log")
+    return {"entries": entries, "total": total}
 
 
 # ---- System Stats ----
 
 @router.get("/stats")
 async def admin_stats(admin: UserInfo = Depends(_require_admin)):
-    from api.auth import _load_users
     from api.main import session_mgr, task_runner
 
-    users = _load_users()
+    users = get_all_users()
     tasks = list(task_runner.tasks.values())
 
     return {
