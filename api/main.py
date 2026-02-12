@@ -18,11 +18,13 @@ from slowapi.util import get_remote_address
 
 from api.session_manager import SessionManager
 from api.task_runner import TaskRunner
+from api.webhooks import WebhookManager
 
 log = logging.getLogger("jarvis.api")
 
 session_mgr = SessionManager()
 task_runner = TaskRunner(max_concurrent=5)
+webhook_mgr = WebhookManager()
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -82,6 +84,7 @@ from api.routers.tools import router as tools_router  # noqa: E402
 from api.routers.settings import router as settings_router  # noqa: E402
 from api.routers.tasks import router as tasks_router  # noqa: E402
 from api.routers.admin import router as admin_router  # noqa: E402
+from api.routers.webhooks import router as webhooks_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(chat_router)
@@ -91,6 +94,7 @@ app.include_router(stats_router)
 app.include_router(settings_router)
 app.include_router(tasks_router)
 app.include_router(admin_router)
+app.include_router(webhooks_router)
 
 # ---------- Static files ----------
 if _STATIC_DIR.exists():
