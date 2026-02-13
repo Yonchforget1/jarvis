@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const [dark, setDark] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("jarvis_theme");
@@ -11,6 +12,7 @@ export function ThemeToggle() {
       setDark(false);
       document.documentElement.classList.remove("dark");
     }
+    setMounted(true);
   }, []);
 
   function toggle() {
@@ -23,6 +25,10 @@ export function ThemeToggle() {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("jarvis_theme", "light");
     }
+  }
+
+  if (!mounted) {
+    return <div className="w-8 h-8" />;
   }
 
   return (
