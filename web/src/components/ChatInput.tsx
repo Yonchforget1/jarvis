@@ -31,6 +31,7 @@ export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputPro
   const [commandFilter, setCommandFilter] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [listening, setListening] = useState(false);
+  const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const stopListening = useCallback(() => {
@@ -80,6 +81,9 @@ export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputPro
   }
 
   useEffect(() => {
+    setHasSpeechRecognition(
+      !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+    );
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -271,7 +275,7 @@ export function ChatInput({ onSend, disabled, slashCommands = [] }: ChatInputPro
         >
           {uploading ? "..." : "+"}
         </button>
-        {typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition) && (
+        {hasSpeechRecognition && (
           <button
             onClick={toggleVoice}
             disabled={disabled}
