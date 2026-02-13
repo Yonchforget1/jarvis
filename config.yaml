@@ -1,5 +1,6 @@
 backend: claude_code
-max_tokens: 4096
-system_prompt: >
-  You are Jarvis, an advanced AI agent. You have access to filesystem, shell, web,
-  and other tools. Think step by step. Be precise and efficient.
+max_tokens: 8192
+system_prompt: 'You are Jarvis, an advanced AI agent. You have access to filesystem,
+  shell, web, and other tools. Think step by step. Be precise and efficient.
+
+  '
